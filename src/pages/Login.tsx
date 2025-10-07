@@ -4,58 +4,42 @@ import { MailIcon, LockIcon, UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 const Login = () => {
   const [formData, setFormData] = useState({
-    email: 'demo@cleaninbox.com',
-    password: 'password123',
-    rememberMe: false
+    email: '',
+    password: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const {
     login
   } = useAuth();
   const navigate = useNavigate();
-  // Check for remembered credentials on component mount
-  useEffect(() => {
-    const rememberedEmail = localStorage.getItem('rememberedEmail');
-    const rememberedPassword = localStorage.getItem('rememberedPassword');
-    if (rememberedEmail && rememberedPassword) {
-      setFormData(prev => ({
-        ...prev,
-        email: rememberedEmail,
-        password: rememberedPassword,
-        rememberMe: true
-      }));
-    }
-  }, []);
   const handleChange = e => {
     const {
       name,
-      value,
-      type,
-      checked
+      value
     } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }));
   };
-  const handleSubmit = e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    // For demo purposes, we'll just do basic validation
+
     if (!formData.email || !formData.password) {
       setError('Please fill in all fields');
       return;
     }
-    // Handle remember me functionality
-    if (formData.rememberMe) {
-      localStorage.setItem('rememberedEmail', formData.email);
-      localStorage.setItem('rememberedPassword', formData.password);
-    } else {
-      localStorage.removeItem('rememberedEmail');
-      localStorage.removeItem('rememberedPassword');
+
+    try {
+      setLoading(true);
+      await login(formData.email, formData.password);
+    } catch (err: any) {
+      setError(err.message || 'Failed to login');
+    } finally {
+      setLoading(false);
     }
-    // Use the login function from AuthContext
-    login(formData.email, formData.password);
   };
   return <div className="w-full bg-white">
       <section className="pt-12 pb-8">
@@ -87,7 +71,7 @@ const Login = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <MailIcon className="h-5 w-5 text-gray-400" />
                       </div>
-                      <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="demo@cleaninbox.com" />
+                      <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="you@example.com" />
                     </div>
                   </div>
                   <div>
@@ -98,25 +82,12 @@ const Login = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <LockIcon className="h-5 w-5 text-gray-400" />
                       </div>
-                      <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="password123" />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <input id="rememberMe" name="rememberMe" type="checkbox" checked={formData.rememberMe} onChange={handleChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                      <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
-                        Remember me
-                      </label>
-                    </div>
-                    <div className="text-sm">
-                      <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                        Forgot your password?
-                      </a>
+                      <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="••••••••" />
                     </div>
                   </div>
                   <div>
-                    <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      Sign in
+                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {loading ? 'Signing in...' : 'Sign in'}
                     </button>
                   </div>
                 </div>

@@ -12,8 +12,9 @@ const Register = () => {
     agreeTerms: false
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const {
-    login
+    signup
   } = useAuth();
   const navigate = useNavigate();
   const handleChange = e => {
@@ -28,25 +29,39 @@ const Register = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-  const handleSubmit = e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
     // Basic validation
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
       setError('Please fill in all required fields');
       return;
     }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
+
     if (!formData.agreeTerms) {
       setError('You must agree to the terms and conditions');
       return;
     }
-    // In a real app, you would register with a backend
-    // For demo, we'll just log in with the new account
-    login(formData.email, formData.password);
+
+    try {
+      setLoading(true);
+      await signup(formData.email, formData.password);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
   };
   return <div className="w-full bg-white">
       <section className="pt-12 pb-8">
@@ -135,8 +150,8 @@ const Register = () => {
                     </div>
                   </div>
                   <div>
-                    <button type="submit" className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      Create Account
+                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {loading ? 'Creating Account...' : 'Create Account'}
                     </button>
                   </div>
                 </div>
