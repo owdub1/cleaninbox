@@ -45,9 +45,28 @@ export const useDashboardData = () => {
           .from('user_stats')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (statsError) throw statsError;
+        // If no stats exist, create them
+        if (!statsData && !statsError) {
+          const { data: newStats, error: createError } = await supabase
+            .from('user_stats')
+            .insert([{ user_id: user.id, emails_processed: 0, unsubscribed: 0 }])
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating user stats:', createError);
+          } else {
+            setStats({
+              emailsProcessed: 0,
+              unsubscribed: 0,
+              emailAccounts: 0
+            });
+          }
+        } else if (statsError) {
+          console.error('Error fetching stats:', statsError);
+        }
 
         // Fetch email accounts
         const { data: accountsData, error: accountsError } = await supabase
@@ -55,14 +74,18 @@ export const useDashboardData = () => {
           .select('*')
           .eq('user_id', user.id);
 
-        if (accountsError) throw accountsError;
+        if (accountsError) {
+          console.error('Error fetching email accounts:', accountsError);
+        }
 
-        // Update stats
-        setStats({
-          emailsProcessed: statsData?.emails_processed || 0,
-          unsubscribed: statsData?.unsubscribed || 0,
-          emailAccounts: accountsData?.length || 0
-        });
+        // Update stats only if we have valid statsData
+        if (statsData) {
+          setStats({
+            emailsProcessed: statsData.emails_processed || 0,
+            unsubscribed: statsData.unsubscribed || 0,
+            emailAccounts: accountsData?.length || 0
+          });
+        }
 
         // Update email accounts
         setEmailAccounts(accountsData?.map(account => ({
