@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CreditCardIcon, CalendarIcon, ClockIcon, SettingsIcon, LogOutIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, DollarSignIcon, TrendingUpIcon, XIcon, FileTextIcon, DownloadIcon, EyeIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, ArchiveIcon, FolderIcon, ChevronUpIcon, ChevronDownIcon, ChevronLeftIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,7 @@ import { useDashboardData } from '../hooks/useDashboardData';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading } = useDashboardData();
   const [activeTab, setActiveTab] = useState('overview');
+
   const [activeSubTab, setActiveSubTab] = useState('unsubscribe'); // New state for sub-tabs
   const [selectedSubscriber, setSelectedSubscriber] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
@@ -47,21 +48,13 @@ const Dashboard = () => {
     lastReceived: '5 days ago',
     selected: false
   }]);
-  const [connectedEmails, setConnectedEmails] = useState([{
-    email: 'john.doe@gmail.com',
-    provider: 'Gmail',
-    lastSynced: '2025-05-20 14:30',
-    totalEmails: 3542,
-    processedEmails: 1245,
-    unsubscribed: 67
-  }, {
-    email: 'john.work@outlook.com',
-    provider: 'Outlook',
-    lastSynced: '2025-05-19 09:15',
-    totalEmails: 1876,
-    processedEmails: 876,
-    unsubscribed: 20
-  }]);
+  const [connectedEmails, setConnectedEmails] = useState([]);
+
+  // Update connectedEmails when dbEmailAccounts changes
+  useEffect(() => {
+    setConnectedEmails(dbEmailAccounts);
+  }, [dbEmailAccounts]);
+
   // State for Clean My Inbox tab
   const [selectedSubscriptions, setSelectedSubscriptions] = useState([]);
   const [emailGroups, setEmailGroups] = useState([{
