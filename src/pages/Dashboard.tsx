@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CreditCardIcon, CalendarIcon, ClockIcon, SettingsIcon, LogOutIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, DollarSignIcon, TrendingUpIcon, XIcon, FileTextIcon, DownloadIcon, EyeIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, ArchiveIcon, FolderIcon, ChevronUpIcon, ChevronDownIcon, ChevronLeftIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDashboardData } from '../hooks/useDashboardData';
 const Dashboard = () => {
+  const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading } = useDashboardData();
   const [activeTab, setActiveTab] = useState('overview');
   const [activeSubTab, setActiveSubTab] = useState('unsubscribe'); // New state for sub-tabs
   const [selectedSubscriber, setSelectedSubscriber] = useState(null);
@@ -1143,9 +1145,9 @@ const Dashboard = () => {
       emailLimit: 2
     },
     stats: {
-      emailsProcessed: 1245,
-      unsubscribed: 87,
-      emailAccounts: connectedEmails.length
+      emailsProcessed: dbStats.emailsProcessed,
+      unsubscribed: dbStats.unsubscribed,
+      emailAccounts: dbStats.emailAccounts
     },
     paymentHistory: [{
       id: 'INV-001',
