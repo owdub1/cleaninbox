@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CreditCardIcon, CalendarIcon, ClockIcon, SettingsIcon, LogOutIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, DollarSignIcon, TrendingUpIcon, XIcon, FileTextIcon, DownloadIcon, EyeIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, ArchiveIcon, FolderIcon, ChevronUpIcon, ChevronDownIcon, ChevronLeftIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useEmailAccounts } from '../hooks/useEmailAccounts';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading } = useDashboardData();
+  const { addEmailAccount, removeEmailAccount, syncEmailAccount } = useEmailAccounts();
   const [activeTab, setActiveTab] = useState('overview');
 
   const [activeSubTab, setActiveSubTab] = useState('unsubscribe'); // New state for sub-tabs
@@ -1172,51 +1174,51 @@ const Dashboard = () => {
     setSelectedInvoice(invoice);
     setShowInvoiceModal(true);
   };
-  const handleConnectNewEmail = () => {
+  const handleConnectNewEmail = async () => {
     // Check if user has reached their email account limit
     if (connectedEmails.length >= userData.subscription.emailLimit) {
       setShowEmailLimitModal(true);
     } else {
-      // In a real app, this would open OAuth flow to connect email
-      alert('Opening email connection flow...');
-      // Mock adding a new email account
-      const newEmail = {
-        email: `john.new${connectedEmails.length + 1}@example.com`,
-        provider: 'Gmail',
-        lastSynced: new Date().toLocaleString(),
-        totalEmails: Math.floor(Math.random() * 2000) + 1000,
-        processedEmails: Math.floor(Math.random() * 500),
-        unsubscribed: Math.floor(Math.random() * 50)
-      };
-      setConnectedEmails([...connectedEmails, newEmail]);
+      // Prompt user for email address
+      const email = prompt('Enter email address to connect:');
+      if (!email) return;
+
+      // Optionally prompt for provider
+      const provider = prompt('Enter provider (Gmail, Outlook, etc.):', 'Gmail');
+      if (!provider) return;
+
+      try {
+        await addEmailAccount(email, provider);
+        // The useDashboardData hook will automatically refresh and update connectedEmails
+        alert('Email account connected successfully!');
+      } catch (error: any) {
+        alert('Failed to connect email account: ' + error.message);
+      }
     }
   };
-  const handleSyncEmail = email => {
-    // In a real app, this would trigger a sync with the email provider
-    const updatedEmails = connectedEmails.map(e => {
-      if (e.email === email.email) {
-        return {
-          ...e,
-          lastSynced: new Date().toLocaleString(),
-          processedEmails: e.processedEmails + Math.floor(Math.random() * 50),
-          unsubscribed: e.unsubscribed + Math.floor(Math.random() * 5)
-        };
-      }
-      return e;
-    });
-    setConnectedEmails(updatedEmails);
-    alert(`Syncing ${email.email}...`);
+  const handleSyncEmail = async (email) => {
+    try {
+      await syncEmailAccount(email.id);
+      // The useDashboardData hook will automatically refresh and update connectedEmails
+      alert(`Synced ${email.email} successfully!`);
+    } catch (error: any) {
+      alert('Failed to sync email account: ' + error.message);
+    }
   };
   const handleDisconnectEmail = email => {
     setEmailToDisconnect(email);
     setShowDisconnectModal(true);
   };
-  const confirmDisconnectEmail = () => {
+  const confirmDisconnectEmail = async () => {
     if (emailToDisconnect) {
-      const updatedEmails = connectedEmails.filter(e => e.email !== emailToDisconnect.email);
-      setConnectedEmails(updatedEmails);
-      setShowDisconnectModal(false);
-      setEmailToDisconnect(null);
+      try {
+        await removeEmailAccount(emailToDisconnect.id);
+        // The useDashboardData hook will automatically refresh and update connectedEmails
+        setShowDisconnectModal(false);
+        setEmailToDisconnect(null);
+      } catch (error: any) {
+        alert('Failed to disconnect email account: ' + error.message);
+      }
     }
   };
   const handleDownloadPdf = invoice => {
