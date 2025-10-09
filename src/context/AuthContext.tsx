@@ -64,7 +64,8 @@ export const AuthProvider: React.FC<{
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
-    navigate('/dashboard');
+    // Redirect to pricing to purchase a plan
+    navigate('/pricing');
   };
 
   const login = async (email: string, password: string) => {
