@@ -1127,17 +1127,17 @@ const Dashboard = () => {
     user,
     logout
   } = useAuth();
-  // Mock user data
+  // User data from auth and database
   const userData = {
-    name: user?.name || 'John Doe',
-    email: user?.email || 'john.doe@example.com',
+    name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User',
+    email: user?.email || '',
     subscription: user?.subscription || {
-      plan: 'Pro',
+      plan: 'Free',
       status: 'Active',
-      nextBilling: '2025-06-15',
-      price: '$19.99',
+      nextBilling: null,
+      price: '$0',
       period: 'monthly',
-      emailLimit: 2
+      emailLimit: 1
     },
     stats: {
       emailsProcessed: dbStats.emailsProcessed,
@@ -1457,7 +1457,7 @@ const Dashboard = () => {
                           {userData.subscription.status}
                         </p>
                       </div>
-                      <div>
+                      {userData.subscription.nextBilling && <div>
                         <p className="text-sm text-gray-500">Next Billing</p>
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
@@ -1465,7 +1465,7 @@ const Dashboard = () => {
                             {userData.subscription.nextBilling}
                           </p>
                         </div>
-                      </div>
+                      </div>}
                       <div>
                         <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
                           Cancel Subscription
@@ -1939,7 +1939,7 @@ const Dashboard = () => {
                           {userData.subscription.status}
                         </p>
                       </div>
-                      <div>
+                      {userData.subscription.nextBilling && <div>
                         <p className="text-sm text-gray-500">Next Billing</p>
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
@@ -1947,7 +1947,7 @@ const Dashboard = () => {
                             {userData.subscription.nextBilling}
                           </p>
                         </div>
-                      </div>
+                      </div>}
                       <div>
                         <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
                           Cancel Subscription
