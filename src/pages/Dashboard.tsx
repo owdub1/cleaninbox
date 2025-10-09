@@ -1859,7 +1859,7 @@ const Dashboard = () => {
                       </div>}
                   </div>
                 </div>
-                <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
+                {dbEmailAccounts.length > 0 && <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
                   <div className="px-6 py-5 border-b border-gray-200">
                     <h3 className="text-lg font-medium text-gray-900">
                       Email Cleanup Status
@@ -1873,12 +1873,12 @@ const Dashboard = () => {
                             Overall Progress
                           </span>
                           <span className="text-sm font-medium text-gray-700">
-                            35%
+                            0%
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
                           <div className="bg-purple-600 h-2.5 rounded-full" style={{
-                        width: '35%'
+                        width: '0%'
                       }}></div>
                         </div>
                       </div>
@@ -1888,12 +1888,12 @@ const Dashboard = () => {
                             Newsletters Processed
                           </span>
                           <span className="text-sm font-medium text-gray-700">
-                            68%
+                            0%
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
                           <div className="bg-blue-600 h-2.5 rounded-full" style={{
-                        width: '68%'
+                        width: '0%'
                       }}></div>
                         </div>
                       </div>
@@ -1903,18 +1903,18 @@ const Dashboard = () => {
                             Marketing Emails
                           </span>
                           <span className="text-sm font-medium text-gray-700">
-                            42%
+                            0%
                           </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2.5">
                           <div className="bg-purple-600 h-2.5 rounded-full" style={{
-                        width: '42%'
+                        width: '0%'
                       }}></div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </div>}
               </div>}
             {/* Subscription Tab */}
             {activeTab === 'subscription' && <div>
