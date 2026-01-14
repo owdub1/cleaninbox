@@ -1344,41 +1344,7 @@ const Dashboard = () => {
     setSelectedYear(null);
     setSelectedSender(null);
   };
-  // Check if user has a paid subscription
-  if (!user?.subscription || userData.subscription.plan === 'Free') {
-    return <div className="w-full bg-white min-h-screen">
-        <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-2xl md:text-3xl font-bold">Subscription Required</h1>
-          </div>
-        </section>
-        <section className="py-16">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <div className="mb-6">
-                <svg className="mx-auto h-16 w-16 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Purchase a Plan to Get Started
-              </h2>
-              <p className="text-gray-600 mb-8">
-                To access your dashboard and start cleaning your inbox, please select a subscription plan that works best for you.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button onClick={() => navigate('/pricing')} className="bg-gradient-to-r from-blue-600 to-purple-700 text-white px-8 py-3 rounded-md font-medium hover:from-blue-700 hover:to-purple-800 transition-colors">
-                  View Plans & Pricing
-                </button>
-                <button onClick={logout} className="border border-gray-300 text-gray-700 px-8 py-3 rounded-md font-medium hover:bg-gray-50 transition-colors">
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>;
-  }
+  const isFreeUser = !user?.subscription || userData.subscription.plan === 'Free';
 
   return <div className="w-full bg-white">
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8">
@@ -1398,6 +1364,32 @@ const Dashboard = () => {
           </div>
         </div>
       </section>
+
+      {/* Friendly Upgrade Banner for Free Users */}
+      {isFreeUser && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start">
+                <svg className="w-6 h-6 text-purple-600 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <div>
+                  <h3 className="font-semibold text-gray-900">You're on the Free Plan</h3>
+                  <p className="text-sm text-gray-600">Upgrade to Pro to connect unlimited email accounts and unlock all features!</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/pricing')}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-md font-medium hover:from-purple-700 hover:to-blue-700 transition-colors whitespace-nowrap"
+              >
+                View Plans
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="py-8 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Dashboard Tabs */}
