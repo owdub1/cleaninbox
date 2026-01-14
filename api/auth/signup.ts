@@ -10,6 +10,7 @@ import {
   getExpirationDate
 } from '../lib/auth-utils.js';
 import { sendVerificationEmail } from '../../src/lib/email.js';
+import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -20,10 +21,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
 const EMAIL_VERIFICATION_EXPIRY = process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY || '24h';
 
+// Rate limit: 3 signups per hour per IP
+const limiter = rateLimit(RateLimitPresets.SIGNUP);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Apply rate limiting
+  if (limiter(req, res)) return;
 
   try {
     const { email, password, firstName, lastName } = req.body;

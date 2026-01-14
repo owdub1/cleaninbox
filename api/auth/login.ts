@@ -8,6 +8,7 @@ import {
   getUserAgent
 } from '../lib/auth-utils.js';
 import { sendAccountLockedEmail } from '../../src/lib/email.js';
+import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -18,6 +19,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this';
 const MAX_LOGIN_ATTEMPTS = parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10);
 const LOCKOUT_DURATION_MINUTES = parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10);
+
+// Rate limit: 30 requests per minute
+const limiter = rateLimit(RateLimitPresets.STANDARD);
 
 /**
  * Hash a refresh token for secure storage
@@ -169,6 +173,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Apply rate limiting
+  if (limiter(req, res)) return;
 
   const ipAddress = getClientIP(req);
   const userAgent = getUserAgent(req);

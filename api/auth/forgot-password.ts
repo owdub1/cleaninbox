@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { generateToken, getExpirationDate, getClientIP, getUserAgent } from '../lib/auth-utils.js';
 import { sendPasswordResetEmail } from '../../src/lib/email.js';
+import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -11,10 +12,16 @@ const supabase = createClient(
 const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
 const PASSWORD_RESET_EXPIRY = process.env.PASSWORD_RESET_TOKEN_EXPIRY || '1h';
 
+// Rate limit: 3 requests per hour
+const limiter = rateLimit(RateLimitPresets.PASSWORD_RESET);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Apply rate limiting
+  if (limiter(req, res)) return;
 
   try {
     const { email } = req.body;
@@ -38,19 +45,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (userError || !user) {
       // Don't reveal if user exists or not for security
       return res.status(200).json(successResponse);
-    }
-
-    // Check how many recent password reset requests
-    const { data: recentResets } = await supabase
-      .from('password_reset_tokens')
-      .select('id')
-      .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString()); // Last hour
-
-    if (recentResets && recentResets.length >= 3) {
-      // Rate limit: max 3 requests per hour
-      console.warn(`Password reset rate limit exceeded for user ${user.id}`);
-      return res.status(200).json(successResponse); // Still return success for security
     }
 
     // Invalidate any existing unused tokens for this user

@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { generateToken, getExpirationDate } from '../lib/auth-utils.js';
 import { sendVerificationEmail } from '../../src/lib/email.js';
+import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -11,10 +12,16 @@ const supabase = createClient(
 const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
 const EMAIL_VERIFICATION_EXPIRY = process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY || '24h';
 
+// Rate limit: 5 requests per hour
+const limiter = rateLimit(RateLimitPresets.EMAIL_VERIFICATION);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Apply rate limiting
+  if (limiter(req, res)) return;
 
   try {
     const { email } = req.body;
