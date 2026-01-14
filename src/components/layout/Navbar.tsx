@@ -14,6 +14,20 @@ const Navbar = () => {
   const handleUserMenuToggle = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
+
+  // Check if user has a paid subscription
+  const hasPaidSubscription = isAuthenticated && user?.subscription?.plan !== 'Free';
+
+  // Handle Clean My Inbox button click
+  const handleCleanInboxClick = () => {
+    if (hasPaidSubscription) {
+      // User has paid subscription - direct to clean inbox page
+      navigate('/clean-inbox');
+    } else {
+      // User is free or not authenticated - direct to checkout
+      navigate('/checkout');
+    }
+  };
   return <nav className="bg-white py-4">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Logo centered at the top */}
@@ -121,17 +135,26 @@ const Navbar = () => {
                 <Link to="/login" className="block px-3 py-2 text-gray-700 hover:text-indigo-600 font-medium" onClick={() => setIsMenuOpen(false)}>
                   Sign in
                 </Link>
-                <Link to="/checkout" className="block w-full text-center bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700 transition-colors mt-4" onClick={() => setIsMenuOpen(false)}>
+                <button
+                  onClick={() => {
+                    handleCleanInboxClick();
+                    setIsMenuOpen(false);
+                  }}
+                  className="block w-full text-center bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700 transition-colors mt-4"
+                >
                   Clean My Inbox Now
-                </Link>
+                </button>
               </>}
           </div>
         </div>}
       {/* Floating CTA button for desktop - positioned bottom right */}
       <div className="hidden md:block fixed bottom-8 right-8 z-10">
-        <Link to="/checkout" className="bg-indigo-600 text-white px-5 py-3 rounded-full font-medium hover:bg-indigo-700 transition-colors shadow-lg flex items-center">
+        <button
+          onClick={handleCleanInboxClick}
+          className="bg-indigo-600 text-white px-5 py-3 rounded-full font-medium hover:bg-indigo-700 transition-colors shadow-lg flex items-center"
+        >
           Clean My Inbox Now
-        </Link>
+        </button>
       </div>
     </nav>;
 };
