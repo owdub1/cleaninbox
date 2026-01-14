@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
+    const jwtToken = jwt.sign(
       {
         userId: user.id,
         email: user.email,
@@ -105,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       message: 'Email verified successfully',
       verified: true,
-      token,
+      token: jwtToken,
       user: {
         id: user.id,
         email: user.email,
