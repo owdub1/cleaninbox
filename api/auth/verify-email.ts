@@ -1,11 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import jwt from 'jsonwebtoken';
 import { isExpired } from '../lib/auth-utils.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -46,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get the user
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, email, email_verified')
+      .select('id, email, email_verified, first_name, last_name')
       .eq('id', verificationToken.user_id)
       .single();
 
@@ -89,10 +92,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Failed to verify email' });
     }
 
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        emailVerified: true
+      },
+      JWT_SECRET
+    );
+
     return res.status(200).json({
       message: 'Email verified successfully',
-      email: user.email,
-      verified: true
+      verified: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        emailVerified: true
+      }
     });
 
   } catch (error: any) {

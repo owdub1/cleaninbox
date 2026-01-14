@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
+
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -35,10 +38,16 @@ export default function VerifyEmail() {
         setStatus('success');
         setMessage(data.message || 'Email verified successfully!');
 
-        // Redirect to login after 3 seconds
+        // Save auth data to localStorage
+        if (data.token && data.user) {
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        }
+
+        // Redirect to dashboard after 2 seconds
         setTimeout(() => {
-          navigate('/login', { state: { message: 'Email verified! Please log in.' } });
-        }, 3000);
+          window.location.href = '/dashboard'; // Use window.location to trigger full reload so AuthContext picks up the new data
+        }, 2000);
       } catch (error: any) {
         setStatus('error');
         setMessage(error.message || 'Failed to verify email. The link may be expired or invalid.');
@@ -68,7 +77,7 @@ export default function VerifyEmail() {
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Email Verified!</h2>
             <p className="text-gray-600 mb-4">{message}</p>
-            <p className="text-sm text-gray-500">Redirecting you to login...</p>
+            <p className="text-sm text-gray-500">Logging you in and redirecting to your dashboard...</p>
           </div>
         )}
 
