@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    rememberMe: false
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,11 +17,13 @@ const Login = () => {
   const handleChange = e => {
     const {
       name,
-      value
+      value,
+      type,
+      checked
     } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
   const handleSubmit = async (e) => {
@@ -34,7 +37,7 @@ const Login = () => {
 
     try {
       setLoading(true);
-      await login(formData.email, formData.password);
+      await login(formData.email, formData.password, formData.rememberMe);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
     } finally {
@@ -89,6 +92,19 @@ const Login = () => {
                       </div>
                       <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="••••••••" />
                     </div>
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      id="rememberMe"
+                      name="rememberMe"
+                      type="checkbox"
+                      checked={formData.rememberMe}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-700">
+                      Remember me for 30 days
+                    </label>
                   </div>
                   <div>
                     <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">

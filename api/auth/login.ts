@@ -33,19 +33,23 @@ function hashToken(token: string): string {
 /**
  * Generate a refresh token for a user
  */
-async function generateRefreshToken(userId: string, ipAddress: string, userAgent: string): Promise<string> {
-  // Generate refresh token (7 days expiry)
+async function generateRefreshToken(userId: string, ipAddress: string, userAgent: string, rememberMe: boolean = false): Promise<string> {
+  // Determine expiry based on Remember Me option
+  const expiryDays = rememberMe ? 30 : 7;
+  const expiryTime = rememberMe ? '30d' : '7d';
+
+  // Generate refresh token
   const refreshToken = jwt.sign(
     { userId },
     JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: expiryTime }
   );
 
   // Hash the token for storage
   const tokenHash = hashToken(refreshToken);
 
   // Store in database
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
 
   await supabase
     .from('refresh_tokens')
@@ -181,7 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userAgent = getUserAgent(req);
 
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -252,8 +256,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { expiresIn: '15m' }
     );
 
-    // Generate refresh token (7 days)
-    const refreshToken = await generateRefreshToken(user.id, ipAddress, userAgent);
+    // Generate refresh token (7 or 30 days based on Remember Me)
+    const refreshToken = await generateRefreshToken(user.id, ipAddress, userAgent, rememberMe || false);
 
     return res.status(200).json({
       token,
