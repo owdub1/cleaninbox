@@ -4,6 +4,7 @@ import { CreditCardIcon, CalendarIcon, ClockIcon, SettingsIcon, LogOutIcon, Mail
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useEmailAccounts } from '../hooks/useEmailAccounts';
+import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading } = useDashboardData();
   const { addEmailAccount, removeEmailAccount, syncEmailAccount } = useEmailAccounts();
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showEmailLimitModal, setShowEmailLimitModal] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [showConnectEmailModal, setShowConnectEmailModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [emailToDisconnect, setEmailToDisconnect] = useState(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -1174,27 +1176,18 @@ const Dashboard = () => {
     setSelectedInvoice(invoice);
     setShowInvoiceModal(true);
   };
-  const handleConnectNewEmail = async () => {
+  const handleConnectNewEmail = () => {
     // Check if user has reached their email account limit
     if (connectedEmails.length >= userData.subscription.emailLimit) {
       setShowEmailLimitModal(true);
     } else {
-      // Prompt user for email address
-      const email = prompt('Enter email address to connect:');
-      if (!email) return;
-
-      // Optionally prompt for provider
-      const provider = prompt('Enter provider (Gmail, Outlook, etc.):', 'Gmail');
-      if (!provider) return;
-
-      try {
-        await addEmailAccount(email, provider);
-        // The useDashboardData hook will automatically refresh and update connectedEmails
-        alert('Email account connected successfully!');
-      } catch (error: any) {
-        alert('Failed to connect email account: ' + error.message);
-      }
+      setShowConnectEmailModal(true);
     }
+  };
+
+  const handleConnectEmail = async (email: string, provider: string) => {
+    await addEmailAccount(email, provider);
+    // The useDashboardData hook will automatically refresh and update connectedEmails
   };
   const handleSyncEmail = async (email) => {
     try {
@@ -2317,6 +2310,15 @@ const Dashboard = () => {
             </div>
           </div>
         </div>}
+
+      {/* Connect Email Modal */}
+      <ConnectEmailModal
+        isOpen={showConnectEmailModal}
+        onClose={() => setShowConnectEmailModal(false)}
+        onConnect={handleConnectEmail}
+        emailLimit={userData.subscription.emailLimit}
+        currentCount={connectedEmails.length}
+      />
     </div>;
 };
 export default Dashboard;
