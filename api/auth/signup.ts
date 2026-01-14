@@ -93,6 +93,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw error;
     }
 
+    // Add initial password to history
+    await supabase
+      .rpc('add_password_to_history', {
+        p_user_id: user.id,
+        p_password_hash: passwordHash,
+        p_max_history: 10
+      });
+
     // Generate email verification token
     const verificationToken = generateToken();
     const verificationExpiresAt = getExpirationDate(EMAIL_VERIFICATION_EXPIRY);

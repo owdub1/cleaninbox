@@ -64,6 +64,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Hash the new password
     const passwordHash = await hashPassword(password, 10);
 
+    // Check if password was used recently (last 5 passwords)
+    const { data: passwordUsed } = await supabase
+      .rpc('is_password_used_recently', {
+        p_user_id: user.id,
+        p_password_hash: passwordHash,
+        p_history_limit: 5
+      });
+
+    if (passwordUsed) {
+      return res.status(400).json({
+        error: 'Password was used recently. Please choose a different password that you haven\'t used before.'
+      });
+    }
+
     // Start transaction-like operations
     // 1. Mark token as used
     const { error: updateTokenError } = await supabase
@@ -89,6 +103,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('Error updating password:', updatePasswordError);
       return res.status(500).json({ error: 'Failed to reset password' });
     }
+
+    // 2a. Add password to history
+    await supabase
+      .rpc('add_password_to_history', {
+        p_user_id: user.id,
+        p_password_hash: passwordHash,
+        p_max_history: 10
+      });
 
     // 3. Revoke all existing refresh tokens for security
     await supabase
