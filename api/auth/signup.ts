@@ -11,6 +11,7 @@ import {
 } from '../lib/auth-utils.js';
 import { sendVerificationEmail } from '../../src/lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
+import { issueCSRFToken } from '../lib/csrf.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -140,8 +141,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       JWT_SECRET
     );
 
+    // Issue CSRF token for security
+    const csrfToken = issueCSRFToken(res);
+
     return res.status(201).json({
       token,
+      csrfToken,
       user: {
         id: user.id,
         email: user.email,

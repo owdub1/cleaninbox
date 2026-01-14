@@ -9,6 +9,7 @@ import {
 } from '../lib/auth-utils.js';
 import { sendAccountLockedEmail } from '../../src/lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
+import { issueCSRFToken } from '../lib/csrf.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -259,9 +260,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Generate refresh token (7 or 30 days based on Remember Me)
     const refreshToken = await generateRefreshToken(user.id, ipAddress, userAgent, rememberMe || false);
 
+    // Issue CSRF token for security
+    const csrfToken = issueCSRFToken(res);
+
     return res.status(200).json({
       token,
       refreshToken,
+      csrfToken,
       user: {
         id: user.id,
         email: user.email,

@@ -24,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+const CSRF_TOKEN_KEY = 'csrf_token';
 const USER_KEY = 'auth_user';
 
 // Refresh token 2 minutes before expiry (15min - 2min = 13min)
@@ -118,6 +119,7 @@ export const AuthProvider: React.FC<{
     setToken(data.token);
     setUser(data.user);
     localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
     // Redirect to pricing to purchase a plan
@@ -142,6 +144,7 @@ export const AuthProvider: React.FC<{
     setUser(data.user);
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
     navigate('/dashboard');
@@ -153,6 +156,7 @@ export const AuthProvider: React.FC<{
     setToken(null);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(CSRF_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     navigate('/');
   };
