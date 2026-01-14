@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.74.0",
     "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "0.522.0",
     "react": "^18.3.1",

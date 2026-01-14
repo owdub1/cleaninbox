@@ -14,7 +14,9 @@ import Dashboard from './pages/Dashboard';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CleanInbox from './pages/CleanInbox';
+import VerifyEmail from './pages/VerifyEmail';
 import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 // Scroll to top component
 function ScrollToTop() {
   const {
@@ -35,14 +37,31 @@ function AppWithAuth() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/email-cleanup" element={<EmailCleanup />} />
+          <Route path="/email-cleanup" element={
+            <ProtectedRoute>
+              <EmailCleanup />
+            </ProtectedRoute>
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/clean-inbox" element={
+            <ProtectedRoute requireEmailVerification={true}>
+              <CleanInbox />
+            </ProtectedRoute>
+          } />
+          <Route path="/checkout" element={
+            <ProtectedRoute>
+              <Checkout />
+            </ProtectedRoute>
+          } />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/clean-inbox" element={<CleanInbox />} />
         </Routes>
       </main>
       <Footer />
