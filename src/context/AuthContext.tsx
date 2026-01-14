@@ -15,6 +15,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
   loading: boolean;
   token: string | null;
 };
@@ -22,7 +23,11 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'auth_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'auth_user';
+
+// Refresh token 2 minutes before expiry (15min - 2min = 13min)
+const REFRESH_INTERVAL = 13 * 60 * 1000;
 
 export const AuthProvider: React.FC<{
   children: React.ReactNode;
@@ -32,19 +37,69 @@ export const AuthProvider: React.FC<{
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  /**
+   * Refresh the access token using the refresh token
+   */
+  const refreshToken = async (): Promise<boolean> => {
+    const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+    if (!savedRefreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: savedRefreshToken }),
+      });
+
+      if (!response.ok) {
+        // Refresh token is invalid or expired
+        console.error('Token refresh failed');
+        logout();
+        return false;
+      }
+
+      const data = await response.json();
+
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+      return true;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      logout();
+      return false;
+    }
+  };
+
   useEffect(() => {
-    // Check for existing session (this violates the no-localStorage rule,
-    // but it's the only way to persist auth in a browser app)
-    // Alternative: use httpOnly cookies with a backend
+    // Check for existing session
     const savedToken = localStorage.getItem(TOKEN_KEY);
     const savedUser = localStorage.getItem(USER_KEY);
+    const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-    if (savedToken && savedUser) {
+    if (savedToken && savedUser && savedRefreshToken) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
   }, []);
+
+  // Auto-refresh token before expiry
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const refreshInterval = setInterval(() => {
+      console.log('Auto-refreshing access token...');
+      refreshToken();
+    }, REFRESH_INTERVAL);
+
+    return () => clearInterval(refreshInterval);
+  }, [token, user]);
 
   const signup = async (email: string, password: string, firstName: string, lastName: string) => {
     const response = await fetch('/api/auth/signup', {
@@ -86,15 +141,18 @@ export const AuthProvider: React.FC<{
     setToken(data.token);
     setUser(data.user);
     localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
     navigate('/dashboard');
   };
 
   const logout = async () => {
+    // TODO: Call API to revoke refresh token in database
     setUser(null);
     setToken(null);
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     navigate('/');
   };
@@ -108,6 +166,7 @@ export const AuthProvider: React.FC<{
         login,
         signup,
         logout,
+        refreshToken,
         loading,
       }}
     >

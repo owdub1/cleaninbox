@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import {
   comparePassword,
   getClientIP,
@@ -14,8 +15,46 @@ const supabase = createClient(
 );
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this';
 const MAX_LOGIN_ATTEMPTS = parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10);
 const LOCKOUT_DURATION_MINUTES = parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10);
+
+/**
+ * Hash a refresh token for secure storage
+ */
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Generate a refresh token for a user
+ */
+async function generateRefreshToken(userId: string, ipAddress: string, userAgent: string): Promise<string> {
+  // Generate refresh token (7 days expiry)
+  const refreshToken = jwt.sign(
+    { userId },
+    JWT_REFRESH_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  // Hash the token for storage
+  const tokenHash = hashToken(refreshToken);
+
+  // Store in database
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  await supabase
+    .from('refresh_tokens')
+    .insert([{
+      user_id: userId,
+      token_hash: tokenHash,
+      expires_at: expiresAt.toISOString(),
+      ip_address: ipAddress,
+      user_agent: userAgent
+    }]);
+
+  return refreshToken;
+}
 
 /**
  * Check if account is locked and unlock if lockout period has passed
@@ -195,18 +234,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Record successful login
     await recordLoginAttempt(user.id, email, ipAddress, userAgent, true, undefined);
 
-    // Generate JWT (short-lived access token)
+    // Generate JWT (short-lived access token - 15 minutes)
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
         emailVerified: user.email_verified
       },
-      JWT_SECRET
+      JWT_SECRET,
+      { expiresIn: '15m' }
     );
+
+    // Generate refresh token (7 days)
+    const refreshToken = await generateRefreshToken(user.id, ipAddress, userAgent);
 
     return res.status(200).json({
       token,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,
