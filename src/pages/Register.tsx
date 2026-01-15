@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, UserIcon, ShieldIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PasswordStrength from '../components/auth/PasswordStrength';
+import Turnstile from '../components/auth/Turnstile';
 const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -12,6 +13,7 @@ const Register = () => {
     confirmPassword: '',
     agreeTerms: false
   });
+  const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const {
@@ -76,11 +78,18 @@ const Register = () => {
       return;
     }
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification');
+      return;
+    }
+
     try {
       setLoading(true);
-      await signup(formData.email, formData.password, formData.firstName, formData.lastName);
+      await signup(formData.email, formData.password, formData.firstName, formData.lastName, captchaToken);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
+      // Reset captcha on error
+      setCaptchaToken('');
     } finally {
       setLoading(false);
     }
@@ -172,8 +181,15 @@ const Register = () => {
                       </label>
                     </div>
                   </div>
+                  <div className="flex justify-center">
+                    <Turnstile
+                      onVerify={setCaptchaToken}
+                      onExpire={() => setCaptchaToken('')}
+                      onError={() => setCaptchaToken('')}
+                    />
+                  </div>
                   <div>
-                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button type="submit" disabled={loading || !captchaToken} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
                       {loading ? 'Creating Account...' : 'Create Account'}
                     </button>
                   </div>

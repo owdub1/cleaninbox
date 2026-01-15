@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import Turnstile from '../components/auth/Turnstile';
+
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false
   });
+  const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const {
@@ -35,11 +38,18 @@ const Login = () => {
       return;
     }
 
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification');
+      return;
+    }
+
     try {
       setLoading(true);
-      await login(formData.email, formData.password, formData.rememberMe);
+      await login(formData.email, formData.password, formData.rememberMe, captchaToken);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
+      // Reset captcha on error
+      setCaptchaToken('');
     } finally {
       setLoading(false);
     }
@@ -106,8 +116,15 @@ const Login = () => {
                       Remember me for 30 days
                     </label>
                   </div>
+                  <div className="flex justify-center">
+                    <Turnstile
+                      onVerify={setCaptchaToken}
+                      onExpire={() => setCaptchaToken('')}
+                      onError={() => setCaptchaToken('')}
+                    />
+                  </div>
                   <div>
-                    <button type="submit" disabled={loading} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button type="submit" disabled={loading || !captchaToken} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
                       {loading ? 'Signing in...' : 'Sign in'}
                     </button>
                   </div>
