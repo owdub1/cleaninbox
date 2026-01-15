@@ -1,5 +1,6 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../lib/api';
 
 interface User {
   id: string;
@@ -12,8 +13,8 @@ interface User {
 type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  signup: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean, captchaToken?: string) => Promise<void>;
+  signup: (email: string, password: string, firstName: string, lastName: string, captchaToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   loading: boolean;
@@ -49,9 +50,10 @@ export const AuthProvider: React.FC<{
     }
 
     try {
-      const response = await fetch('/api/auth/refresh', {
+      const response = await fetch(`${API_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ refreshToken: savedRefreshToken }),
       });
 
@@ -102,11 +104,12 @@ export const AuthProvider: React.FC<{
     return () => clearInterval(refreshInterval);
   }, [token, user]);
 
-  const signup = async (email: string, password: string, firstName: string, lastName: string) => {
-    const response = await fetch('/api/auth/signup', {
+  const signup = async (email: string, password: string, firstName: string, lastName: string, captchaToken?: string) => {
+    const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, firstName, lastName }),
+      credentials: 'include',
+      body: JSON.stringify({ email, password, firstName, lastName, captchaToken }),
     });
 
     if (!response.ok) {
@@ -126,11 +129,12 @@ export const AuthProvider: React.FC<{
     navigate('/pricing');
   };
 
-  const login = async (email: string, password: string, rememberMe: boolean = false) => {
-    const response = await fetch('/api/auth/login', {
+  const login = async (email: string, password: string, rememberMe: boolean = false, captchaToken?: string) => {
+    const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, rememberMe }),
+      credentials: 'include',
+      body: JSON.stringify({ email, password, rememberMe, captchaToken }),
     });
 
     if (!response.ok) {

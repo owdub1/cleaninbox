@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { API_URL } from '../../lib/api';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -73,9 +74,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               <button
                 onClick={async () => {
                   try {
-                    const response = await fetch('/api/auth/resend-verification', {
+                    const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
                       body: JSON.stringify({ email: user.email })
                     });
 
