@@ -61,7 +61,7 @@ export async function verifyTurnstile(token: string, req?: VercelRequest): Promi
       }),
     });
 
-    const data: TurnstileVerifyResponse = await response.json();
+    const data: TurnstileVerifyResponse = await response.json() as any;
 
     if (!data.success) {
       console.error('Turnstile verification failed:', data['error-codes']);

@@ -70,7 +70,7 @@ async function sendEmail({ to, subject, html, from }: EmailOptions): Promise<boo
       return false;
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     console.log('Email sent successfully:', data.id);
     return true;
   } catch (error) {
