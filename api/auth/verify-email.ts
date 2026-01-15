@@ -78,12 +78,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Failed to verify email' });
     }
 
-    // 2. Update user's email_verified status
+    // 2. Update user's email_verified status and activate account
     const { error: updateUserError } = await supabase
       .from('users')
       .update({
         email_verified: true,
-        email_verified_at: new Date().toISOString()
+        email_verified_at: new Date().toISOString(),
+        status: 'active'
       })
       .eq('id', user.id);
 

@@ -10,6 +10,7 @@ import {
 import { sendAccountLockedEmail } from '../../src/lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
+import { verifyTurnstile } from '../lib/turnstile.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -186,10 +187,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userAgent = getUserAgent(req);
 
   try {
-    const { email, password, rememberMe } = req.body;
+    const { email, password, rememberMe, captchaToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Verify Turnstile CAPTCHA
+    const captchaValid = await verifyTurnstile(captchaToken, req);
+    if (!captchaValid) {
+      return res.status(400).json({
+        error: 'CAPTCHA verification failed. Please try again.',
+        code: 'CAPTCHA_FAILED'
+      });
     }
 
     // Get user by email
@@ -213,6 +223,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({
         error: `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute(s).`,
         lockedUntil: lockStatus.lockedUntil
+      });
+    }
+
+    // Check if account is active (not suspended/deleted)
+    const { data: isActiveResult, error: activeError } = await supabase
+      .rpc('is_user_active', { p_user_id: user.id });
+
+    if (activeError || !isActiveResult) {
+      await recordLoginAttempt(user.id, email, ipAddress, userAgent, false, `account_${user.status}`);
+
+      // Provide specific error message based on account status
+      if (user.status === 'suspended') {
+        return res.status(403).json({
+          error: user.suspended_until
+            ? `Account suspended until ${new Date(user.suspended_until).toLocaleString()}. Reason: ${user.suspension_reason || 'Policy violation'}`
+            : `Account suspended. Reason: ${user.suspension_reason || 'Policy violation'}. Please contact support.`,
+          code: 'ACCOUNT_SUSPENDED'
+        });
+      } else if (user.status === 'deleted') {
+        return res.status(403).json({
+          error: 'This account has been deleted.',
+          code: 'ACCOUNT_DELETED'
+        });
+      } else if (user.status === 'pending_verification') {
+        return res.status(403).json({
+          error: 'Please verify your email address before logging in.',
+          code: 'EMAIL_NOT_VERIFIED'
+        });
+      }
+
+      return res.status(403).json({
+        error: 'Account is not active. Please contact support.',
+        code: 'ACCOUNT_INACTIVE'
       });
     }
 

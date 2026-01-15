@@ -180,7 +180,21 @@ export function calculatePasswordStrength(password: string): number {
 
 /**
  * Sanitize user input to prevent injection attacks
+ * DEPRECATED: Use sanitizeHTML from api/middleware/security.ts instead
+ * Kept for backward compatibility
  */
 export function sanitizeInput(input: string): string {
-  return input.trim().replace(/[<>]/g, '');
+  const trimmed = input.trim();
+
+  // Enhanced HTML entity escaping
+  return trimmed
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+    // Remove potential script execution patterns
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=/gi, ''); // Remove event handlers
 }

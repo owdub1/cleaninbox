@@ -95,6 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('users')
       .update({
         password_hash: passwordHash,
+        last_password_change_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', user.id);

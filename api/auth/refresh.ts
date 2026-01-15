@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get user details
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id, email, first_name, last_name, email_verified, subscription')
+      .select('id, email, first_name, last_name, email_verified, subscription, locked_until, status, suspended_until, suspension_reason')
       .eq('id', decoded.userId)
       .single();
 
@@ -74,7 +74,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check if user account is locked
+    // Check if user account is active (not suspended/deleted)
+    const { data: isActiveResult } = await supabase
+      .rpc('is_user_active', { p_user_id: user.id });
+
+    if (!isActiveResult) {
+      // Provide specific error message based on account status
+      if (user.status === 'suspended') {
+        return res.status(403).json({
+          error: user.suspended_until
+            ? `Account suspended until ${new Date(user.suspended_until).toLocaleString()}.`
+            : 'Account suspended. Please contact support.',
+          code: 'ACCOUNT_SUSPENDED'
+        });
+      } else if (user.status === 'deleted') {
+        return res.status(403).json({
+          error: 'This account has been deleted.',
+          code: 'ACCOUNT_DELETED'
+        });
+      } else if (user.status === 'pending_verification') {
+        return res.status(403).json({
+          error: 'Please verify your email address.',
+          code: 'EMAIL_NOT_VERIFIED'
+        });
+      }
+
+      return res.status(403).json({
+        error: 'Account is not active.',
+        code: 'ACCOUNT_INACTIVE'
+      });
+    }
+
+    // Check if user account is locked (brute force protection)
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
       return res.status(403).json({
         error: 'Account is locked',

@@ -12,6 +12,7 @@ import {
 import { sendVerificationEmail } from '../../src/lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
+import { verifyTurnstile } from '../lib/turnstile.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -34,11 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (limiter(req, res)) return;
 
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, captchaToken } = req.body;
 
     // Validate required fields
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Verify Turnstile CAPTCHA
+    const captchaValid = await verifyTurnstile(captchaToken, req);
+    if (!captchaValid) {
+      return res.status(400).json({
+        error: 'CAPTCHA verification failed. Please try again.',
+        code: 'CAPTCHA_FAILED'
+      });
     }
 
     // Validate email format
