@@ -229,17 +229,10 @@ const Dashboard = () => {
 
                 {/* Content */}
                 <div className="relative z-10">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="mb-4">
                     <div className="text-white">
                       {card.icon}
                     </div>
-                    {card.count !== undefined && (
-                      <div className="bg-white bg-opacity-30 backdrop-blur-sm rounded-full px-3 py-1">
-                        <span className="text-white font-semibold text-sm">
-                          {card.count}
-                        </span>
-                      </div>
-                    )}
                   </div>
                   <h3 className="text-white font-semibold text-lg mb-2">
                     {card.title}
