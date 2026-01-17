@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ConnectEmailModalProps {
@@ -21,11 +21,25 @@ export default function ConnectEmailModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Clear error when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setError('');
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Check if user has reached their limit
+    if (currentCount >= emailLimit) {
+      setError(`You've reached your email account limit (${emailLimit} account${emailLimit > 1 ? 's' : ''}). Upgrade to Pro to connect up to 10 accounts.`);
+      return;
+    }
+
     setLoading(true);
 
     try {

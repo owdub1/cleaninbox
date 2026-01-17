@@ -212,21 +212,6 @@ const Dashboard = () => {
               </button>
             </div>
           )}
-
-          {!canAddEmail && (
-            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-sm text-amber-800">
-                You've reached your email account limit ({emailLimit} account{emailLimit > 1 ? 's' : ''}).{' '}
-                <button
-                  onClick={() => navigate('/checkout')}
-                  className="font-medium underline hover:text-amber-900"
-                >
-                  Upgrade to Pro
-                </button>{' '}
-                to connect up to 10 accounts.
-              </p>
-            </div>
-          )}
         </section>
 
         {/* Cleanup Actions Grid */}
