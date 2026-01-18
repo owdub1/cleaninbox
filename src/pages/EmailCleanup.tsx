@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronDownIcon, ChevronUpIcon, SearchIcon, TrashIcon, ArchiveIcon, FilterIcon, SortDescIcon, SortAscIcon, CheckIcon, FolderIcon, MailIcon, ShieldIcon, Sparkles, Inbox, BellOff, Ban, Hand, SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronDownIcon, ChevronUpIcon, SearchIcon, TrashIcon, ArchiveIcon, FilterIcon, SortDescIcon, SortAscIcon, CheckIcon, FolderIcon, MailIcon, ShieldIcon, Sparkles, Inbox, BellOff, Ban, Hand, SlidersHorizontal, ArrowLeft, UserPlus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 // Mock data for email senders by year
 const mockEmailData = {
   '2023': [{
@@ -195,6 +196,8 @@ const cleanupTools = [
 ];
 
 const EmailCleanup = () => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'tools' | 'cleanup'>('tools');
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedYears, setExpandedYears] = useState(['2023']);
@@ -204,6 +207,10 @@ const EmailCleanup = () => {
   const [selectedSenders, setSelectedSenders] = useState([]);
 
   const handleToolSelect = (toolId: string) => {
+    if (!isAuthenticated) {
+      navigate('/register');
+      return;
+    }
     setSelectedTool(toolId);
     setCurrentView('cleanup');
   };
@@ -272,6 +279,37 @@ const EmailCleanup = () => {
                 Choose a cleanup tool to get started
               </p>
             </div>
+
+            {/* Sign up prompt for unauthenticated users */}
+            {!isAuthenticated && (
+              <div className="mb-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 text-white">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-white/20 rounded-full p-3">
+                      <UserPlus className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Create a free account to get started</h3>
+                      <p className="text-indigo-100 text-sm">Sign up to access all cleanup tools and start organizing your inbox</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <Link
+                      to="/register"
+                      className="bg-white text-indigo-600 px-6 py-2 rounded-lg font-medium hover:bg-indigo-50 transition-colors"
+                    >
+                      Sign Up Free
+                    </Link>
+                    <Link
+                      to="/login"
+                      className="bg-white/20 text-white px-6 py-2 rounded-lg font-medium hover:bg-white/30 transition-colors"
+                    >
+                      Log In
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Cleanup Tools Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

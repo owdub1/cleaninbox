@@ -39,11 +39,7 @@ function AppWithAuth() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/email-cleanup" element={
-            <ProtectedRoute>
-              <EmailCleanup />
-            </ProtectedRoute>
-          } />
+          <Route path="/email-cleanup" element={<EmailCleanup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
