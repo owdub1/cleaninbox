@@ -1,6 +1,3 @@
-# Ignore API directory - using Railway for API
-api/
-
 # Ignore Railway files
 railway.json
 Procfile
