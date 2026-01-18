@@ -110,7 +110,7 @@ const cleanupTools = [
 const StepIndicator = ({ currentStep }: { currentStep: number }) => {
   const steps = [
     { number: 1, label: 'Sign Up', icon: UserPlus },
-    { number: 2, label: 'Add Email', icon: Mail },
+    { number: 2, label: 'Connect Email', icon: Mail },
     { number: 3, label: 'Start Cleaning', icon: Sparkles },
   ];
 
