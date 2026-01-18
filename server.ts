@@ -11,6 +11,20 @@ import forgotPassword from './api/auth/forgot-password.js';
 import resetPassword from './api/auth/reset-password.js';
 import refresh from './api/auth/refresh.js';
 
+// Gmail OAuth routes
+import gmailConnect from './api/gmail/connect.js';
+import gmailCallback from './api/gmail/callback.js';
+import gmailDisconnect from './api/gmail/disconnect.js';
+
+// Email routes
+import emailsSync from './api/emails/sync.js';
+import emailsSenders from './api/emails/senders.js';
+
+// Cleanup routes
+import cleanupDelete from './api/cleanup/delete.js';
+import cleanupArchive from './api/cleanup/archive.js';
+import cleanupUnsubscribe from './api/cleanup/unsubscribe.js';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -75,6 +89,20 @@ app.post('/api/auth/resend-verification', wrapHandler(resendVerification));
 app.post('/api/auth/forgot-password', wrapHandler(forgotPassword));
 app.post('/api/auth/reset-password', wrapHandler(resetPassword));
 app.post('/api/auth/refresh', wrapHandler(refresh));
+
+// Gmail OAuth routes
+app.get('/api/gmail/connect', wrapHandler(gmailConnect));
+app.get('/api/gmail/callback', wrapHandler(gmailCallback));
+app.post('/api/gmail/disconnect', wrapHandler(gmailDisconnect));
+
+// Email routes
+app.post('/api/emails/sync', wrapHandler(emailsSync));
+app.get('/api/emails/senders', wrapHandler(emailsSenders));
+
+// Cleanup routes
+app.post('/api/cleanup/delete', wrapHandler(cleanupDelete));
+app.post('/api/cleanup/archive', wrapHandler(cleanupArchive));
+app.post('/api/cleanup/unsubscribe', wrapHandler(cleanupUnsubscribe));
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -22,7 +22,12 @@ const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const GMAIL_TOKEN_ENCRYPTION_KEY = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+// API_URL is where Google redirects to (Railway backend)
+const API_URL = process.env.API_URL || process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : 'http://localhost:3001';
+// APP_URL is where we redirect users after OAuth (Vercel frontend)
+const APP_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // Gmail OAuth scopes
 const GMAIL_SCOPES = [
@@ -140,7 +145,8 @@ export function getGmailAuthUrl(state: string): string {
     throw new Error('GMAIL_CLIENT_ID is not configured');
   }
 
-  const redirectUri = `${APP_URL}/api/gmail/callback`;
+  // Use API_URL (Railway) for the OAuth callback
+  const redirectUri = `${API_URL}/api/gmail/callback`;
 
   const params = new URLSearchParams({
     client_id: GMAIL_CLIENT_ID,
@@ -163,7 +169,8 @@ export async function exchangeCodeForTokens(code: string): Promise<GmailTokens> 
     throw new Error('Gmail OAuth credentials not configured');
   }
 
-  const redirectUri = `${APP_URL}/api/gmail/callback`;
+  // Use API_URL (Railway) for the OAuth callback - must match getGmailAuthUrl
+  const redirectUri = `${API_URL}/api/gmail/callback`;
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
