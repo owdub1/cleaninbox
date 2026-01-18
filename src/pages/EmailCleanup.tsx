@@ -11,7 +11,6 @@ import {
   SortAscIcon,
   CheckIcon,
   FolderIcon,
-  MailIcon,
   ShieldIcon,
   Sparkles,
   Inbox,
@@ -22,12 +21,17 @@ import {
   ArrowLeft,
   UserPlus,
   Mail,
-  CreditCard,
   ArrowRight,
-  Check
+  Check,
+  Zap,
+  X,
+  Gift
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
+
+// Free trial limit
+const FREE_TRIAL_LIMIT = 5;
 
 // Mock data for email senders by year
 const mockEmailData = {
@@ -107,7 +111,7 @@ const StepIndicator = ({ currentStep }: { currentStep: number }) => {
   const steps = [
     { number: 1, label: 'Sign Up', icon: UserPlus },
     { number: 2, label: 'Add Email', icon: Mail },
-    { number: 3, label: 'Choose Plan', icon: CreditCard },
+    { number: 3, label: 'Start Cleaning', icon: Sparkles },
   ];
 
   return (
@@ -157,6 +161,69 @@ const StepIndicator = ({ currentStep }: { currentStep: number }) => {
   );
 };
 
+// Upgrade Modal Component
+const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose: () => void; onUpgrade: () => void }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-8 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Gift className="w-8 h-8 text-white" />
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            You've Used Your Free Tries!
+          </h2>
+
+          <p className="text-gray-600 mb-6">
+            Great job cleaning up! You've used all 5 free actions. Upgrade to Pro for unlimited cleaning and premium features.
+          </p>
+
+          <div className="bg-indigo-50 rounded-xl p-4 mb-6">
+            <p className="text-indigo-900 font-semibold mb-2">Pro Plan - $9/month</p>
+            <ul className="text-sm text-indigo-700 space-y-1">
+              <li className="flex items-center justify-center">
+                <Check className="w-4 h-4 mr-2" /> Unlimited unsubscribes
+              </li>
+              <li className="flex items-center justify-center">
+                <Check className="w-4 h-4 mr-2" /> 10 email accounts
+              </li>
+              <li className="flex items-center justify-center">
+                <Check className="w-4 h-4 mr-2" /> Advanced automation
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={onUpgrade}
+              className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center"
+            >
+              <Zap className="w-5 h-5 mr-2" />
+              Upgrade to Pro
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-3 text-gray-500 hover:text-gray-700 text-sm"
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const EmailCleanup = () => {
   const { isAuthenticated, user } = useAuth();
   const { emailAccounts } = useDashboardData();
@@ -168,20 +235,25 @@ const EmailCleanup = () => {
   const [sortBy, setSortBy] = useState('count');
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedSenders, setSelectedSenders] = useState<string[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Track free trial usage (in production, this would come from the backend)
+  const [freeActionsUsed, setFreeActionsUsed] = useState(0);
+  const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
+  const hasFreeTries = freeActionsRemaining > 0;
+  const hasPaidPlan = user?.subscription_tier && user.subscription_tier !== 'Free';
 
   // Determine current onboarding step
   const hasEmailConnected = emailAccounts && emailAccounts.length > 0;
-  const hasPaidPlan = user?.subscription_tier && user.subscription_tier !== 'Free';
 
   const getCurrentStep = () => {
     if (!isAuthenticated) return 1;
     if (!hasEmailConnected) return 2;
-    if (!hasPaidPlan) return 3;
-    return 4; // All steps completed
+    return 3; // Ready to start cleaning
   };
 
   const currentStep = getCurrentStep();
-  const isOnboardingComplete = currentStep > 3;
+  const isOnboardingComplete = currentStep >= 3 && currentView !== 'onboarding';
 
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId);
@@ -191,6 +263,29 @@ const EmailCleanup = () => {
   const handleBackToTools = () => {
     setCurrentView('tools');
     setSelectedTool(null);
+  };
+
+  const handleStartCleaning = () => {
+    setCurrentView('tools');
+  };
+
+  // Handle cleanup action (delete/unsubscribe)
+  const handleCleanupAction = (actionType: 'delete' | 'archive' | 'unsubscribe', sender: string) => {
+    if (!hasPaidPlan && !hasFreeTries) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    // Perform the action
+    if (!hasPaidPlan) {
+      setFreeActionsUsed(prev => prev + 1);
+    }
+
+    // In production, this would call the API
+    console.log(`${actionType} action on ${sender}`);
+
+    // Show success feedback
+    alert(`Successfully ${actionType === 'delete' ? 'deleted' : actionType === 'archive' ? 'archived' : 'unsubscribed from'} ${sender}`);
   };
 
   const toggleYear = (year: string) => {
@@ -248,8 +343,8 @@ const EmailCleanup = () => {
 
   const getSelectedCount = () => selectedSenders.length;
 
-  // Show onboarding funnel for users who haven't completed all steps
-  if (!isOnboardingComplete && currentView === 'onboarding') {
+  // Show onboarding funnel
+  if (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding')) {
     return (
       <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-4xl mx-auto px-4 py-12">
@@ -298,7 +393,7 @@ const EmailCleanup = () => {
                 </div>
                 <div className="mt-8 flex items-center justify-center text-sm text-gray-500">
                   <ShieldIcon className="w-4 h-4 mr-2 text-green-500" />
-                  No credit card required • Free forever plan available
+                  No credit card required • 5 free cleanups included
                 </div>
               </div>
             )}
@@ -362,62 +457,36 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Step 3: Choose Plan */}
-            {currentStep === 3 && (
+            {/* Step 3: Start Cleaning */}
+            {currentStep === 3 && currentView === 'onboarding' && (
               <div className="text-center">
-                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CreditCard className="w-10 h-10 text-purple-600" />
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  Choose Your Plan
+                  You're All Set! Start Cleaning
                 </h2>
-                <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                  Select a plan that works for you. Upgrade anytime to unlock more features!
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Your email is connected and ready to go. You have <span className="font-bold text-indigo-600">5 free cleanups</span> to try out the platform!
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-8">
-                  {/* Free Plan */}
-                  <div className="border-2 border-gray-200 rounded-xl p-6 text-left hover:border-gray-300 transition-colors">
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">Free</h3>
-                    <p className="text-3xl font-bold text-gray-900 mb-4">$0<span className="text-base font-normal text-gray-500">/month</span></p>
-                    <ul className="space-y-2 mb-6 text-sm text-gray-600">
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> 1 email account</li>
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> Basic cleanup tools</li>
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> 50 unsubscribes/month</li>
-                    </ul>
-                    <button
-                      onClick={() => setCurrentView('tools')}
-                      className="w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
-                    >
-                      Continue with Free
-                    </button>
-                  </div>
-                  {/* Pro Plan */}
-                  <div className="border-2 border-indigo-500 rounded-xl p-6 text-left relative bg-indigo-50/50">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      RECOMMENDED
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">Pro</h3>
-                    <p className="text-3xl font-bold text-gray-900 mb-4">$9<span className="text-base font-normal text-gray-500">/month</span></p>
-                    <ul className="space-y-2 mb-6 text-sm text-gray-600">
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> 10 email accounts</li>
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> Advanced cleanup tools</li>
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> Unlimited unsubscribes</li>
-                      <li className="flex items-center"><Check className="w-4 h-4 text-green-500 mr-2" /> Priority support</li>
-                    </ul>
-                    <button
-                      onClick={() => navigate('/checkout')}
-                      className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Upgrade to Pro
-                    </button>
-                  </div>
+
+                {/* Free trial badge */}
+                <div className="inline-flex items-center bg-gradient-to-r from-amber-100 to-orange-100 rounded-full px-6 py-3 mb-8">
+                  <Gift className="w-5 h-5 text-amber-600 mr-2" />
+                  <span className="text-amber-800 font-medium">5 Free Actions Included</span>
                 </div>
+
                 <button
-                  onClick={() => setCurrentView('tools')}
-                  className="text-gray-500 hover:text-gray-700 text-sm underline"
+                  onClick={handleStartCleaning}
+                  className="inline-flex items-center justify-center px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
                 >
-                  Skip for now and explore free features
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Start Cleaning Now
                 </button>
+
+                <p className="mt-6 text-sm text-gray-500">
+                  Unsubscribe, delete, or archive emails with one click
+                </p>
               </div>
             )}
           </div>
@@ -457,6 +526,28 @@ const EmailCleanup = () => {
       <div className="w-full bg-gray-50 min-h-screen">
         <section className="pt-10 pb-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Free trial banner */}
+            {!hasPaidPlan && (
+              <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Gift className="w-5 h-5 text-amber-600 mr-3" />
+                    <span className="text-amber-800">
+                      <span className="font-semibold">{freeActionsRemaining} free actions</span> remaining
+                    </span>
+                  </div>
+                  {freeActionsRemaining < FREE_TRIAL_LIMIT && (
+                    <button
+                      onClick={() => navigate('/checkout')}
+                      className="text-sm font-medium text-amber-700 hover:text-amber-900 underline"
+                    >
+                      Upgrade for unlimited
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="text-center mb-10">
               <h1 className="text-3xl font-bold text-gray-900">Email Cleanup Tools</h1>
               <p className="mt-2 text-lg text-gray-600">
@@ -534,8 +625,35 @@ const EmailCleanup = () => {
 
   return (
     <div className="w-full bg-white">
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onUpgrade={() => navigate('/checkout')}
+      />
+
       <section className="pt-10 pb-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Free trial banner */}
+          {!hasPaidPlan && (
+            <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Gift className="w-5 h-5 text-amber-600 mr-3" />
+                  <span className="text-amber-800">
+                    <span className="font-semibold">{freeActionsRemaining} free actions</span> remaining
+                  </span>
+                </div>
+                <button
+                  onClick={() => navigate('/checkout')}
+                  className="text-sm font-medium text-amber-700 hover:text-amber-900 underline"
+                >
+                  Upgrade for unlimited
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-6">
             <button
               onClick={handleBackToTools}
@@ -603,11 +721,27 @@ const EmailCleanup = () => {
                   </span>
                 </div>
                 <div className="flex space-x-4">
-                  <button className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                  <button
+                    className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                    onClick={() => {
+                      selectedSenders.forEach(s => {
+                        const sender = s.split('-')[1];
+                        handleCleanupAction('archive', sender);
+                      });
+                    }}
+                  >
                     <ArchiveIcon className="h-3 w-3 mr-1" />
                     Archive
                   </button>
-                  <button className="flex items-center text-xs font-medium text-red-600 hover:text-red-800">
+                  <button
+                    className="flex items-center text-xs font-medium text-red-600 hover:text-red-800"
+                    onClick={() => {
+                      selectedSenders.forEach(s => {
+                        const sender = s.split('-')[1];
+                        handleCleanupAction('delete', sender);
+                      });
+                    }}
+                  >
                     <TrashIcon className="h-3 w-3 mr-1" />
                     Delete
                   </button>
@@ -682,10 +816,16 @@ const EmailCleanup = () => {
                                   </div>
                                 </td>
                                 <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                  <button className="text-indigo-600 hover:text-indigo-900 mr-2 text-xs">
+                                  <button
+                                    className="text-indigo-600 hover:text-indigo-900 mr-2 text-xs"
+                                    onClick={() => handleCleanupAction('archive', item.sender)}
+                                  >
                                     Archive
                                   </button>
-                                  <button className="text-red-600 hover:text-red-900 text-xs">
+                                  <button
+                                    className="text-red-600 hover:text-red-900 text-xs"
+                                    onClick={() => handleCleanupAction('delete', item.sender)}
+                                  >
                                     Delete
                                   </button>
                                 </td>
