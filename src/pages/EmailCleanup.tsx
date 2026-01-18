@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDownIcon, ChevronUpIcon, SearchIcon, TrashIcon, ArchiveIcon, FilterIcon, SortDescIcon, SortAscIcon, CheckIcon, FolderIcon, MailIcon, ShieldIcon } from 'lucide-react';
+import { ChevronDownIcon, ChevronUpIcon, SearchIcon, TrashIcon, ArchiveIcon, FilterIcon, SortDescIcon, SortAscIcon, CheckIcon, FolderIcon, MailIcon, ShieldIcon, Sparkles, Inbox, BellOff, Ban, Hand, SlidersHorizontal, ArrowLeft } from 'lucide-react';
 // Mock data for email senders by year
 const mockEmailData = {
   '2023': [{
@@ -148,12 +148,70 @@ const mockEmailData = {
     lastEmail: '2020-11-28'
   }]
 };
+// Cleanup tool definitions
+const cleanupTools = [
+  {
+    id: 'suggestions',
+    title: 'Explore Cleaning Suggestions',
+    description: 'Kick start your cleaning with our recommendations.',
+    icon: Sparkles,
+    color: 'from-amber-400 to-orange-400',
+  },
+  {
+    id: 'inbox',
+    title: 'View and clean your Inbox',
+    description: 'Filter, group, and clean messages you no longer need.',
+    icon: Inbox,
+    color: 'from-blue-400 to-indigo-400',
+  },
+  {
+    id: 'unsubscribe',
+    title: 'Unsubscribe from mailing lists',
+    description: 'All mailing lists and newsletters in one place.',
+    icon: BellOff,
+    color: 'from-red-400 to-pink-400',
+  },
+  {
+    id: 'block',
+    title: 'Block or Mute a sender',
+    description: 'Or get mail from them delivered to a specific folder.',
+    icon: Ban,
+    color: 'from-sky-400 to-cyan-400',
+  },
+  {
+    id: 'stop',
+    title: 'Stop all unwanted mail',
+    description: 'Hold mail from new senders out of Inbox. Review to Allow.',
+    icon: Hand,
+    color: 'from-purple-400 to-violet-400',
+  },
+  {
+    id: 'automate',
+    title: 'Clean and organize mail automatically',
+    description: 'Create rules to trash, move, or label mail automatically.',
+    icon: SlidersHorizontal,
+    color: 'from-gray-400 to-slate-400',
+  },
+];
+
 const EmailCleanup = () => {
+  const [currentView, setCurrentView] = useState<'tools' | 'cleanup'>('tools');
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedYears, setExpandedYears] = useState(['2023']);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('count'); // 'count', 'name', 'date'
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc', 'desc'
   const [selectedSenders, setSelectedSenders] = useState([]);
+
+  const handleToolSelect = (toolId: string) => {
+    setSelectedTool(toolId);
+    setCurrentView('cleanup');
+  };
+
+  const handleBackToTools = () => {
+    setCurrentView('tools');
+    setSelectedTool(null);
+  };
   const toggleYear = year => {
     if (expandedYears.includes(year)) {
       setExpandedYears(expandedYears.filter(y => y !== year));
@@ -202,13 +260,107 @@ const EmailCleanup = () => {
   const getSelectedCount = () => {
     return selectedSenders.length;
   };
+  // Tools selection page (first page of funnel)
+  if (currentView === 'tools') {
+    return (
+      <div className="w-full bg-gray-50 min-h-screen">
+        <section className="pt-10 pb-16">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h1 className="text-3xl font-bold text-gray-900">Email Cleanup Tools</h1>
+              <p className="mt-2 text-lg text-gray-600">
+                Choose a cleanup tool to get started
+              </p>
+            </div>
+
+            {/* Cleanup Tools Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {cleanupTools.map((tool) => {
+                const IconComponent = tool.icon;
+                return (
+                  <button
+                    key={tool.id}
+                    onClick={() => handleToolSelect(tool.id)}
+                    className="group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-xl"
+                  >
+                    {/* Gradient Background */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
+
+                    {/* Content */}
+                    <div className="relative z-10">
+                      <div className="mb-4">
+                        <div className="text-white">
+                          <IconComponent className="w-8 h-8" />
+                        </div>
+                      </div>
+                      <h3 className="text-white font-semibold text-lg mb-2">
+                        {tool.title}
+                      </h3>
+                      <p className="text-white/80 text-sm">
+                        {tool.description}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* How It Works Section */}
+            <div className="mt-12 bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4 text-center">How It Works</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 mb-3">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Kick start your cleaning with our recommendations.
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 mb-3">
+                    <Inbox className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Filter, group, and clean messages you no longer need.
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-pink-400 mb-3">
+                    <BellOff className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    All mailing lists and newsletters in one place.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // Cleanup interface (second page of funnel)
+  const selectedToolData = cleanupTools.find(t => t.id === selectedTool);
+
   return <div className="w-full bg-white">
       <section className="pt-10 pb-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Back button and header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Email Cleanup</h1>
+            <button
+              onClick={handleBackToTools}
+              className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Cleanup Tools
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {selectedToolData?.title || 'Email Cleanup'}
+            </h1>
             <p className="mt-2 text-lg text-gray-600">
-              Organize and clean your inbox by year and sender
+              {selectedToolData?.description || 'Organize and clean your inbox by year and sender'}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
