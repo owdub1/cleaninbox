@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
@@ -25,40 +25,19 @@ import {
   Check,
   Zap,
   X,
-  Gift
+  Gift,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useGmailConnection } from '../hooks/useGmailConnection';
+import { useEmailSenders, Sender } from '../hooks/useEmailSenders';
+import { useCleanupActions } from '../hooks/useCleanupActions';
+import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
 
 // Free trial limit
 const FREE_TRIAL_LIMIT = 5;
-
-// Mock data for email senders by year
-const mockEmailData = {
-  '2023': [
-    { sender: 'Amazon', count: 42, lastEmail: '2023-11-15' },
-    { sender: 'Sarah Johnson', count: 36, lastEmail: '2023-11-22' },
-    { sender: 'LinkedIn', count: 38, lastEmail: '2023-11-20' },
-    { sender: 'Michael Chen', count: 29, lastEmail: '2023-11-17' },
-    { sender: 'Twitter', count: 25, lastEmail: '2023-11-18' },
-    { sender: 'David Rodriguez', count: 18, lastEmail: '2023-11-12' },
-    { sender: 'Netflix', count: 12, lastEmail: '2023-11-10' }
-  ],
-  '2022': [
-    { sender: 'Amazon', count: 56, lastEmail: '2022-12-24' },
-    { sender: 'Jennifer Parker', count: 48, lastEmail: '2022-12-22' },
-    { sender: 'LinkedIn', count: 45, lastEmail: '2022-12-15' },
-    { sender: 'Robert Kim', count: 39, lastEmail: '2022-12-10' },
-    { sender: 'Facebook', count: 30, lastEmail: '2022-11-30' },
-    { sender: 'Google', count: 28, lastEmail: '2022-12-20' }
-  ],
-  '2021': [
-    { sender: 'Amazon', count: 48, lastEmail: '2021-12-20' },
-    { sender: 'William Davis', count: 43, lastEmail: '2021-12-18' },
-    { sender: 'Facebook', count: 40, lastEmail: '2021-12-15' },
-    { sender: 'Twitter', count: 35, lastEmail: '2021-11-05' }
-  ]
-};
 
 // Cleanup tool definitions
 const cleanupTools = [
@@ -230,12 +209,36 @@ const EmailCleanup = () => {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>('onboarding');
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [expandedYears, setExpandedYears] = useState(['2023']);
+  const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('count');
   const [sortDirection, setSortDirection] = useState('desc');
   const [selectedSenders, setSelectedSenders] = useState<string[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Cleanup confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    action: 'delete' | 'archive' | 'unsubscribe';
+    senders: Sender[];
+  }>({ isOpen: false, action: 'delete', senders: [] });
+
+  // Gmail connection hooks
+  const { handleOAuthCallback, clearCallbackParams } = useGmailConnection();
+
+  // Email senders hook
+  const {
+    senders,
+    loading: sendersLoading,
+    syncing,
+    fetchSenders,
+    syncEmails,
+    getSendersByYear
+  } = useEmailSenders({ autoFetch: true });
+
+  // Cleanup actions hook
+  const { deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
   // Track free trial usage (in production, this would come from the backend)
   const [freeActionsUsed, setFreeActionsUsed] = useState(0);
@@ -243,8 +246,38 @@ const EmailCleanup = () => {
   const hasFreeTries = freeActionsRemaining > 0;
   const hasPaidPlan = user?.subscription_tier && user.subscription_tier !== 'Free';
 
+  // Get connected Gmail account
+  const connectedGmailAccount = emailAccounts?.find(
+    (acc: any) => acc.provider === 'Gmail' && acc.connection_status === 'connected'
+  );
+
   // Determine current onboarding step
   const hasEmailConnected = emailAccounts && emailAccounts.length > 0;
+
+  // Handle OAuth callback on page load
+  useEffect(() => {
+    const result = handleOAuthCallback();
+    if (result.success && result.email) {
+      setNotification({
+        type: 'success',
+        message: `Successfully connected ${result.email}! Syncing your emails...`
+      });
+      clearCallbackParams();
+      // Trigger sync after connection
+      syncEmails(result.email);
+    } else if (result.error) {
+      setNotification({ type: 'error', message: result.error });
+      clearCallbackParams();
+    }
+  }, []);
+
+  // Clear notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const getCurrentStep = () => {
     if (!isAuthenticated) return 1;
@@ -253,7 +286,6 @@ const EmailCleanup = () => {
   };
 
   const currentStep = getCurrentStep();
-  const isOnboardingComplete = currentStep >= 3 && currentView !== 'onboarding';
 
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId);
@@ -269,23 +301,74 @@ const EmailCleanup = () => {
     setCurrentView('tools');
   };
 
-  // Handle cleanup action (delete/unsubscribe)
-  const handleCleanupAction = (actionType: 'delete' | 'archive' | 'unsubscribe', sender: string) => {
+  const handleSync = async () => {
+    if (connectedGmailAccount) {
+      await syncEmails(connectedGmailAccount.email);
+      setNotification({ type: 'success', message: 'Emails synced successfully!' });
+    }
+  };
+
+  // Handle cleanup action confirmation
+  const handleCleanupAction = (action: 'delete' | 'archive' | 'unsubscribe', senderList: Sender[]) => {
     if (!hasPaidPlan && !hasFreeTries) {
       setShowUpgradeModal(true);
       return;
     }
 
-    // Perform the action
-    if (!hasPaidPlan) {
-      setFreeActionsUsed(prev => prev + 1);
+    setConfirmModal({
+      isOpen: true,
+      action,
+      senders: senderList
+    });
+  };
+
+  // Execute cleanup action
+  const executeCleanupAction = async () => {
+    if (!connectedGmailAccount) return;
+
+    const { action, senders: actionSenders } = confirmModal;
+    const senderEmails = actionSenders.map(s => s.email);
+
+    try {
+      let result;
+      if (action === 'delete') {
+        result = await deleteEmails(connectedGmailAccount.email, senderEmails);
+      } else if (action === 'archive') {
+        result = await archiveEmails(connectedGmailAccount.email, senderEmails);
+      } else if (action === 'unsubscribe' && actionSenders.length === 1) {
+        result = await unsubscribe(
+          connectedGmailAccount.email,
+          actionSenders[0].email,
+          actionSenders[0].unsubscribeLink || undefined
+        );
+      }
+
+      if (result?.success) {
+        if (!hasPaidPlan) {
+          setFreeActionsUsed(prev => prev + actionSenders.length);
+        }
+        setNotification({
+          type: 'success',
+          message: `Successfully ${action === 'delete' ? 'deleted' : action === 'archive' ? 'archived' : 'unsubscribed from'} ${actionSenders.length} sender(s)`
+        });
+        // Refresh senders list
+        fetchSenders();
+        // Clear selection
+        setSelectedSenders([]);
+      } else if (result?.requiresManualAction) {
+        setNotification({
+          type: 'success',
+          message: result.message || 'Please complete the unsubscribe manually'
+        });
+        if (result.unsubscribeLink) {
+          window.open(result.unsubscribeLink, '_blank');
+        }
+      }
+    } catch (error: any) {
+      setNotification({ type: 'error', message: error.message || 'Action failed' });
     }
 
-    // In production, this would call the API
-    console.log(`${actionType} action on ${sender}`);
-
-    // Show success feedback
-    alert(`Successfully ${actionType === 'delete' ? 'deleted' : actionType === 'archive' ? 'archived' : 'unsubscribed from'} ${sender}`);
+    setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
   };
 
   const toggleYear = (year: string) => {
@@ -309,44 +392,66 @@ const EmailCleanup = () => {
     }
   };
 
-  const toggleSenderSelection = (year: string, sender: string) => {
-    const key = `${year}-${sender}`;
-    if (selectedSenders.includes(key)) {
-      setSelectedSenders(selectedSenders.filter(s => s !== key));
+  const toggleSenderSelection = (email: string) => {
+    if (selectedSenders.includes(email)) {
+      setSelectedSenders(selectedSenders.filter(s => s !== email));
     } else {
-      setSelectedSenders([...selectedSenders, key]);
+      setSelectedSenders([...selectedSenders, email]);
     }
   };
 
-  const filterAndSortEmails = (year: string) => {
-    let filtered = [...mockEmailData[year as keyof typeof mockEmailData]];
+  // Filter and sort senders
+  const filterAndSortSenders = (senderList: Sender[]) => {
+    let filtered = [...senderList];
     if (searchTerm) {
       filtered = filtered.filter(item =>
-        item.sender.toLowerCase().includes(searchTerm.toLowerCase())
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     filtered.sort((a, b) => {
       if (sortBy === 'name') {
         return sortDirection === 'asc'
-          ? a.sender.localeCompare(b.sender)
-          : b.sender.localeCompare(a.sender);
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
       } else if (sortBy === 'date') {
         return sortDirection === 'asc'
-          ? new Date(a.lastEmail).getTime() - new Date(b.lastEmail).getTime()
-          : new Date(b.lastEmail).getTime() - new Date(a.lastEmail).getTime();
+          ? new Date(a.lastEmailDate).getTime() - new Date(b.lastEmailDate).getTime()
+          : new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime();
       } else {
-        return sortDirection === 'asc' ? a.count - b.count : b.count - a.count;
+        return sortDirection === 'asc' ? a.emailCount - b.emailCount : b.emailCount - a.emailCount;
       }
     });
     return filtered;
   };
 
-  const getSelectedCount = () => selectedSenders.length;
+  const getSelectedSenders = (): Sender[] => {
+    return senders.filter(s => selectedSenders.includes(s.email));
+  };
+
+  // Get senders grouped by year
+  const sendersByYear = getSendersByYear();
 
   // Show onboarding funnel
   if (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding')) {
     return (
       <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white">
+        {/* Notification */}
+        {notification && (
+          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            <div className="flex items-center gap-2">
+              {notification.type === 'success' ? (
+                <Check className="w-5 h-5" />
+              ) : (
+                <AlertCircle className="w-5 h-5" />
+              )}
+              {notification.message}
+            </div>
+          </div>
+        )}
+
         <div className="max-w-4xl mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-8">
@@ -423,8 +528,9 @@ const EmailCleanup = () => {
                     />
                   </button>
                   <button
-                    onClick={() => navigate('/dashboard?tab=myemails')}
-                    className="flex items-center justify-center p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+                    disabled
+                    className="flex items-center justify-center p-4 bg-gray-50 border-2 border-gray-100 rounded-xl opacity-50 cursor-not-allowed"
+                    title="Coming soon"
                   >
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Microsoft_Office_Outlook_%282018%E2%80%93present%29.svg/1200px-Microsoft_Office_Outlook_%282018%E2%80%93present%29.svg.png"
@@ -433,8 +539,9 @@ const EmailCleanup = () => {
                     />
                   </button>
                   <button
-                    onClick={() => navigate('/dashboard?tab=myemails')}
-                    className="flex items-center justify-center p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+                    disabled
+                    className="flex items-center justify-center p-4 bg-gray-50 border-2 border-gray-100 rounded-xl opacity-50 cursor-not-allowed"
+                    title="Coming soon"
                   >
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Yahoo%21_Mail_icon.svg/1200px-Yahoo%21_Mail_icon.svg.png"
@@ -524,6 +631,22 @@ const EmailCleanup = () => {
   if (currentView === 'tools') {
     return (
       <div className="w-full bg-gray-50 min-h-screen">
+        {/* Notification */}
+        {notification && (
+          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            <div className="flex items-center gap-2">
+              {notification.type === 'success' ? (
+                <Check className="w-5 h-5" />
+              ) : (
+                <AlertCircle className="w-5 h-5" />
+              )}
+              {notification.message}
+            </div>
+          </div>
+        )}
+
         <section className="pt-10 pb-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Free trial banner */}
@@ -625,12 +748,37 @@ const EmailCleanup = () => {
 
   return (
     <div className="w-full bg-white">
-      {/* Upgrade Modal */}
+      {/* Modals */}
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onUpgrade={() => navigate('/checkout')}
       />
+
+      <CleanupConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, action: 'delete', senders: [] })}
+        onConfirm={executeCleanupAction}
+        action={confirmModal.action}
+        senders={confirmModal.senders}
+        loading={cleanupLoading}
+      />
+
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {notification.type === 'success' ? (
+              <Check className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+            {notification.message}
+          </div>
+        </div>
+      )}
 
       <section className="pt-10 pb-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -662,12 +810,26 @@ const EmailCleanup = () => {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Cleanup Tools
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {selectedToolData?.title || 'Email Cleanup'}
-            </h1>
-            <p className="mt-2 text-lg text-gray-600">
-              {selectedToolData?.description || 'Organize and clean your inbox by year and sender'}
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {selectedToolData?.title || 'Email Cleanup'}
+                </h1>
+                <p className="mt-2 text-lg text-gray-600">
+                  {selectedToolData?.description || 'Organize and clean your inbox by year and sender'}
+                </p>
+              </div>
+              {connectedGmailAccount && (
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Emails'}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -712,35 +874,25 @@ const EmailCleanup = () => {
             </div>
 
             {/* Selected items action bar */}
-            {getSelectedCount() > 0 && (
+            {selectedSenders.length > 0 && (
               <div className="bg-indigo-50 p-3 flex items-center justify-between">
                 <div className="flex items-center">
                   <CheckIcon className="h-4 w-4 text-indigo-600 mr-2" />
                   <span className="text-indigo-800 text-sm font-medium">
-                    {getSelectedCount()} sender{getSelectedCount() !== 1 ? 's' : ''} selected
+                    {selectedSenders.length} sender{selectedSenders.length !== 1 ? 's' : ''} selected
                   </span>
                 </div>
                 <div className="flex space-x-4">
                   <button
                     className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                    onClick={() => {
-                      selectedSenders.forEach(s => {
-                        const sender = s.split('-')[1];
-                        handleCleanupAction('archive', sender);
-                      });
-                    }}
+                    onClick={() => handleCleanupAction('archive', getSelectedSenders())}
                   >
                     <ArchiveIcon className="h-3 w-3 mr-1" />
                     Archive
                   </button>
                   <button
                     className="flex items-center text-xs font-medium text-red-600 hover:text-red-800"
-                    onClick={() => {
-                      selectedSenders.forEach(s => {
-                        const sender = s.split('-')[1];
-                        handleCleanupAction('delete', sender);
-                      });
-                    }}
+                    onClick={() => handleCleanupAction('delete', getSelectedSenders())}
                   >
                     <TrashIcon className="h-3 w-3 mr-1" />
                     Delete
@@ -749,96 +901,149 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Year-based dropdowns */}
-            <div className="divide-y divide-gray-200">
-              {Object.keys(mockEmailData).sort((a, b) => Number(b) - Number(a)).map(year => (
-                <div key={year} className="overflow-hidden">
-                  <button
-                    className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50 focus:outline-none"
-                    onClick={() => toggleYear(year)}
-                  >
-                    <div className="flex items-center">
-                      <FolderIcon className="h-4 w-4 text-indigo-500 mr-2" />
-                      <span className="font-medium text-gray-900">{year}</span>
-                      <span className="ml-2 text-xs text-gray-500">
-                        ({mockEmailData[year as keyof typeof mockEmailData].length} senders)
-                      </span>
-                    </div>
-                    {expandedYears.includes(year) ? (
-                      <ChevronUpIcon className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-                    )}
-                  </button>
-                  {expandedYears.includes(year) && (
-                    <div className="bg-gray-50 px-4 py-3">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                          <thead className="bg-gray-100">
-                            <tr>
-                              <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                <input type="checkbox" className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                              </th>
-                              <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Sender
-                              </th>
-                              <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Email Count
-                              </th>
-                              <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Last Email
-                              </th>
-                              <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filterAndSortEmails(year).map(item => (
-                              <tr key={item.sender} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                  <input
-                                    type="checkbox"
-                                    className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                    checked={selectedSenders.includes(`${year}-${item.sender}`)}
-                                    onChange={() => toggleSenderSelection(year, item.sender)}
-                                  />
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">{item.sender}</div>
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                  <div className="text-sm text-gray-500">{item.count} emails</div>
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                  <div className="text-sm text-gray-500">
-                                    {new Date(item.lastEmail).toLocaleDateString()}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                  <button
-                                    className="text-indigo-600 hover:text-indigo-900 mr-2 text-xs"
-                                    onClick={() => handleCleanupAction('archive', item.sender)}
-                                  >
-                                    Archive
-                                  </button>
-                                  <button
-                                    className="text-red-600 hover:text-red-900 text-xs"
-                                    onClick={() => handleCleanupAction('delete', item.sender)}
-                                  >
-                                    Delete
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+            {/* Loading state */}
+            {sendersLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3 text-gray-500">
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                  <span>Loading senders...</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!sendersLoading && senders.length === 0 && (
+              <div className="text-center py-12">
+                <Mail className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No emails found</h3>
+                <p className="text-gray-500 mb-4">
+                  {connectedGmailAccount
+                    ? 'Click "Sync Emails" to fetch your email senders.'
+                    : 'Connect your Gmail account to get started.'}
+                </p>
+                {connectedGmailAccount && (
+                  <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                    Sync Emails
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Year-based dropdowns with real data */}
+            {!sendersLoading && senders.length > 0 && (
+              <div className="divide-y divide-gray-200">
+                {Object.keys(sendersByYear).sort((a, b) => Number(b) - Number(a)).map(year => (
+                  <div key={year} className="overflow-hidden">
+                    <button
+                      className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50 focus:outline-none"
+                      onClick={() => toggleYear(year)}
+                    >
+                      <div className="flex items-center">
+                        <FolderIcon className="h-4 w-4 text-indigo-500 mr-2" />
+                        <span className="font-medium text-gray-900">{year}</span>
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({sendersByYear[year].length} senders)
+                        </span>
+                      </div>
+                      {expandedYears.includes(year) ? (
+                        <ChevronUpIcon className="h-4 w-4 text-gray-500" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4 text-gray-500" />
+                      )}
+                    </button>
+                    {expandedYears.includes(year) && (
+                      <div className="bg-gray-50 px-4 py-3">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  <input type="checkbox" className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                                </th>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Sender
+                                </th>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Email Count
+                                </th>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Last Email
+                                </th>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {filterAndSortSenders(sendersByYear[year]).map(sender => (
+                                <tr key={sender.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 whitespace-nowrap">
+                                    <input
+                                      type="checkbox"
+                                      className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                      checked={selectedSenders.includes(sender.email)}
+                                      onChange={() => toggleSenderSelection(sender.email)}
+                                    />
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap">
+                                    <div className="flex items-center">
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">{sender.name}</div>
+                                        <div className="text-xs text-gray-500">{sender.email}</div>
+                                      </div>
+                                      {sender.isNewsletter && (
+                                        <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                          Newsletter
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap">
+                                    <div className="text-sm text-gray-500">{sender.emailCount} emails</div>
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap">
+                                    <div className="text-sm text-gray-500">
+                                      {new Date(sender.lastEmailDate).toLocaleDateString()}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                    {sender.hasUnsubscribe && (
+                                      <button
+                                        className="text-purple-600 hover:text-purple-900 mr-2 text-xs"
+                                        onClick={() => handleCleanupAction('unsubscribe', [sender])}
+                                      >
+                                        Unsubscribe
+                                      </button>
+                                    )}
+                                    <button
+                                      className="text-indigo-600 hover:text-indigo-900 mr-2 text-xs"
+                                      onClick={() => handleCleanupAction('archive', [sender])}
+                                    >
+                                      Archive
+                                    </button>
+                                    <button
+                                      className="text-red-600 hover:text-red-900 text-xs"
+                                      onClick={() => handleCleanupAction('delete', [sender])}
+                                    >
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

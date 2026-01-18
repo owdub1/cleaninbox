@@ -1,0 +1,233 @@
+import { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../lib/api';
+
+export interface Sender {
+  id: string;
+  email: string;
+  name: string;
+  emailCount: number;
+  unreadCount: number;
+  firstEmailDate: string;
+  lastEmailDate: string;
+  unsubscribeLink: string | null;
+  hasUnsubscribe: boolean;
+  isNewsletter: boolean;
+  isPromotional: boolean;
+  emailAccountId: string;
+  accountEmail: string;
+}
+
+interface SendersResponse {
+  senders: Sender[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
+}
+
+interface UseSendersOptions {
+  email?: string;
+  sortBy?: 'count' | 'name' | 'date';
+  sortDirection?: 'asc' | 'desc';
+  filter?: 'newsletter' | 'promotional' | 'unsubscribable';
+  limit?: number;
+  autoFetch?: boolean;
+}
+
+export const useEmailSenders = (options: UseSendersOptions = {}) => {
+  const { token } = useAuth();
+  const [senders, setSenders] = useState<Sender[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    limit: options.limit || 100,
+    offset: 0,
+  });
+
+  /**
+   * Fetch senders from the API
+   */
+  const fetchSenders = useCallback(async (
+    fetchOptions?: Partial<UseSendersOptions>
+  ): Promise<Sender[]> => {
+    if (!token) {
+      setError('Authentication required');
+      return [];
+    }
+
+    const opts = { ...options, ...fetchOptions };
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams();
+      if (opts.email) params.set('email', opts.email);
+      if (opts.sortBy) params.set('sortBy', opts.sortBy);
+      if (opts.sortDirection) params.set('sortDirection', opts.sortDirection);
+      if (opts.filter) params.set('filter', opts.filter);
+      if (opts.limit) params.set('limit', opts.limit.toString());
+
+      const response = await fetch(
+        `${API_URL}/api/emails/senders?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data: SendersResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error((data as any).error || 'Failed to fetch senders');
+      }
+
+      setSenders(data.senders);
+      setPagination(data.pagination);
+
+      return data.senders;
+    } catch (err: any) {
+      console.error('Fetch senders error:', err);
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [token, options]);
+
+  /**
+   * Sync emails from Gmail
+   */
+  const syncEmails = useCallback(async (
+    email: string,
+    maxMessages: number = 1000
+  ): Promise<boolean> => {
+    if (!token) {
+      setError('Authentication required');
+      return false;
+    }
+
+    try {
+      setSyncing(true);
+      setError(null);
+
+      const response = await fetch(`${API_URL}/api/emails/sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, maxMessages }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync emails');
+      }
+
+      // Refresh senders after sync
+      await fetchSenders({ email });
+
+      return true;
+    } catch (err: any) {
+      console.error('Sync emails error:', err);
+      setError(err.message);
+      return false;
+    } finally {
+      setSyncing(false);
+    }
+  }, [token, fetchSenders]);
+
+  /**
+   * Get senders grouped by year
+   */
+  const getSendersByYear = useCallback((): Record<string, Sender[]> => {
+    const grouped: Record<string, Sender[]> = {};
+
+    for (const sender of senders) {
+      const year = new Date(sender.lastEmailDate).getFullYear().toString();
+      if (!grouped[year]) {
+        grouped[year] = [];
+      }
+      grouped[year].push(sender);
+    }
+
+    // Sort years descending
+    const sortedYears = Object.keys(grouped).sort((a, b) => parseInt(b) - parseInt(a));
+    const result: Record<string, Sender[]> = {};
+    for (const year of sortedYears) {
+      result[year] = grouped[year];
+    }
+
+    return result;
+  }, [senders]);
+
+  /**
+   * Search senders by name or email
+   */
+  const searchSenders = useCallback((query: string): Sender[] => {
+    const lowerQuery = query.toLowerCase();
+    return senders.filter(sender =>
+      sender.name.toLowerCase().includes(lowerQuery) ||
+      sender.email.toLowerCase().includes(lowerQuery)
+    );
+  }, [senders]);
+
+  /**
+   * Sort senders locally
+   */
+  const sortSenders = useCallback((
+    sortBy: 'count' | 'name' | 'date',
+    direction: 'asc' | 'desc'
+  ): Sender[] => {
+    const sorted = [...senders];
+
+    sorted.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'count':
+          comparison = a.emailCount - b.emailCount;
+          break;
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'date':
+          comparison = new Date(a.lastEmailDate).getTime() - new Date(b.lastEmailDate).getTime();
+          break;
+      }
+
+      return direction === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [senders]);
+
+  // Auto-fetch on mount if enabled
+  useEffect(() => {
+    if (options.autoFetch && token) {
+      fetchSenders();
+    }
+  }, [options.autoFetch, token, fetchSenders]);
+
+  return {
+    senders,
+    loading,
+    syncing,
+    error,
+    pagination,
+    fetchSenders,
+    syncEmails,
+    getSendersByYear,
+    searchSenders,
+    sortSenders,
+  };
+};
