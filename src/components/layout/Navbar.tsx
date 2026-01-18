@@ -21,8 +21,8 @@ const Navbar = () => {
   // Handle Clean My Inbox button click
   const handleCleanInboxClick = () => {
     if (hasPaidSubscription) {
-      // User has paid subscription - direct to clean inbox page
-      navigate('/clean-inbox');
+      // User has paid subscription - direct to email cleanup page
+      navigate('/email-cleanup');
     } else {
       // User is free or not authenticated - direct to checkout
       navigate('/checkout');

@@ -80,16 +80,47 @@ export const AuthProvider: React.FC<{
   };
 
   useEffect(() => {
-    // Check for existing session
-    const savedToken = localStorage.getItem(TOKEN_KEY);
-    const savedUser = localStorage.getItem(USER_KEY);
-    const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    // Check for existing session and refresh token if needed
+    const initializeAuth = async () => {
+      const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      const savedUser = localStorage.getItem(USER_KEY);
 
-    if (savedToken && savedUser && savedRefreshToken) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+      if (savedRefreshToken && savedUser) {
+        // Attempt to refresh the token to ensure it's valid
+        try {
+          const response = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ refreshToken: savedRefreshToken }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setToken(data.token);
+            setUser(data.user);
+            localStorage.setItem(TOKEN_KEY, data.token);
+            localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          } else {
+            // Refresh token is invalid or expired, clear everything
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(CSRF_TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+          }
+        } catch (error) {
+          console.error('Error refreshing token on load:', error);
+          // Clear stored data on error
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(CSRF_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   // Auto-refresh token before expiry

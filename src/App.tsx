@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
@@ -13,10 +13,10 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
-import CleanInbox from './pages/CleanInbox';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import OAuthCallback from './pages/OAuthCallback';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 // Scroll to top component
@@ -49,16 +49,13 @@ function AppWithAuth() {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           } />
-          <Route path="/clean-inbox" element={
-            <ProtectedRoute requireEmailVerification={true}>
-              <CleanInbox />
-            </ProtectedRoute>
-          } />
+          <Route path="/clean-inbox" element={<Navigate to="/email-cleanup" replace />} />
           <Route path="/checkout" element={
             <ProtectedRoute>
               <Checkout />

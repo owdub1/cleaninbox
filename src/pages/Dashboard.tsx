@@ -24,7 +24,6 @@ interface CleanupCard {
   description: string;
   icon: React.ReactNode;
   color: string;
-  count?: number;
   action: () => void;
 }
 
@@ -52,7 +51,6 @@ const Dashboard = () => {
       description: 'Kick start your cleaning with our recommendations.',
       icon: <Sparkles className="w-8 h-8" />,
       color: 'from-amber-400 to-orange-400',
-      count: stats?.suggestions || 48,
       action: () => navigate('/cleanup')
     },
     {
@@ -69,7 +67,6 @@ const Dashboard = () => {
       description: 'All mailing lists and newsletters in one place.',
       icon: <BellOff className="w-8 h-8" />,
       color: 'from-red-400 to-pink-400',
-      count: stats?.subscriptions || 337,
       action: () => navigate('/cleanup')
     },
     {
