@@ -77,7 +77,8 @@ async function exchangeCodeForTokens(code: string): Promise<{ access_token: stri
     throw new Error(`Failed to exchange code for tokens: ${error}`);
   }
 
-  return await response.json();
+  const data = await response.json() as { access_token: string };
+  return data;
 }
 
 /**
@@ -94,7 +95,8 @@ async function getGoogleProfile(accessToken: string): Promise<GoogleProfile> {
     throw new Error('Failed to fetch Google user profile');
   }
 
-  return await response.json();
+  const data = await response.json() as GoogleProfile;
+  return data;
 }
 
 /**
