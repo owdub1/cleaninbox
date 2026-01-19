@@ -10,7 +10,7 @@ const Pricing = () => {
     name: 'Basic',
     description: 'For individuals with light email usage',
     price: billingCycle === 'monthly' ? '$9.99' : '$7.99',
-    features: ['Process up to 1,000 emails', 'Connect 1 email account', 'Standard unsubscribe speed', 'Email support', 'Basic analytics'],
+    features: ['Import up to 1,000 emails total', 'Connect up to 2 email accounts', 'Standard unsubscribe speed', 'Email support', 'Basic analytics'],
     notIncluded: ['Scheduled cleanup', 'Custom domain support', 'Email cleanup service (since account creation)', 'Advanced analytics'],
     popular: false,
     gradient: 'from-blue-500 to-cyan-500'
@@ -18,7 +18,7 @@ const Pricing = () => {
     name: 'Pro',
     description: 'For professionals with moderate email volume',
     price: billingCycle === 'monthly' ? '$19.99' : '$15.99',
-    features: ['Process up to 5,000 emails', 'Connect up to 3 email accounts', 'Faster unsubscribe speed', 'Priority email support', 'Advanced analytics', 'Scheduled cleanup'],
+    features: ['Import up to 5,000 emails total', 'Connect up to 3 email accounts', 'Faster unsubscribe speed', 'Priority email support', 'Advanced analytics', 'Scheduled cleanup'],
     notIncluded: ['Custom domain support', 'Email cleanup service (since account creation)'],
     popular: true,
     gradient: 'from-orange-500 to-red-600'
@@ -26,7 +26,7 @@ const Pricing = () => {
     name: 'Unlimited',
     description: 'For businesses with high email volume',
     price: billingCycle === 'monthly' ? '$39.99' : '$31.99',
-    features: ['Unlimited email processing', 'Connect unlimited email accounts', 'Fastest unsubscribe speed', 'Priority phone & email support', 'Advanced analytics', 'Scheduled cleanup', 'Custom domain support', 'Email cleanup service (since account creation)'],
+    features: ['Unlimited email importing', 'Connect up to 5 email accounts', 'Fastest unsubscribe speed', 'Priority phone & email support', 'Advanced analytics', 'Scheduled cleanup', 'Custom domain support', 'Email cleanup service (since account creation)'],
     notIncluded: [],
     popular: false,
     gradient: 'from-gray-800 to-gray-900'

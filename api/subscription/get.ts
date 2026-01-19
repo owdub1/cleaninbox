@@ -24,7 +24,7 @@ const PLAN_LIMITS = {
     emailLimit: 1,
     emailProcessingLimit: 100,
     features: [
-      'Process up to 100 emails/month',
+      'Import up to 100 emails total',
       'Connect 1 email account',
       'Standard unsubscribe speed',
       'Email support'
@@ -32,11 +32,11 @@ const PLAN_LIMITS = {
   },
   basic: {
     name: 'Basic',
-    emailLimit: 1,
+    emailLimit: 2,
     emailProcessingLimit: 1000,
     features: [
-      'Process up to 1,000 emails/month',
-      'Connect 1 email account',
+      'Import up to 1,000 emails total',
+      'Connect up to 2 email accounts',
       'Standard unsubscribe speed',
       'Email support',
       'Basic analytics'
@@ -47,7 +47,7 @@ const PLAN_LIMITS = {
     emailLimit: 3,
     emailProcessingLimit: 5000,
     features: [
-      'Process up to 5,000 emails/month',
+      'Import up to 5,000 emails total',
       'Connect up to 3 email accounts',
       'Faster unsubscribe speed',
       'Priority email support',
@@ -57,11 +57,11 @@ const PLAN_LIMITS = {
   },
   unlimited: {
     name: 'Unlimited',
-    emailLimit: 999999,
+    emailLimit: 5,
     emailProcessingLimit: 999999999,
     features: [
-      'Unlimited email processing',
-      'Connect unlimited email accounts',
+      'Unlimited email importing',
+      'Connect up to 5 email accounts',
       'Fastest unsubscribe speed',
       'Priority phone & email support',
       'Advanced analytics',

@@ -22,7 +22,7 @@ const DEFAULT_FREE_SUBSCRIPTION: Subscription = {
   emailLimit: 1,
   emailProcessingLimit: 100,
   features: [
-    'Process up to 100 emails/month',
+    'Import up to 100 emails total',
     'Connect 1 email account',
     'Standard unsubscribe speed',
     'Email support'
