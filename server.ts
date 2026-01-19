@@ -11,6 +11,10 @@ import forgotPassword from './api/auth/forgot-password.js';
 import resetPassword from './api/auth/reset-password.js';
 import refresh from './api/auth/refresh.js';
 
+// Google OAuth routes (for Sign-In with Google)
+import googleOAuth from './api/auth/oauth/google.js';
+import googleOAuthCallback from './api/auth/oauth/callback.js';
+
 // Gmail OAuth routes
 import gmailConnect from './api/gmail/connect.js';
 import gmailCallback from './api/gmail/callback.js';
@@ -89,6 +93,10 @@ app.post('/api/auth/resend-verification', wrapHandler(resendVerification));
 app.post('/api/auth/forgot-password', wrapHandler(forgotPassword));
 app.post('/api/auth/reset-password', wrapHandler(resetPassword));
 app.post('/api/auth/refresh', wrapHandler(refresh));
+
+// Google OAuth routes (Sign-In with Google)
+app.get('/api/auth/oauth/google', wrapHandler(googleOAuth));
+app.get('/api/auth/oauth/callback', wrapHandler(googleOAuthCallback));
 
 // Gmail OAuth routes
 app.get('/api/gmail/connect', wrapHandler(gmailConnect));
