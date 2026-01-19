@@ -1131,6 +1131,21 @@ const Dashboard = () => {
     user,
     logout
   } = useAuth();
+  // Format date helper
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   // User data from auth and database
   const userData = {
     name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User',
@@ -1138,7 +1153,7 @@ const Dashboard = () => {
     subscription: {
       plan: subscription.planName,
       status: subscription.status === 'active' ? 'Active' : subscription.status,
-      nextBilling: subscription.nextBillingDate,
+      nextBilling: formatDate(subscription.nextBillingDate),
       price: subscription.price === 0 ? '$0' : `$${subscription.price}`,
       period: subscription.period,
       emailLimit: subscription.emailLimit,
