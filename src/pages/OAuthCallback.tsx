@@ -91,6 +91,10 @@ const OAuthCallback = () => {
 
     if (token && refreshToken && userId && email) {
       console.log('OAuthCallback: All tokens found, storing...');
+      console.log('OAuthCallback: Token preview:', token.substring(0, 20) + '...');
+      console.log('OAuthCallback: User ID:', userId);
+      console.log('OAuthCallback: Email:', email);
+
       try {
         // Build user object
         const user = {
@@ -101,17 +105,30 @@ const OAuthCallback = () => {
           emailVerified: true // Google users are verified
         };
 
+        console.log('OAuthCallback: Storing user:', JSON.stringify(user));
+
         // Store tokens and user data
         localStorage.setItem('auth_token', token);
         localStorage.setItem('refresh_token', refreshToken);
         localStorage.setItem('auth_user', JSON.stringify(user));
 
+        console.log('OAuthCallback: Tokens stored successfully');
+        console.log('OAuthCallback: Verifying storage...');
+        console.log('OAuthCallback: auth_token exists:', !!localStorage.getItem('auth_token'));
+        console.log('OAuthCallback: refresh_token exists:', !!localStorage.getItem('refresh_token'));
+        console.log('OAuthCallback: auth_user exists:', !!localStorage.getItem('auth_user'));
+
         // Clear the hash from URL for security (don't want tokens in browser history)
         window.history.replaceState(null, '', window.location.pathname);
 
-        // Force full page reload to reinitialize AuthContext with new tokens
-        // This is necessary because React Router navigate won't trigger AuthContext to re-read localStorage
-        window.location.href = '/dashboard';
+        console.log('OAuthCallback: Redirecting to dashboard in 3 seconds...');
+
+        // Add delay to see what's happening
+        setTimeout(() => {
+          console.log('OAuthCallback: Now redirecting to dashboard');
+          // Force full page reload to reinitialize AuthContext with new tokens
+          window.location.href = '/dashboard';
+        }, 3000);
       } catch (err) {
         console.error('Failed to process OAuth callback:', err);
         setError('Failed to process sign-in. Please try again.');
@@ -121,10 +138,21 @@ const OAuthCallback = () => {
       }
     } else {
       // Missing required parameters
-      setError('Sign-in incomplete. Redirecting...');
-      setTimeout(() => {
-        navigate('/login?error=oauth_incomplete', { replace: true });
-      }, 2000);
+      console.log('OAuthCallback: Missing required params');
+      console.log('OAuthCallback: token:', !!token);
+      console.log('OAuthCallback: refreshToken:', !!refreshToken);
+      console.log('OAuthCallback: userId:', userId);
+      console.log('OAuthCallback: email:', email);
+
+      const missing = [];
+      if (!token) missing.push('token');
+      if (!refreshToken) missing.push('refreshToken');
+      if (!userId) missing.push('userId');
+      if (!email) missing.push('email');
+
+      setDebugInfo(`Missing: ${missing.join(', ')}`);
+      setError('Sign-in incomplete. Missing required data.');
+      // Don't auto-redirect - let user see what's missing
     }
   }, [searchParams, navigate]);
 
