@@ -191,7 +191,7 @@ export async function exchangeCodeForTokens(code: string): Promise<GmailTokens> 
     throw new Error(`Failed to exchange code for tokens: ${error}`);
   }
 
-  return await response.json();
+  return await response.json() as GmailTokens;
 }
 
 /**
@@ -220,11 +220,14 @@ export async function refreshAccessToken(refreshToken: string): Promise<GmailTok
     throw new Error(`Failed to refresh access token: ${error}`);
   }
 
-  const tokens = await response.json();
+  const tokens = await response.json() as Partial<GmailTokens>;
   // Refresh response doesn't include refresh_token, preserve the original
   return {
-    ...tokens,
-    refresh_token: refreshToken
+    access_token: tokens.access_token!,
+    refresh_token: refreshToken,
+    expires_in: tokens.expires_in!,
+    token_type: tokens.token_type!,
+    scope: tokens.scope!
   };
 }
 
@@ -242,7 +245,7 @@ export async function getGmailProfile(accessToken: string): Promise<GmailProfile
     throw new Error('Failed to fetch Gmail user profile');
   }
 
-  const data = await response.json();
+  const data = await response.json() as { id: string; email: string; name?: string; picture?: string };
 
   return {
     id: data.id,
