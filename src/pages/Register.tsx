@@ -4,6 +4,7 @@ import { MailIcon, LockIcon, UserIcon, ShieldIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PasswordStrength from '../components/auth/PasswordStrength';
 import Turnstile from '../components/auth/Turnstile';
+import { API_URL } from '../lib/api';
 const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -208,7 +209,7 @@ const Register = () => {
                 </div>
                 <div className="mt-6">
                   <a
-                    href="/api/auth/oauth/google"
+                    href={`${API_URL}/api/auth/oauth/google`}
                     className="w-full flex justify-center items-center py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
