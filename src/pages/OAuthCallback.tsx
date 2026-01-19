@@ -14,6 +14,11 @@ const OAuthCallback = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Debug logging
+    console.log('OAuthCallback: Full URL:', window.location.href);
+    console.log('OAuthCallback: Hash:', window.location.hash);
+    console.log('OAuthCallback: Search:', window.location.search);
+
     // First, try to get tokens from URL hash (fragment) - preferred for security
     const hash = window.location.hash.substring(1); // Remove the leading #
     const hashParams = new URLSearchParams(hash);
@@ -24,6 +29,8 @@ const OAuthCallback = () => {
     let email = hashParams.get('email');
     let firstName = hashParams.get('firstName');
     let lastName = hashParams.get('lastName');
+
+    console.log('OAuthCallback: Parsed from hash:', { token: !!token, refreshToken: !!refreshToken, userId, email });
 
     // Fallback to query parameters if hash is empty
     if (!token) {
@@ -50,7 +57,10 @@ const OAuthCallback = () => {
       }
     }
 
+    console.log('OAuthCallback: Final values:', { token: !!token, refreshToken: !!refreshToken, userId, email });
+
     if (token && refreshToken && userId && email) {
+      console.log('OAuthCallback: All tokens found, storing...');
       try {
         // Build user object
         const user = {
