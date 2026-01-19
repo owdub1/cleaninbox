@@ -10,7 +10,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
-import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
+import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
 import { fetchSenderStats, SenderStats } from '../lib/gmail-api.js';
 

@@ -115,7 +115,7 @@ export default async function handler(
       .order(sortColumn, { ascending })
       .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 
-    const { data: senders, error, count } = await query;
+    const { data: senders, error } = await query;
 
     if (error) {
       throw error;
