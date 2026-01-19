@@ -157,8 +157,9 @@ const OAuthCallback = () => {
   }, [searchParams, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center max-w-md px-4">
+    <div className="min-h-screen flex items-center justify-center bg-indigo-100">
+      <div className="text-center max-w-md px-4 bg-white p-8 rounded-lg shadow-lg">
+        <div className="text-xs text-gray-400 mb-4">OAuth Callback v2 - Debug Mode</div>
         {error ? (
           <>
             <div className="text-red-500 text-lg mb-2">{error}</div>
@@ -178,6 +179,7 @@ const OAuthCallback = () => {
           <>
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             <p className="mt-4 text-gray-600">Completing sign in...</p>
+            <p className="mt-2 text-xs text-gray-400">Please wait, processing OAuth response...</p>
           </>
         )}
       </div>
