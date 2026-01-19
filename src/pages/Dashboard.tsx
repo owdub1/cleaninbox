@@ -1146,6 +1146,36 @@ const Dashboard = () => {
     }
   };
 
+  // Format date with time helper (for sync dates, etc.)
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      // Show relative time for recent dates
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+      // Show full date for older dates
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   // User data from auth and database
   const userData = {
     name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User',
@@ -1566,7 +1596,7 @@ const Dashboard = () => {
                                 </div>
                                 <p className="text-sm text-gray-500 mt-1">
                                   Provider: {emailAccount.provider} | Last
-                                  synced: {emailAccount.lastSynced}
+                                  synced: {formatDateTime(emailAccount.lastSynced)}
                                 </p>
                               </div>
                               <div className="flex space-x-2">
