@@ -174,23 +174,39 @@ export default async function handler(
       }
     }
 
-    // Update user stats
-    await supabase
+    // Update user stats (increment emails_processed)
+    const { data: currentStats } = await supabase
       .from('user_stats')
-      .update({
-        emails_processed: supabase.rpc('increment_stat', { amount: totalDeleted }),
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.userId);
+      .select('emails_processed')
+      .eq('user_id', user.userId)
+      .single();
 
-    // Update email account processed count
-    await supabase
+    if (currentStats) {
+      await supabase
+        .from('user_stats')
+        .update({
+          emails_processed: (currentStats.emails_processed || 0) + totalDeleted,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.userId);
+    }
+
+    // Update email account processed count (increment)
+    const { data: currentAccount } = await supabase
       .from('email_accounts')
-      .update({
-        processed_emails: supabase.rpc('increment_stat', { amount: totalDeleted }),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', account.id);
+      .select('processed_emails')
+      .eq('id', account.id)
+      .single();
+
+    if (currentAccount) {
+      await supabase
+        .from('email_accounts')
+        .update({
+          processed_emails: (currentAccount.processed_emails || 0) + totalDeleted,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', account.id);
+    }
 
     return res.status(200).json({
       success: true,

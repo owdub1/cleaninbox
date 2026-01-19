@@ -1,10 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { MailIcon, LockIcon, UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Turnstile from '../components/auth/Turnstile';
 
+// Map OAuth error codes to user-friendly messages
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  oauth_denied: 'Google sign-in was cancelled. Please try again.',
+  invalid_callback: 'Invalid sign-in callback. Please try again.',
+  invalid_state: 'Session expired. Please try signing in again.',
+  oauth_config_error: 'Google sign-in is not configured. Please use email and password.',
+  oauth_processing_failed: 'Failed to complete sign-in. Please try again.',
+  oauth_incomplete: 'Sign-in was incomplete. Please try again.',
+  no_email: 'Could not get email from Google. Please try again.',
+  account_suspended: 'Your account has been suspended. Please contact support.',
+  account_deleted: 'Your account has been deleted.',
+  account_inactive: 'Your account is not active. Please contact support.',
+  signup_failed: 'Failed to create account. Please try again.',
+  callback_failed: 'Sign-in failed. Please try again.'
+};
+
 const Login = () => {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -17,6 +34,17 @@ const Login = () => {
     login
   } = useAuth();
   const navigate = useNavigate();
+
+  // Check for OAuth error in URL params on mount
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      const errorMessage = OAUTH_ERROR_MESSAGES[oauthError] || 'An error occurred during sign-in. Please try again.';
+      setError(errorMessage);
+      // Clear the error from URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams]);
   const handleChange = e => {
     const {
       name,
