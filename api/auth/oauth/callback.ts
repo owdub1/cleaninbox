@@ -207,11 +207,22 @@ export default async function handler(
         })
         .eq('id', user.id);
 
-      // Check if account is active
-      const { data: isActiveResult } = await supabase
-        .rpc('is_user_active', { p_user_id: user.id });
+      // Check if account is active (try RPC first, fallback to direct check)
+      let isActive = true;
+      try {
+        const { data: isActiveResult, error: rpcError } = await supabase
+          .rpc('is_user_active', { p_user_id: user.id });
 
-      if (!isActiveResult) {
+        if (!rpcError && isActiveResult !== null) {
+          isActive = isActiveResult;
+        }
+      } catch (rpcErr) {
+        // RPC might not exist - check status directly
+        console.warn('is_user_active RPC failed, checking status directly:', rpcErr);
+        isActive = !user.status || user.status === 'active';
+      }
+
+      if (!isActive) {
         if (user.status === 'suspended') {
           return res.redirect(`${APP_URL}/login?error=account_suspended`);
         } else if (user.status === 'deleted') {
