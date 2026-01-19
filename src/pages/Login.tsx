@@ -39,8 +39,13 @@ const Login = () => {
   // Check for OAuth error in URL params on mount
   useEffect(() => {
     const oauthError = searchParams.get('error');
+    const errorHint = searchParams.get('hint');
     if (oauthError) {
-      const errorMessage = OAUTH_ERROR_MESSAGES[oauthError] || 'An error occurred during sign-in. Please try again.';
+      let errorMessage = OAUTH_ERROR_MESSAGES[oauthError] || 'An error occurred during sign-in. Please try again.';
+      // Show hint for debugging if present
+      if (errorHint) {
+        errorMessage += ` (${decodeURIComponent(errorHint)})`;
+      }
       setError(errorMessage);
       // Clear the error from URL
       window.history.replaceState({}, '', window.location.pathname);
