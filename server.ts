@@ -29,6 +29,9 @@ import cleanupDelete from './api/cleanup/delete.js';
 import cleanupArchive from './api/cleanup/archive.js';
 import cleanupUnsubscribe from './api/cleanup/unsubscribe.js';
 
+// Subscription routes
+import subscriptionGet from './api/subscription/get.js';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -111,6 +114,9 @@ app.get('/api/emails/senders', wrapHandler(emailsSenders));
 app.post('/api/cleanup/delete', wrapHandler(cleanupDelete));
 app.post('/api/cleanup/archive', wrapHandler(cleanupArchive));
 app.post('/api/cleanup/unsubscribe', wrapHandler(cleanupUnsubscribe));
+
+// Subscription routes
+app.get('/api/subscription/get', wrapHandler(subscriptionGet));
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -4,10 +4,12 @@ import { CreditCardIcon, CalendarIcon, ClockIcon, SettingsIcon, LogOutIcon, Mail
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useEmailAccounts } from '../hooks/useEmailAccounts';
+import { useSubscription } from '../hooks/useSubscription';
 import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading } = useDashboardData();
   const { addEmailAccount, removeEmailAccount, syncEmailAccount } = useEmailAccounts();
+  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited } = useSubscription();
   const [activeTab, setActiveTab] = useState('overview');
 
   const [activeSubTab, setActiveSubTab] = useState('unsubscribe'); // New state for sub-tabs
@@ -1133,13 +1135,14 @@ const Dashboard = () => {
   const userData = {
     name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : 'User',
     email: user?.email || '',
-    subscription: user?.subscription || {
-      plan: 'Free',
-      status: 'Active',
-      nextBilling: null,
-      price: '$0',
-      period: 'monthly',
-      emailLimit: 1
+    subscription: {
+      plan: subscription.planName,
+      status: subscription.status === 'active' ? 'Active' : subscription.status,
+      nextBilling: subscription.nextBillingDate,
+      price: subscription.price === 0 ? '$0' : `$${subscription.price}`,
+      period: subscription.period,
+      emailLimit: subscription.emailLimit,
+      features: subscription.features
     },
     stats: {
       emailsProcessed: dbStats.emailsProcessed,
@@ -1337,7 +1340,7 @@ const Dashboard = () => {
     setSelectedYear(null);
     setSelectedSender(null);
   };
-  const isFreeUser = !user?.subscription || userData.subscription.plan === 'Free';
+  const isFreeUser = !isPaid;
 
   return <div className="w-full bg-white">
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8">
@@ -1710,37 +1713,12 @@ const Dashboard = () => {
                         Plan Features
                       </h4>
                       <ul className="space-y-3">
-                        <li className="flex items-start">
-                          <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span className="ml-3 text-gray-700">
-                            Process up to 2,000 emails/month
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span className="ml-3 text-gray-700">
-                            Connect up to {userData.subscription.emailLimit}{' '}
-                            email accounts
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span className="ml-3 text-gray-700">
-                            Standard unsubscribe speed
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span className="ml-3 text-gray-700">
-                            Email support
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                          <span className="ml-3 text-gray-700">
-                            Advanced analytics
-                          </span>
-                        </li>
+                        {userData.subscription.features?.map((feature, index) => (
+                          <li key={index} className="flex items-start">
+                            <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                            <span className="ml-3 text-gray-700">{feature}</span>
+                          </li>
+                        ))}
                       </ul>
                     </div>
                     <div className="mt-8">
@@ -1748,26 +1726,42 @@ const Dashboard = () => {
                         Available Plans
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-400 cursor-pointer transition-colors" onClick={() => handlePlanSwitch('basic')}>
-                          <h5 className="font-medium text-gray-900">Basic</h5>
-                          <p className="text-gray-500 text-sm">$9.99/month</p>
-                        </div>
-                        <div className="border-2 border-purple-400 rounded-lg p-4 relative">
-                          <div className="absolute top-0 right-0 bg-purple-400 text-white text-xs px-2 py-1 rounded-bl-lg">
-                            Current
-                          </div>
-                          <h5 className="font-medium text-gray-900">Pro</h5>
-                          <p className="text-gray-500 text-sm">$19.99/month</p>
-                        </div>
-                        <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-400 cursor-pointer transition-colors relative overflow-hidden" onClick={() => handlePlanSwitch('unlimited')}>
-                          <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg transform rotate-0 shadow-md">
-                            Upgrade
-                          </div>
-                          <h5 className="font-medium text-gray-900">
-                            Unlimited
-                          </h5>
-                          <p className="text-gray-500 text-sm">$39.99/month</p>
-                        </div>
+                        {[
+                          { id: 'basic', name: 'Basic', price: '$9.99/month' },
+                          { id: 'pro', name: 'Pro', price: '$19.99/month' },
+                          { id: 'unlimited', name: 'Unlimited', price: '$39.99/month' }
+                        ].map((plan) => {
+                          const isCurrent = subscription.plan.toLowerCase() === plan.id;
+                          const isUpgrade = !isCurrent && (
+                            (subscription.plan.toLowerCase() === 'free') ||
+                            (subscription.plan.toLowerCase() === 'basic' && plan.id !== 'basic') ||
+                            (subscription.plan.toLowerCase() === 'pro' && plan.id === 'unlimited')
+                          );
+                          return (
+                            <div
+                              key={plan.id}
+                              className={`rounded-lg p-4 relative ${
+                                isCurrent
+                                  ? 'border-2 border-purple-400'
+                                  : 'border border-gray-200 hover:border-purple-400 cursor-pointer transition-colors'
+                              }`}
+                              onClick={() => !isCurrent && handlePlanSwitch(plan.id)}
+                            >
+                              {isCurrent && (
+                                <div className="absolute top-0 right-0 bg-purple-400 text-white text-xs px-2 py-1 rounded-bl-lg">
+                                  Current
+                                </div>
+                              )}
+                              {isUpgrade && !isCurrent && (
+                                <div className="absolute top-0 right-0 bg-gradient-to-l from-purple-600 to-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg">
+                                  Upgrade
+                                </div>
+                              )}
+                              <h5 className="font-medium text-gray-900">{plan.name}</h5>
+                              <p className="text-gray-500 text-sm">{plan.price}</p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
