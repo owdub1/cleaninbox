@@ -21,6 +21,9 @@
     "server.ts",
     "api/auth/**/*.ts",
     "api/lib/**/*.ts",
+    "api/gmail/**/*.ts",
+    "api/emails/**/*.ts",
+    "api/cleanup/**/*.ts",
     "src/lib/email.ts"
   ],
   "exclude": [
