@@ -120,18 +120,23 @@ async function generateRefreshToken(
     { expiresIn: '7d' }
   );
 
-  const tokenHash = hashToken(refreshToken);
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // Try to store in database (optional - don't fail if table doesn't exist)
+  try {
+    const tokenHash = hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  await supabase
-    .from('refresh_tokens')
-    .insert([{
-      user_id: userId,
-      token_hash: tokenHash,
-      expires_at: expiresAt.toISOString(),
-      ip_address: ipAddress,
-      user_agent: userAgent
-    }]);
+    await supabase
+      .from('refresh_tokens')
+      .insert([{
+        user_id: userId,
+        token_hash: tokenHash,
+        expires_at: expiresAt.toISOString(),
+        ip_address: ipAddress,
+        user_agent: userAgent
+      }]);
+  } catch (err) {
+    console.warn('Could not store refresh token in database:', err);
+  }
 
   return refreshToken;
 }
@@ -349,6 +354,13 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);
-    return res.redirect(`${APP_URL}/login?error=callback_failed`);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    // Include error hint in redirect for debugging
+    const errorHint = encodeURIComponent(error.message?.substring(0, 50) || 'unknown');
+    return res.redirect(`${APP_URL}/login?error=callback_failed&hint=${errorHint}`);
   }
 }
