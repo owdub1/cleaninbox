@@ -220,40 +220,43 @@ export default async function handler(
         return res.redirect(`${APP_URL}/login?error=account_inactive`);
       }
 
-      // Check if OAuth provider connection exists for this user
-      const { data: existingOAuth } = await supabase
-        .from('oauth_providers')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('provider', 'google')
-        .single();
+      // Try to update OAuth provider connection (optional - don't fail if table doesn't exist)
+      try {
+        const { data: existingOAuth } = await supabase
+          .from('oauth_providers')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('provider', 'google')
+          .single();
 
-      if (existingOAuth) {
-        // Update existing connection
-        await supabase
-          .from('oauth_providers')
-          .update({
-            provider_user_id: profile.id,
-            profile_data: {
-              name: profile.name,
-              picture: profile.picture
-            },
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingOAuth.id);
-      } else {
-        // Create new connection
-        await supabase
-          .from('oauth_providers')
-          .insert([{
-            user_id: user.id,
-            provider: 'google',
-            provider_user_id: profile.id,
-            profile_data: {
-              name: profile.name,
-              picture: profile.picture
-            }
-          }]);
+        if (existingOAuth) {
+          await supabase
+            .from('oauth_providers')
+            .update({
+              provider_user_id: profile.id,
+              profile_data: {
+                name: profile.name,
+                picture: profile.picture
+              },
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingOAuth.id);
+        } else {
+          await supabase
+            .from('oauth_providers')
+            .insert([{
+              user_id: user.id,
+              provider: 'google',
+              provider_user_id: profile.id,
+              profile_data: {
+                name: profile.name,
+                picture: profile.picture
+              }
+            }]);
+        }
+      } catch (oauthErr) {
+        // oauth_providers table might not exist - continue anyway
+        console.warn('Could not update oauth_providers:', oauthErr);
       }
 
     } else {
@@ -265,8 +268,8 @@ export default async function handler(
           first_name: profile.given_name || profile.name?.split(' ')[0] || null,
           last_name: profile.family_name || profile.name?.split(' ').slice(1).join(' ') || null,
           email_verified: true, // Google emails are verified
-          status: 'active',
-          oauth_only: true
+          status: 'active'
+          // Note: oauth_only column might not exist, so we don't set it
         }])
         .select()
         .single();
@@ -278,30 +281,38 @@ export default async function handler(
 
       user = newUser;
 
-      // Create OAuth provider connection
-      await supabase
-        .from('oauth_providers')
-        .insert([{
-          user_id: user.id,
-          provider: 'google',
-          provider_user_id: profile.id,
-          profile_data: {
-            name: profile.name,
-            picture: profile.picture
-          }
-        }]);
+      // Create OAuth provider connection (optional)
+      try {
+        await supabase
+          .from('oauth_providers')
+          .insert([{
+            user_id: user.id,
+            provider: 'google',
+            provider_user_id: profile.id,
+            profile_data: {
+              name: profile.name,
+              picture: profile.picture
+            }
+          }]);
+      } catch (oauthErr) {
+        console.warn('Could not create oauth_providers entry:', oauthErr);
+      }
 
-      // Record login attempt
-      await supabase
-        .from('login_attempts')
-        .insert([{
-          user_id: user.id,
-          email: profile.email,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          successful: true,
-          failure_reason: null
-        }]);
+      // Record login attempt (optional)
+      try {
+        await supabase
+          .from('login_attempts')
+          .insert([{
+            user_id: user.id,
+            email: profile.email,
+            ip_address: ipAddress,
+            user_agent: userAgent,
+            successful: true,
+            failure_reason: null
+          }]);
+      } catch (loginErr) {
+        console.warn('Could not record login attempt:', loginErr);
+      }
     }
 
     // Generate JWT access token (15 minutes)
