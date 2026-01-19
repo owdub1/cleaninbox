@@ -82,11 +82,24 @@ export const AuthProvider: React.FC<{
   useEffect(() => {
     // Check for existing session and refresh token if needed
     const initializeAuth = async () => {
+      const savedToken = localStorage.getItem(TOKEN_KEY);
       const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       const savedUser = localStorage.getItem(USER_KEY);
 
       if (savedRefreshToken && savedUser) {
-        // Attempt to refresh the token to ensure it's valid
+        // First, restore the user from localStorage immediately
+        // This allows OAuth callbacks to work without waiting for refresh
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          if (savedToken) {
+            setToken(savedToken);
+          }
+        } catch (e) {
+          console.error('Failed to parse saved user:', e);
+        }
+
+        // Then try to refresh the token in the background
         try {
           const response = await fetch(`${API_URL}/api/auth/refresh`, {
             method: 'POST',
@@ -101,20 +114,23 @@ export const AuthProvider: React.FC<{
             setUser(data.user);
             localStorage.setItem(TOKEN_KEY, data.token);
             localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-          } else {
-            // Refresh token is invalid or expired, clear everything
+          } else if (response.status === 401) {
+            // Only clear on explicit 401 (unauthorized) - token is definitely invalid
+            console.warn('Refresh token rejected (401), clearing session');
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(CSRF_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
+            setUser(null);
+            setToken(null);
+          } else {
+            // For other errors (404, 500, etc.), keep the existing session
+            // The token might still be valid, refresh endpoint might just be down
+            console.warn('Refresh endpoint error, keeping existing session:', response.status);
           }
         } catch (error) {
-          console.error('Error refreshing token on load:', error);
-          // Clear stored data on error
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(CSRF_TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
+          // Network error - keep existing session, don't clear tokens
+          console.error('Error refreshing token on load (keeping session):', error);
         }
       }
       setLoading(false);
