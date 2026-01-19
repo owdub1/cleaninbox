@@ -160,23 +160,26 @@ export default async function handler(
   // Handle OAuth errors from Google
   if (oauthError) {
     console.error('Google OAuth error:', oauthError);
-    return res.redirect(`${APP_URL}/login?error=oauth_denied`);
+    return res.redirect(`${APP_URL}/oauth/callback?error=oauth_denied&reason=${encodeURIComponent(String(oauthError))}`);
   }
 
   // Validate required parameters
   if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {
-    return res.redirect(`${APP_URL}/login?error=invalid_callback`);
+    console.error('Missing OAuth parameters:', { code: !!code, state: !!state });
+    return res.redirect(`${APP_URL}/oauth/callback?error=invalid_callback&reason=missing_params`);
   }
 
   try {
     // Verify state parameter (CSRF protection)
     if (!verifyAuthState(state)) {
-      return res.redirect(`${APP_URL}/login?error=invalid_state`);
+      console.error('State verification failed');
+      return res.redirect(`${APP_URL}/oauth/callback?error=invalid_state&reason=csrf_failed`);
     }
 
     // Check OAuth credentials are configured
     if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET) {
-      throw new Error('Google OAuth credentials not configured');
+      console.error('OAuth credentials not configured');
+      return res.redirect(`${APP_URL}/oauth/callback?error=oauth_config_error&reason=no_credentials`);
     }
 
     // Exchange authorization code for tokens
@@ -186,7 +189,8 @@ export default async function handler(
     const profile = await getGoogleProfile(tokens.access_token);
 
     if (!profile.email) {
-      return res.redirect(`${APP_URL}/login?error=no_email`);
+      console.error('No email in Google profile');
+      return res.redirect(`${APP_URL}/oauth/callback?error=no_email&reason=profile_missing_email`);
     }
 
     // Check if user exists
@@ -228,12 +232,13 @@ export default async function handler(
       }
 
       if (!isActive) {
+        console.error('Account not active:', user.status);
         if (user.status === 'suspended') {
-          return res.redirect(`${APP_URL}/login?error=account_suspended`);
+          return res.redirect(`${APP_URL}/oauth/callback?error=account_suspended&reason=status_suspended`);
         } else if (user.status === 'deleted') {
-          return res.redirect(`${APP_URL}/login?error=account_deleted`);
+          return res.redirect(`${APP_URL}/oauth/callback?error=account_deleted&reason=status_deleted`);
         }
-        return res.redirect(`${APP_URL}/login?error=account_inactive`);
+        return res.redirect(`${APP_URL}/oauth/callback?error=account_inactive&reason=status_inactive`);
       }
 
       // Try to update OAuth provider connection (optional - don't fail if table doesn't exist)
@@ -292,7 +297,7 @@ export default async function handler(
 
       if (createError) {
         console.error('Failed to create user:', createError);
-        return res.redirect(`${APP_URL}/login?error=signup_failed`);
+        return res.redirect(`${APP_URL}/oauth/callback?error=signup_failed&reason=${encodeURIComponent(createError.message || 'unknown')}`);
       }
 
       user = newUser;
@@ -360,7 +365,7 @@ export default async function handler(
       name: error.name
     });
     // Include error hint in redirect for debugging
-    const errorHint = encodeURIComponent(error.message?.substring(0, 50) || 'unknown');
-    return res.redirect(`${APP_URL}/login?error=callback_failed&hint=${errorHint}`);
+    const errorReason = encodeURIComponent(error.message?.substring(0, 100) || 'unknown');
+    return res.redirect(`${APP_URL}/oauth/callback?error=callback_failed&reason=${errorReason}`);
   }
 }

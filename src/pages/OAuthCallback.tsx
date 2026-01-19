@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+// Map OAuth error codes to user-friendly messages
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  oauth_denied: 'Google sign-in was cancelled. Please try again.',
+  invalid_callback: 'Invalid sign-in callback. Please try again.',
+  invalid_state: 'Session expired or invalid. Please try signing in again.',
+  oauth_config_error: 'Google sign-in is not configured. Please use email and password.',
+  no_email: 'Could not get email from Google. Please try again.',
+  account_suspended: 'Your account has been suspended. Please contact support.',
+  account_deleted: 'Your account has been deleted.',
+  account_inactive: 'Your account is not active. Please contact support.',
+  signup_failed: 'Failed to create account. Please try again.',
+  callback_failed: 'Sign-in failed. Please try again.'
+};
+
 /**
  * OAuth Callback Page
  *
@@ -12,12 +26,28 @@ const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   useEffect(() => {
     // Debug logging
     console.log('OAuthCallback: Full URL:', window.location.href);
     console.log('OAuthCallback: Hash:', window.location.hash);
     console.log('OAuthCallback: Search:', window.location.search);
+
+    // Check for error in query parameters first
+    const errorCode = searchParams.get('error');
+    const errorReason = searchParams.get('reason');
+
+    if (errorCode) {
+      console.log('OAuthCallback: Error detected:', errorCode, errorReason);
+      let errorMessage = OAUTH_ERROR_MESSAGES[errorCode] || 'An error occurred during sign-in.';
+      if (errorReason) {
+        setDebugInfo(`Error: ${errorCode}, Reason: ${decodeURIComponent(errorReason)}`);
+      }
+      setError(errorMessage);
+      // Don't redirect immediately - let user see the error
+      return;
+    }
 
     // First, try to get tokens from URL hash (fragment) - preferred for security
     const hash = window.location.hash.substring(1); // Remove the leading #
@@ -100,11 +130,21 @@ const OAuthCallback = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
+      <div className="text-center max-w-md px-4">
         {error ? (
           <>
             <div className="text-red-500 text-lg mb-2">{error}</div>
-            <p className="text-gray-500 text-sm">Redirecting to login...</p>
+            {debugInfo && (
+              <div className="text-gray-500 text-xs mb-4 bg-gray-100 p-2 rounded font-mono break-all">
+                {debugInfo}
+              </div>
+            )}
+            <a
+              href="/login"
+              className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            >
+              Back to Login
+            </a>
           </>
         ) : (
           <>
