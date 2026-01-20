@@ -137,12 +137,14 @@ export default function ConnectEmailModal({
             disabled={isLoading || currentCount >= emailLimit}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
           >
-            {/* Gmail Icon */}
+            {/* Gmail Icon - Official multicolor M */}
             <svg className="w-6 h-6" viewBox="0 0 24 24">
-              <path
-                fill="#EA4335"
-                d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"
-              />
+              <path fill="#4285F4" d="M22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6Z" opacity="0"/>
+              <path fill="#EA4335" d="M2 6L12 13L22 6V4H2V6Z"/>
+              <path fill="#4285F4" d="M2 6V18C2 19.1 2.9 20 4 20H6V9L2 6Z"/>
+              <path fill="#34A853" d="M22 6V18C22 19.1 21.1 20 20 20H18V9L22 6Z"/>
+              <path fill="#FBBC05" d="M18 9V20H6V9L12 14L18 9Z"/>
+              <path fill="#C5221F" d="M2 6L12 13L22 6"/>
             </svg>
             <span className="font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
               {gmailLoading ? 'Connecting...' : 'Continue with Gmail'}
@@ -155,8 +157,12 @@ export default function ConnectEmailModal({
               disabled
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-400 cursor-not-allowed"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0078D4">
-                <path d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/>
+              {/* Outlook Icon */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#0078D4" d="M24 7.387v10.478c0 .23-.08.424-.238.576-.158.154-.352.23-.58.23h-8.547v-6.959l1.6 1.229c.102.086.227.128.376.128.14 0 .26-.04.363-.12l6.81-5.22a.321.321 0 01.04.033c.03.022.06.046.09.073.14.112.086.552.086.552zM15.072 18.037H24V7.886l-6.78 5.199c-.023.017-.044.033-.064.048-.122.08-.256.121-.398.121-.15 0-.28-.043-.39-.13l-1.296-.995v5.908z"/>
+                <path fill="#0078D4" d="M14.635 10.583V3.328h8.182c.228 0 .422.08.58.238.158.158.237.352.237.58v2.848l-6.81 5.223a.567.567 0 01-.363.119.608.608 0 01-.376-.128l-1.45-1.114v-.511z"/>
+                <path fill="#0078D4" d="M.001 5.298v14.088c0 .343.274.617.617.617h10.2c.343 0 .617-.274.617-.617V5.298c0-.343-.274-.617-.617-.617h-10.2c-.343 0-.617.274-.617.617z"/>
+                <path fill="#fff" d="M5.909 16.373c-2.403 0-3.858-1.756-3.858-4.295 0-2.548 1.482-4.35 3.858-4.35 2.385 0 3.858 1.792 3.858 4.35 0 2.548-1.455 4.295-3.858 4.295zm0-1.472c1.338 0 2.021-1.167 2.021-2.823 0-1.665-.683-2.878-2.021-2.878-1.329 0-2.021 1.213-2.021 2.878 0 1.656.692 2.823 2.021 2.823z"/>
               </svg>
               <span className="text-sm font-medium">Outlook</span>
               <span className="text-xs bg-gray-200 px-2 py-0.5 rounded-full">Soon</span>
@@ -165,8 +171,17 @@ export default function ConnectEmailModal({
               disabled
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-400 cursor-not-allowed"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#6001D2">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/>
+              {/* Yahoo Mail Icon - Purple envelope */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <defs>
+                  <linearGradient id="yahooGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#7B5CC3"/>
+                    <stop offset="100%" stopColor="#5235A0"/>
+                  </linearGradient>
+                </defs>
+                <rect width="24" height="24" rx="4" fill="url(#yahooGrad)"/>
+                <path fill="#fff" d="M4 7.5L12 13L20 7.5V7C20 6.45 19.55 6 19 6H5C4.45 6 4 6.45 4 7V7.5Z"/>
+                <path fill="#fff" d="M4 9V17C4 17.55 4.45 18 5 18H19C19.55 18 20 17.55 20 17V9L12 14.5L4 9Z" opacity="0.8"/>
               </svg>
               <span className="text-sm font-medium">Yahoo</span>
               <span className="text-xs bg-gray-200 px-2 py-0.5 rounded-full">Soon</span>
