@@ -232,6 +232,7 @@ const EmailCleanup = () => {
     senders,
     loading: sendersLoading,
     syncing,
+    error: sendersError,
     fetchSenders,
     syncEmails,
     getSendersByYear
@@ -279,6 +280,13 @@ const EmailCleanup = () => {
     }
   }, [notification]);
 
+  // Show senders error as notification
+  useEffect(() => {
+    if (sendersError) {
+      setNotification({ type: 'error', message: sendersError });
+    }
+  }, [sendersError]);
+
   const getCurrentStep = () => {
     if (!isAuthenticated) return 1;
     if (!hasEmailConnected) return 2;
@@ -303,8 +311,14 @@ const EmailCleanup = () => {
 
   const handleSync = async () => {
     if (connectedGmailAccount) {
-      await syncEmails(connectedGmailAccount.email);
-      setNotification({ type: 'success', message: 'Emails synced successfully!' });
+      const success = await syncEmails(connectedGmailAccount.email);
+      if (success) {
+        setNotification({ type: 'success', message: 'Emails synced successfully!' });
+      } else {
+        setNotification({ type: 'error', message: 'Failed to sync emails. Please try again.' });
+      }
+    } else {
+      setNotification({ type: 'error', message: 'No Gmail account connected. Please connect your Gmail first.' });
     }
   };
 

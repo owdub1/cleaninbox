@@ -12,6 +12,7 @@ export interface EmailAccount {
   id: string;
   email: string;
   provider: string;
+  connection_status: string;
   lastSynced: string;
   totalEmails: number;
   processedEmails: number;
@@ -92,6 +93,7 @@ export const useDashboardData = () => {
           id: account.id,
           email: account.email,
           provider: account.provider || 'Unknown',
+          connection_status: account.connection_status || 'disconnected',
           lastSynced: account.last_synced || '',
           totalEmails: account.total_emails || 0,
           processedEmails: account.processed_emails || 0,
