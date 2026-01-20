@@ -194,6 +194,10 @@ const EmailCleanup = () => {
   const { isAuthenticated, user } = useAuth();
   const { emailAccounts } = useDashboardData();
   const navigate = useNavigate();
+
+  // Subscription hook - get actual subscription status (needed early for view logic)
+  const { subscription, isPaid, isUnlimited } = useSubscription();
+
   // Initialize view based on subscription status - paid users skip onboarding
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>('onboarding');
 
@@ -203,6 +207,7 @@ const EmailCleanup = () => {
       setCurrentView('tools');
     }
   }, [isPaid, emailAccounts]);
+
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -235,9 +240,6 @@ const EmailCleanup = () => {
 
   // Cleanup actions hook
   const { deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
-
-  // Subscription hook - get actual subscription status
-  const { subscription, isPaid, isUnlimited } = useSubscription();
 
   // Track free trial usage (only for free users)
   const [freeActionsUsed, setFreeActionsUsed] = useState(0);
