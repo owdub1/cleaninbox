@@ -47,6 +47,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     limit: options.limit || 100,
     offset: 0,
   });
+  const [hasFetched, setHasFetched] = useState(false);
+
+  // Destructure options to avoid dependency on object reference
+  const { email: optEmail, sortBy: optSortBy, sortDirection: optSortDirection, filter: optFilter, limit: optLimit } = options;
 
   /**
    * Fetch senders from the API
@@ -59,18 +63,23 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       return [];
     }
 
-    const opts = { ...options, ...fetchOptions };
+    // Use fetchOptions if provided, otherwise fall back to hook options
+    const email = fetchOptions?.email ?? optEmail;
+    const sortBy = fetchOptions?.sortBy ?? optSortBy;
+    const sortDirection = fetchOptions?.sortDirection ?? optSortDirection;
+    const filter = fetchOptions?.filter ?? optFilter;
+    const limit = fetchOptions?.limit ?? optLimit;
 
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      if (opts.email) params.set('email', opts.email);
-      if (opts.sortBy) params.set('sortBy', opts.sortBy);
-      if (opts.sortDirection) params.set('sortDirection', opts.sortDirection);
-      if (opts.filter) params.set('filter', opts.filter);
-      if (opts.limit) params.set('limit', opts.limit.toString());
+      if (email) params.set('email', email);
+      if (sortBy) params.set('sortBy', sortBy);
+      if (sortDirection) params.set('sortDirection', sortDirection);
+      if (filter) params.set('filter', filter);
+      if (limit) params.set('limit', limit.toString());
 
       const response = await fetch(
         `${API_URL}/api/emails/senders?${params.toString()}`,
@@ -104,7 +113,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [token, options]);
+  }, [token, optEmail, optSortBy, optSortDirection, optFilter, optLimit]);
 
   /**
    * Sync emails from Gmail
@@ -215,12 +224,13 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     return sorted;
   }, [senders]);
 
-  // Auto-fetch on mount if enabled
+  // Auto-fetch on mount if enabled (only once)
   useEffect(() => {
-    if (options.autoFetch && token) {
+    if (options.autoFetch && token && !hasFetched) {
+      setHasFetched(true);
       fetchSenders();
     }
-  }, [options.autoFetch, token, fetchSenders]);
+  }, [options.autoFetch, token, hasFetched, fetchSenders]);
 
   return {
     senders,
