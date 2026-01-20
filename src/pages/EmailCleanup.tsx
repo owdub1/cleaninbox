@@ -682,8 +682,8 @@ const EmailCleanup = () => {
               </p>
             </div>
 
-            {/* Cleanup Tools Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Cleanup Tools Grid - 2x2 layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               {cleanupTools.map((tool) => {
                 const IconComponent = tool.icon;
                 return (
@@ -738,6 +738,28 @@ const EmailCleanup = () => {
                   <p className="text-sm text-gray-600">
                     Archive old emails to keep your inbox clean.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Text Section */}
+            <div className="mt-10 text-center">
+              <p className="text-gray-500 text-sm max-w-2xl mx-auto">
+                Take control of your inbox in minutes. Our tools help you identify and remove unwanted emails,
+                unsubscribe from mailing lists, and keep your inbox organized. Your data is encrypted and never shared.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-400">
+                <div className="flex items-center gap-2">
+                  <ShieldIcon className="w-4 h-4" />
+                  <span>Secure & Private</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckIcon className="w-4 h-4" />
+                  <span>No Credit Card Required</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span>5 Free Actions</span>
                 </div>
               </div>
             </div>
