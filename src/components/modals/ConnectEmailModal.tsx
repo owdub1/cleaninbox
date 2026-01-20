@@ -137,12 +137,13 @@ export default function ConnectEmailModal({
             disabled={isLoading || currentCount >= emailLimit}
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
           >
-            {/* Gmail Icon - Envelope M shape */}
-            <svg className="w-6 h-6" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M2 6a2 2 0 012-2h16a2 2 0 012 2v.01L12 13 2 6.01V6z"/>
-              <path fill="#EA4335" d="M2 6.01V18a2 2 0 002 2h3V9.5l5 3.5 5-3.5V20h3a2 2 0 002-2V6.01L12 13 2 6.01z"/>
-              <path fill="#FBBC05" d="M7 20V9.5l5 3.5V20H7z"/>
-              <path fill="#34A853" d="M17 20V9.5l-5 3.5V20h5z"/>
+            {/* Gmail Icon */}
+            <svg className="w-6 h-6" viewBox="0 0 48 48">
+              <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
+              <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z"/>
+              <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/>
+              <path fill="#c62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z"/>
+              <path fill="#fbc02d" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z"/>
             </svg>
             <span className="font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
               {gmailLoading ? 'Connecting...' : 'Continue with Gmail'}
