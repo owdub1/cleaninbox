@@ -2,22 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
-  ChevronUpIcon,
+  ChevronRightIcon,
   SearchIcon,
-  TrashIcon,
   ArchiveIcon,
-  FilterIcon,
-  SortDescIcon,
-  SortAscIcon,
   CheckIcon,
-  FolderIcon,
   ShieldIcon,
   Sparkles,
   Inbox,
   BellOff,
-  Ban,
-  Hand,
-  SlidersHorizontal,
+  Trash2,
+  Archive,
+  BarChart3,
   ArrowLeft,
   UserPlus,
   Mail,
@@ -40,49 +35,35 @@ import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
 // Free trial limit
 const FREE_TRIAL_LIMIT = 5;
 
-// Cleanup tool definitions
+// Cleanup tool definitions - 4 focused tools
 const cleanupTools = [
   {
-    id: 'suggestions',
-    title: 'Explore Cleaning Suggestions',
-    description: 'Kick start your cleaning with our recommendations.',
-    icon: Sparkles,
-    color: 'from-amber-400 to-orange-400',
-  },
-  {
-    id: 'inbox',
-    title: 'View and clean your Inbox',
-    description: 'Filter, group, and clean messages you no longer need.',
-    icon: Inbox,
-    color: 'from-blue-400 to-indigo-400',
+    id: 'delete',
+    title: 'Delete & Clean Inbox',
+    description: 'View and delete emails grouped by sender.',
+    icon: Trash2,
+    color: 'from-red-500 to-rose-500',
   },
   {
     id: 'unsubscribe',
-    title: 'Unsubscribe from mailing lists',
-    description: 'All mailing lists and newsletters in one place.',
+    title: 'Unsubscribe',
+    description: 'One-click unsubscribe from newsletters and mailing lists.',
     icon: BellOff,
-    color: 'from-red-400 to-pink-400',
+    color: 'from-purple-500 to-violet-500',
   },
   {
-    id: 'block',
-    title: 'Block or Mute a sender',
-    description: 'Or get mail from them delivered to a specific folder.',
-    icon: Ban,
-    color: 'from-sky-400 to-cyan-400',
+    id: 'archive',
+    title: 'Archive Old Emails',
+    description: 'Archive emails older than 30/60/90 days.',
+    icon: Archive,
+    color: 'from-blue-500 to-indigo-500',
   },
   {
-    id: 'stop',
-    title: 'Stop all unwanted mail',
-    description: 'Hold mail from new senders out of Inbox. Review to Allow.',
-    icon: Hand,
-    color: 'from-purple-400 to-violet-400',
-  },
-  {
-    id: 'automate',
-    title: 'Clean and organize mail automatically',
-    description: 'Create rules to trash, move, or label mail automatically.',
-    icon: SlidersHorizontal,
-    color: 'from-gray-400 to-slate-400',
+    id: 'top-senders',
+    title: 'Top Senders',
+    description: 'See who sends you the most emails and clean up fast.',
+    icon: BarChart3,
+    color: 'from-amber-500 to-orange-500',
   },
 ];
 
@@ -205,18 +186,18 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
 };
 
 const EmailCleanup = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { emailAccounts } = useDashboardData();
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>('onboarding');
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('count');
-  const [sortDirection, setSortDirection] = useState('desc');
-  const [selectedSenders, setSelectedSenders] = useState<string[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Tool-specific views state
+  const [expandedSenders, setExpandedSenders] = useState<string[]>([]);
+  const [archiveAge, setArchiveAge] = useState<30 | 60 | 90>(30);
 
   // Cleanup confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -235,15 +216,14 @@ const EmailCleanup = () => {
     syncing,
     error: sendersError,
     fetchSenders,
-    syncEmails,
-    getSendersByYear
+    syncEmails
   } = useEmailSenders({ autoFetch: true });
 
   // Cleanup actions hook
   const { deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
   // Subscription hook - get actual subscription status
-  const { subscription, isPaid, isUnlimited } = useSubscription();
+  const { isPaid } = useSubscription();
 
   // Track free trial usage (only for free users)
   const [freeActionsUsed, setFreeActionsUsed] = useState(0);
@@ -371,14 +351,12 @@ const EmailCleanup = () => {
         });
         // Refresh senders list
         fetchSenders();
-        // Clear selection
-        setSelectedSenders([]);
-      } else if (result?.requiresManualAction) {
+      } else if (result && 'requiresManualAction' in result && result.requiresManualAction) {
         setNotification({
           type: 'success',
-          message: result.message || 'Please complete the unsubscribe manually'
+          message: ('message' in result && result.message) || 'Please complete the unsubscribe manually'
         });
-        if (result.unsubscribeLink) {
+        if ('unsubscribeLink' in result && result.unsubscribeLink) {
           window.open(result.unsubscribeLink, '_blank');
         }
       }
@@ -389,66 +367,14 @@ const EmailCleanup = () => {
     setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
   };
 
-  const toggleYear = (year: string) => {
-    if (expandedYears.includes(year)) {
-      setExpandedYears(expandedYears.filter(y => y !== year));
-    } else {
-      setExpandedYears([...expandedYears, year]);
-    }
+  // Filter senders by search term
+  const filterSenders = (senderList: Sender[]) => {
+    if (!searchTerm) return senderList;
+    return senderList.filter(item =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   };
-
-  const toggleSortDirection = () => {
-    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-  };
-
-  const handleSortChange = (value: string) => {
-    if (sortBy === value) {
-      toggleSortDirection();
-    } else {
-      setSortBy(value);
-      setSortDirection('desc');
-    }
-  };
-
-  const toggleSenderSelection = (email: string) => {
-    if (selectedSenders.includes(email)) {
-      setSelectedSenders(selectedSenders.filter(s => s !== email));
-    } else {
-      setSelectedSenders([...selectedSenders, email]);
-    }
-  };
-
-  // Filter and sort senders
-  const filterAndSortSenders = (senderList: Sender[]) => {
-    let filtered = [...senderList];
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    filtered.sort((a, b) => {
-      if (sortBy === 'name') {
-        return sortDirection === 'asc'
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
-      } else if (sortBy === 'date') {
-        return sortDirection === 'asc'
-          ? new Date(a.lastEmailDate).getTime() - new Date(b.lastEmailDate).getTime()
-          : new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime();
-      } else {
-        return sortDirection === 'asc' ? a.emailCount - b.emailCount : b.emailCount - a.emailCount;
-      }
-    });
-    return filtered;
-  };
-
-  const getSelectedSenders = (): Sender[] => {
-    return senders.filter(s => selectedSenders.includes(s.email));
-  };
-
-  // Get senders grouped by year
-  const sendersByYear = getSendersByYear();
 
   // Show onboarding funnel
   if (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding')) {
@@ -696,24 +622,24 @@ const EmailCleanup = () => {
               </p>
             </div>
 
-            {/* Cleanup Tools Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Cleanup Tools Grid - 2x2 layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {cleanupTools.map((tool) => {
                 const IconComponent = tool.icon;
                 return (
                   <button
                     key={tool.id}
                     onClick={() => handleToolSelect(tool.id)}
-                    className="group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-xl"
+                    className="group relative overflow-hidden rounded-2xl p-8 text-left transition-all hover:scale-105 hover:shadow-xl"
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
                     <div className="relative z-10">
                       <div className="mb-4">
                         <div className="text-white">
-                          <IconComponent className="w-8 h-8" />
+                          <IconComponent className="w-10 h-10" />
                         </div>
                       </div>
-                      <h3 className="text-white font-semibold text-lg mb-2">
+                      <h3 className="text-white font-semibold text-xl mb-2">
                         {tool.title}
                       </h3>
                       <p className="text-white/80 text-sm">
@@ -723,37 +649,6 @@ const EmailCleanup = () => {
                   </button>
                 );
               })}
-            </div>
-
-            {/* How It Works Section */}
-            <div className="mt-12 bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4 text-center">How It Works</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 mb-3">
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Kick start your cleaning with our recommendations.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 mb-3">
-                    <Inbox className="w-6 h-6 text-white" />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Filter, group, and clean messages you no longer need.
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-pink-400 mb-3">
-                    <BellOff className="w-6 h-6 text-white" />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    All mailing lists and newsletters in one place.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -850,75 +745,8 @@ const EmailCleanup = () => {
             </div>
           </div>
 
+          {/* Tool-specific views */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            {/* Search and filter controls */}
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <SearchIcon className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search by sender..."
-                    className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <FilterIcon className="h-4 w-4 text-gray-400 mr-2" />
-                    <span className="text-sm text-gray-700 mr-2">Sort by:</span>
-                    <select
-                      value={sortBy}
-                      onChange={e => handleSortChange(e.target.value)}
-                      className="border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block sm:text-sm"
-                    >
-                      <option value="count">Email Count</option>
-                      <option value="name">Sender Name</option>
-                      <option value="date">Last Email Date</option>
-                    </select>
-                    <button onClick={toggleSortDirection} className="ml-2 p-1 rounded-md hover:bg-gray-100">
-                      {sortDirection === 'asc' ? (
-                        <SortAscIcon className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <SortDescIcon className="h-4 w-4 text-gray-500" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Selected items action bar */}
-            {selectedSenders.length > 0 && (
-              <div className="bg-indigo-50 p-3 flex items-center justify-between">
-                <div className="flex items-center">
-                  <CheckIcon className="h-4 w-4 text-indigo-600 mr-2" />
-                  <span className="text-indigo-800 text-sm font-medium">
-                    {selectedSenders.length} sender{selectedSenders.length !== 1 ? 's' : ''} selected
-                  </span>
-                </div>
-                <div className="flex space-x-4">
-                  <button
-                    className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                    onClick={() => handleCleanupAction('archive', getSelectedSenders())}
-                  >
-                    <ArchiveIcon className="h-3 w-3 mr-1" />
-                    Archive
-                  </button>
-                  <button
-                    className="flex items-center text-xs font-medium text-red-600 hover:text-red-800"
-                    onClick={() => handleCleanupAction('delete', getSelectedSenders())}
-                  >
-                    <TrashIcon className="h-3 w-3 mr-1" />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Loading state */}
             {sendersLoading && (
               <div className="flex items-center justify-center py-12">
@@ -952,116 +780,321 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Year-based dropdowns with real data */}
-            {!sendersLoading && senders.length > 0 && (
-              <div className="divide-y divide-gray-200">
-                {Object.keys(sendersByYear).sort((a, b) => Number(b) - Number(a)).map(year => (
-                  <div key={year} className="overflow-hidden">
-                    <button
-                      className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50 focus:outline-none"
-                      onClick={() => toggleYear(year)}
-                    >
-                      <div className="flex items-center">
-                        <FolderIcon className="h-4 w-4 text-indigo-500 mr-2" />
-                        <span className="font-medium text-gray-900">{year}</span>
-                        <span className="ml-2 text-xs text-gray-500">
-                          ({sendersByYear[year].length} senders)
-                        </span>
-                      </div>
-                      {expandedYears.includes(year) ? (
-                        <ChevronUpIcon className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-                      )}
-                    </button>
-                    {expandedYears.includes(year) && (
-                      <div className="bg-gray-50 px-4 py-3">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  <input type="checkbox" className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Sender
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Email Count
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Last Email
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {filterAndSortSenders(sendersByYear[year]).map(sender => (
-                                <tr key={sender.id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <input
-                                      type="checkbox"
-                                      className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                      checked={selectedSenders.includes(sender.email)}
-                                      onChange={() => toggleSenderSelection(sender.email)}
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <div>
-                                        <div className="text-sm font-medium text-gray-900">{sender.name}</div>
-                                        <div className="text-xs text-gray-500">{sender.email}</div>
-                                      </div>
-                                      {sender.isNewsletter && (
-                                        <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                                          Newsletter
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{sender.emailCount} emails</div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">
-                                      {new Date(sender.lastEmailDate).toLocaleDateString()}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                    {sender.hasUnsubscribe && (
-                                      <button
-                                        className="text-purple-600 hover:text-purple-900 mr-2 text-xs"
-                                        onClick={() => handleCleanupAction('unsubscribe', [sender])}
-                                      >
-                                        Unsubscribe
-                                      </button>
-                                    )}
-                                    <button
-                                      className="text-indigo-600 hover:text-indigo-900 mr-2 text-xs"
-                                      onClick={() => handleCleanupAction('archive', [sender])}
-                                    >
-                                      Archive
-                                    </button>
-                                    <button
-                                      className="text-red-600 hover:text-red-900 text-xs"
-                                      onClick={() => handleCleanupAction('delete', [sender])}
-                                    >
-                                      Delete
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+            {/* DELETE & CLEAN INBOX VIEW */}
+            {!sendersLoading && senders.length > 0 && selectedTool === 'delete' && (
+              <div>
+                {/* Search bar */}
+                <div className="p-4 border-b border-gray-200">
+                  <div className="relative max-w-md">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <SearchIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search senders..."
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Senders list sorted by email count */}
+                <div className="divide-y divide-gray-200">
+                  {filterSenders(senders)
+                    .sort((a, b) => b.emailCount - a.emailCount)
+                    .map(sender => {
+                      const isExpanded = expandedSenders.includes(sender.email);
+                      return (
+                        <div key={sender.id} className="bg-white">
+                          {/* Sender row */}
+                          <div className="px-4 py-4 flex items-center justify-between hover:bg-gray-50">
+                            <div className="flex items-center flex-1 min-w-0">
+                              <button
+                                onClick={() => {
+                                  if (isExpanded) {
+                                    setExpandedSenders(expandedSenders.filter(e => e !== sender.email));
+                                  } else {
+                                    setExpandedSenders([...expandedSenders, sender.email]);
+                                  }
+                                }}
+                                className="mr-3 p-1 hover:bg-gray-100 rounded"
+                              >
+                                {isExpanded ? (
+                                  <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                                ) : (
+                                  <ChevronRightIcon className="h-5 w-5 text-gray-500" />
+                                )}
+                              </button>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900 truncate">{sender.name}</span>
+                                  <span className="text-sm text-gray-500">({sender.emailCount} emails)</span>
+                                </div>
+                                <p className="text-sm text-gray-500 truncate">{sender.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 ml-4">
+                              <span className="text-xs text-gray-400">
+                                Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                              </span>
+                              <button
+                                onClick={() => handleCleanupAction('delete', [sender])}
+                                className="px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 transition-colors"
+                              >
+                                Delete All
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded email list placeholder */}
+                          {isExpanded && (
+                            <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                              <div className="ml-9 space-y-2">
+                                <p className="text-sm text-gray-500 italic">
+                                  Individual email viewing coming soon. For now, use "Delete All" to remove all {sender.emailCount} emails from this sender.
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* UNSUBSCRIBE VIEW */}
+            {!sendersLoading && senders.length > 0 && selectedTool === 'unsubscribe' && (
+              <div>
+                {/* Filter info */}
+                <div className="p-4 border-b border-gray-200 bg-purple-50">
+                  <div className="flex items-center gap-2 text-purple-800">
+                    <BellOff className="w-5 h-5" />
+                    <span className="text-sm font-medium">
+                      Showing {senders.filter(s => s.hasUnsubscribe).length} newsletters and mailing lists with unsubscribe options
+                    </span>
+                  </div>
+                </div>
+
+                {/* Unsubscribable senders */}
+                <div className="divide-y divide-gray-200">
+                  {senders
+                    .filter(sender => sender.hasUnsubscribe)
+                    .sort((a, b) => b.emailCount - a.emailCount)
+                    .map(sender => (
+                      <div key={sender.id} className="px-4 py-4 flex items-center justify-between hover:bg-gray-50">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{sender.name}</span>
+                            {sender.isNewsletter && (
+                              <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                Newsletter
+                              </span>
+                            )}
+                            {sender.isPromotional && (
+                              <span className="px-2 py-0.5 text-xs bg-orange-100 text-orange-700 rounded-full">
+                                Promotional
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">{sender.email} · {sender.emailCount} emails</p>
+                        </div>
+                        <button
+                          onClick={() => handleCleanupAction('unsubscribe', [sender])}
+                          className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                        >
+                          <BellOff className="w-4 h-4" />
+                          Unsubscribe
+                        </button>
+                      </div>
+                    ))}
+
+                  {senders.filter(s => s.hasUnsubscribe).length === 0 && (
+                    <div className="text-center py-12">
+                      <BellOff className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">No unsubscribe options found</h3>
+                      <p className="text-gray-500">
+                        We couldn't find any emails with unsubscribe links.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ARCHIVE OLD EMAILS VIEW */}
+            {!sendersLoading && senders.length > 0 && selectedTool === 'archive' && (() => {
+              const cutoffDate = new Date();
+              cutoffDate.setDate(cutoffDate.getDate() - archiveAge);
+              const oldSenders = senders.filter(s => new Date(s.lastEmailDate) < cutoffDate);
+              const totalEmails = oldSenders.reduce((sum, s) => sum + s.emailCount, 0);
+
+              return (
+                <div>
+                  {/* Age selector */}
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      <label className="text-sm font-medium text-gray-700">
+                        Archive emails older than:
+                      </label>
+                      <div className="flex gap-2">
+                        {[30, 60, 90].map((days) => (
+                          <button
+                            key={days}
+                            onClick={() => setArchiveAge(days as 30 | 60 | 90)}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                              archiveAge === days
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {days} days
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="p-4 bg-blue-50 border-b border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-lg font-semibold text-blue-900">
+                          {totalEmails} emails will be archived
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          From {oldSenders.length} senders older than {archiveAge} days
+                        </p>
+                      </div>
+                      {oldSenders.length > 0 && (
+                        <button
+                          onClick={() => handleCleanupAction('archive', oldSenders)}
+                          className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        >
+                          <ArchiveIcon className="w-5 h-5" />
+                          Archive All {totalEmails} Emails
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preview list */}
+                  <div className="p-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Preview:</h4>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {oldSenders
+                        .sort((a, b) => b.emailCount - a.emailCount)
+                        .slice(0, 20)
+                        .map(sender => (
+                          <div key={sender.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <ArchiveIcon className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm text-gray-900">{sender.name}</span>
+                            </div>
+                            <span className="text-sm text-gray-500">{sender.emailCount} emails</span>
+                          </div>
+                        ))}
+                      {oldSenders.length > 20 && (
+                        <p className="text-sm text-gray-500 text-center py-2">
+                          ... and {oldSenders.length - 20} more senders
+                        </p>
+                      )}
+                    </div>
+
+                    {oldSenders.length === 0 && (
+                      <div className="text-center py-8">
+                        <ArchiveIcon className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">No old emails found</h3>
+                        <p className="text-gray-500">
+                          All your emails are newer than {archiveAge} days.
+                        </p>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              );
+            })()}
+
+            {/* TOP SENDERS VIEW */}
+            {!sendersLoading && senders.length > 0 && selectedTool === 'top-senders' && (() => {
+              const topSenders = [...senders]
+                .sort((a, b) => b.emailCount - a.emailCount)
+                .slice(0, 20);
+              const maxCount = topSenders[0]?.emailCount || 1;
+
+              return (
+                <div>
+                  {/* Header */}
+                  <div className="p-4 border-b border-gray-200 bg-amber-50">
+                    <div className="flex items-center gap-2 text-amber-800">
+                      <BarChart3 className="w-5 h-5" />
+                      <span className="text-sm font-medium">
+                        Top 20 senders by email volume - quickly clean up your biggest email sources
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Top senders list */}
+                  <div className="divide-y divide-gray-200">
+                    {topSenders.map((sender, index) => {
+                      const barWidth = (sender.emailCount / maxCount) * 100;
+                      return (
+                        <div key={sender.id} className="px-4 py-4 hover:bg-gray-50">
+                          <div className="flex items-start gap-4">
+                            {/* Rank */}
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                              <span className="text-sm font-bold text-amber-700">#{index + 1}</span>
+                            </div>
+
+                            {/* Sender info and bar */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-gray-900 truncate">{sender.name}</span>
+                                <span className="text-sm font-semibold text-gray-600">{sender.emailCount} emails</span>
+                              </div>
+                              <p className="text-sm text-gray-500 truncate mb-2">{sender.email}</p>
+
+                              {/* Visual bar */}
+                              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
+                                  style={{ width: `${barWidth}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => handleCleanupAction('delete', [sender])}
+                                className="px-3 py-1.5 bg-red-100 text-red-700 text-xs font-medium rounded-lg hover:bg-red-200 transition-colors"
+                              >
+                                Delete All
+                              </button>
+                              <button
+                                onClick={() => handleCleanupAction('archive', [sender])}
+                                className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-200 transition-colors"
+                              >
+                                Archive All
+                              </button>
+                              {sender.hasUnsubscribe && (
+                                <button
+                                  onClick={() => handleCleanupAction('unsubscribe', [sender])}
+                                  className="px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-lg hover:bg-purple-200 transition-colors"
+                                >
+                                  Unsubscribe
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </section>

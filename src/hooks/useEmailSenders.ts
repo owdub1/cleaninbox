@@ -224,6 +224,30 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     return sorted;
   }, [senders]);
 
+  /**
+   * Get senders that have unsubscribe options
+   */
+  const getUnsubscribableSenders = useCallback((): Sender[] => {
+    return senders.filter(sender => sender.hasUnsubscribe);
+  }, [senders]);
+
+  /**
+   * Get senders sorted by email count (descending)
+   */
+  const getSendersByEmailCount = useCallback((limit?: number): Sender[] => {
+    const sorted = [...senders].sort((a, b) => b.emailCount - a.emailCount);
+    return limit ? sorted.slice(0, limit) : sorted;
+  }, [senders]);
+
+  /**
+   * Get senders with emails older than specified days
+   */
+  const getSendersOlderThan = useCallback((days: number): Sender[] => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    return senders.filter(sender => new Date(sender.lastEmailDate) < cutoffDate);
+  }, [senders]);
+
   // Auto-fetch on mount if enabled (only once)
   useEffect(() => {
     if (options.autoFetch && token && !hasFetched) {
@@ -243,5 +267,8 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     getSendersByYear,
     searchSenders,
     sortSenders,
+    getUnsubscribableSenders,
+    getSendersByEmailCount,
+    getSendersOlderThan,
   };
 };
