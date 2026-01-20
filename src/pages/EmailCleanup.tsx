@@ -650,6 +650,40 @@ const EmailCleanup = () => {
                 );
               })}
             </div>
+
+            {/* How It Works Section */}
+            <div className="mt-12 bg-white rounded-xl border border-gray-200 p-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">How It Works</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
+                    <span className="text-white font-bold text-lg">1</span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">Select a Tool</h4>
+                  <p className="text-sm text-gray-600">
+                    Choose from our cleanup tools based on what you want to accomplish.
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
+                    <span className="text-white font-bold text-lg">2</span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">Review & Select</h4>
+                  <p className="text-sm text-gray-600">
+                    Browse your emails by sender and choose what to clean up.
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
+                    <span className="text-white font-bold text-lg">3</span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-2">One-Click Clean</h4>
+                  <p className="text-sm text-gray-600">
+                    Delete, archive, or unsubscribe with a single click.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
