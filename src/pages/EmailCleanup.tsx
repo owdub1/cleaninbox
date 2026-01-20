@@ -34,6 +34,7 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { useGmailConnection } from '../hooks/useGmailConnection';
 import { useEmailSenders, Sender } from '../hooks/useEmailSenders';
 import { useCleanupActions } from '../hooks/useCleanupActions';
+import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
 
 // Free trial limit
@@ -241,11 +242,14 @@ const EmailCleanup = () => {
   // Cleanup actions hook
   const { deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
-  // Track free trial usage (in production, this would come from the backend)
+  // Subscription hook - get actual subscription status
+  const { subscription, isPaid, isUnlimited } = useSubscription();
+
+  // Track free trial usage (only for free users)
   const [freeActionsUsed, setFreeActionsUsed] = useState(0);
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
-  const hasPaidPlan = user?.subscription_tier && user.subscription_tier !== 'Free';
+  const hasPaidPlan = isPaid;
 
   // Get connected Gmail account
   const connectedGmailAccount = emailAccounts?.find(
