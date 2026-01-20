@@ -86,6 +86,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       const data: SendersResponse = await response.json();
 
       if (!response.ok) {
+        // Don't retry on rate limit - just show error
+        if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        }
         throw new Error((data as any).error || 'Failed to fetch senders');
       }
 
