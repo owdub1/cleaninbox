@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../lib/api';
 
 export const useEmailAccounts = () => {
   const { user } = useAuth();
@@ -71,7 +72,7 @@ export const useEmailAccounts = () => {
     }
   };
 
-  const syncEmailAccount = async (accountId: string) => {
+  const syncEmailAccount = async (accountId: string, email?: string) => {
     if (!user) {
       throw new Error('User must be authenticated');
     }
@@ -80,18 +81,38 @@ export const useEmailAccounts = () => {
       setLoading(true);
       setError(null);
 
-      // Update last synced time
-      const { data, error: updateError } = await supabase
-        .from('email_accounts')
-        .update({
-          last_synced: new Date().toISOString()
-        })
-        .eq('id', accountId)
-        .eq('user_id', user.id)
-        .select()
-        .single();
+      // Get the email address if not provided
+      let emailAddress = email;
+      if (!emailAddress) {
+        const { data: account } = await supabase
+          .from('email_accounts')
+          .select('email')
+          .eq('id', accountId)
+          .single();
+        emailAddress = account?.email;
+      }
 
-      if (updateError) throw updateError;
+      if (!emailAddress) {
+        throw new Error('Email account not found');
+      }
+
+      // Call the actual sync API
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/api/emails/sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email: emailAddress })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync emails');
+      }
 
       return data;
     } catch (err: any) {

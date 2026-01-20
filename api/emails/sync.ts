@@ -122,6 +122,16 @@ export default async function handler(
       })
       .eq('id', account.id);
 
+    // Log to activity_log for Recent Activity display
+    await supabase
+      .from('activity_log')
+      .insert({
+        user_id: user.userId,
+        action_type: 'email_sync',
+        description: `Synced ${totalEmails.toLocaleString()} emails from ${senderStats.length} senders`,
+        metadata: { totalEmails, totalSenders: senderStats.length, email }
+      });
+
     return res.status(200).json({
       success: true,
       totalSenders: senderStats.length,

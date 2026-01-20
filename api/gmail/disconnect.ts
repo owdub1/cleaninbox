@@ -80,6 +80,16 @@ export default async function handler(
       .delete()
       .eq('email_account_id', account.id);
 
+    // Log to activity_log for Recent Activity display
+    await supabase
+      .from('activity_log')
+      .insert({
+        user_id: user.userId,
+        action_type: 'account_disconnect',
+        description: `Disconnected email account ${email}`,
+        metadata: { email }
+      });
+
     return res.status(200).json({
       success: true,
       message: 'Gmail account disconnected successfully'

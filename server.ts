@@ -31,6 +31,11 @@ import cleanupUnsubscribe from './api/cleanup/unsubscribe.js';
 
 // Subscription routes
 import subscriptionGet from './api/subscription/get.js';
+import subscriptionCancel from './api/subscription/cancel.js';
+
+// Activity routes
+import activityGet from './api/activity/get.js';
+import activityLog from './api/activity/log.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -117,6 +122,11 @@ app.post('/api/cleanup/unsubscribe', wrapHandler(cleanupUnsubscribe));
 
 // Subscription routes
 app.get('/api/subscription/get', wrapHandler(subscriptionGet));
+app.post('/api/subscription/cancel', wrapHandler(subscriptionCancel));
+
+// Activity routes
+app.get('/api/activity/get', wrapHandler(activityGet));
+app.post('/api/activity/log', wrapHandler(activityLog));
 
 // 404 handler
 app.use((req: Request, res: Response) => {

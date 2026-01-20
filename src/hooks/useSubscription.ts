@@ -80,13 +80,50 @@ export function useSubscription() {
     fetchSubscription();
   }, [fetchSubscription]);
 
+  const cancelSubscription = useCallback(async (): Promise<{ success: boolean; error?: string; accessUntil?: string }> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/subscription/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Failed to cancel subscription' };
+      }
+
+      // Refetch subscription to update state
+      await fetchSubscription();
+
+      return {
+        success: true,
+        accessUntil: data.subscription?.accessUntil
+      };
+    } catch (err: any) {
+      console.error('Error cancelling subscription:', err);
+      return { success: false, error: err.message || 'Failed to cancel subscription' };
+    }
+  }, [fetchSubscription]);
+
   return {
     subscription,
     loading,
     error,
     refetch: fetchSubscription,
+    cancelSubscription,
     isPro: subscription.plan.toLowerCase() === 'pro',
     isUnlimited: subscription.plan.toLowerCase() === 'unlimited',
-    isPaid: subscription.plan.toLowerCase() !== 'free'
+    isPaid: subscription.plan.toLowerCase() !== 'free',
+    isCancelled: subscription.status === 'cancelled'
   };
 }

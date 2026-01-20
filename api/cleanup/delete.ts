@@ -208,6 +208,18 @@ export default async function handler(
         .eq('id', account.id);
     }
 
+    // Log to activity_log for Recent Activity display
+    if (totalDeleted > 0) {
+      await supabase
+        .from('activity_log')
+        .insert({
+          user_id: user.userId,
+          action_type: 'delete',
+          description: `Deleted ${totalDeleted} email${totalDeleted > 1 ? 's' : ''} from ${senderEmails.length} sender${senderEmails.length > 1 ? 's' : ''}`,
+          metadata: { totalDeleted, senderCount: senderEmails.length, senderEmails }
+        });
+    }
+
     return res.status(200).json({
       success: true,
       totalDeleted,

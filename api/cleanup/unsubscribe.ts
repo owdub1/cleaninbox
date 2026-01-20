@@ -209,6 +209,16 @@ export default async function handler(
         })
         .eq('id', account.id);
 
+      // Log to activity_log for Recent Activity display
+      await supabase
+        .from('activity_log')
+        .insert({
+          user_id: user.userId,
+          action_type: 'unsubscribe',
+          description: `Unsubscribed from ${senderEmail}`,
+          metadata: { senderEmail }
+        });
+
       return res.status(200).json({
         success: true,
         message: `Successfully unsubscribed from ${senderEmail}`

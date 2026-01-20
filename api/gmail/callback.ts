@@ -140,6 +140,16 @@ export default async function handler(
       .update({ oauth_token_id: tokenId })
       .eq('id', emailAccountId);
 
+    // Log to activity_log for Recent Activity display
+    await supabase
+      .from('activity_log')
+      .insert({
+        user_id: userId,
+        action_type: 'account_connect',
+        description: `Connected Gmail account ${profile.email}`,
+        metadata: { email: profile.email, provider: 'Gmail' }
+      });
+
     // Redirect back to app with success
     return res.redirect(`${APP_URL}/email-cleanup?connected=true&email=${encodeURIComponent(profile.email)}`);
 

@@ -5,12 +5,16 @@ import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useEmailAccounts } from '../hooks/useEmailAccounts';
 import { useSubscription } from '../hooks/useSubscription';
+import { useActivity } from '../hooks/useActivity';
 import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
-  const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading } = useDashboardData();
+  const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading, refetch: refetchDashboard } = useDashboardData();
   const { addEmailAccount, removeEmailAccount, syncEmailAccount } = useEmailAccounts();
-  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited } = useSubscription();
+  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled } = useSubscription();
+  const { activities, loading: activityLoading, formatRelativeTime } = useActivity(5);
   const [activeTab, setActiveTab] = useState('overview');
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const [activeSubTab, setActiveSubTab] = useState('unsubscribe'); // New state for sub-tabs
   const [selectedSubscriber, setSelectedSubscriber] = useState(null);
@@ -1237,11 +1241,12 @@ const Dashboard = () => {
     await addEmailAccount(email, provider);
     // The useDashboardData hook will automatically refresh and update connectedEmails
   };
-  const handleSyncEmail = async (email) => {
+  const handleSyncEmail = async (emailAccount) => {
     try {
-      await syncEmailAccount(email.id);
-      // The useDashboardData hook will automatically refresh and update connectedEmails
-      alert(`Synced ${email.email} successfully!`);
+      const result = await syncEmailAccount(emailAccount.id, emailAccount.email);
+      // Refetch dashboard data to update the UI
+      await refetchDashboard();
+      alert(`Synced ${emailAccount.email} successfully! Found ${result.totalEmails?.toLocaleString() || 0} emails from ${result.totalSenders || 0} senders.`);
     } catch (error: any) {
       alert('Failed to sync email account: ' + error.message);
     }
@@ -1528,9 +1533,15 @@ const Dashboard = () => {
                         </div>
                       </div>}
                       <div>
-                        <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
-                          Cancel Subscription
-                        </button>
+                        {isCancelled ? (
+                          <span className="inline-flex items-center px-4 py-2 rounded-md font-medium bg-gray-100 text-gray-500">
+                            Subscription Cancelled
+                          </span>
+                        ) : (
+                          <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
+                            Cancel Subscription
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="mt-6">
@@ -1538,34 +1549,28 @@ const Dashboard = () => {
                         Recent Activity
                       </h4>
                       <div className="space-y-4">
-                        <div className="flex items-start">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-gray-900">
-                              Processed 57 emails
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Yesterday at 2:30 PM
-                            </p>
+                        {activityLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                           </div>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-gray-900">
-                              Unsubscribed from 12 newsletters
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Yesterday at 2:35 PM
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-gray-900">
-                              Connected new email account
-                            </p>
-                            <p className="text-xs text-gray-500">3 days ago</p>
-                          </div>
-                        </div>
+                        ) : activities.length > 0 ? (
+                          activities.map((activity) => (
+                            <div key={activity.id} className="flex items-start">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm text-gray-900">
+                                  {activity.description}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatRelativeTime(activity.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No recent activity
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1986,10 +1991,10 @@ const Dashboard = () => {
       </section>
       {/* Cancel Subscription Modal */}
       {showCancelModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowCancelModal(false)}></div>
+          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !cancelLoading && setShowCancelModal(false)}></div>
           <div className="relative bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => setShowCancelModal(false)}>
+              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => !cancelLoading && setShowCancelModal(false)} disabled={cancelLoading}>
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
@@ -2003,12 +2008,39 @@ const Dashboard = () => {
                   access to all Pro features at the end of your current billing
                   period.
                 </p>
+                {cancelError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-600">{cancelError}</p>
+                  </div>
+                )}
               </div>
               <div className="mt-5 sm:mt-6 flex flex-col space-y-3">
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm" onClick={() => setShowCancelModal(false)}>
-                  Yes, Cancel Subscription
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={async () => {
+                    setCancelLoading(true);
+                    setCancelError(null);
+                    const result = await cancelSubscription();
+                    setCancelLoading(false);
+                    if (result.success) {
+                      setShowCancelModal(false);
+                    } else {
+                      setCancelError(result.error || 'Failed to cancel subscription');
+                    }
+                  }}
+                  disabled={cancelLoading}
+                >
+                  {cancelLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Cancelling...
+                    </>
+                  ) : (
+                    'Yes, Cancel Subscription'
+                  )}
                 </button>
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => setShowCancelModal(false)}>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm disabled:opacity-50" onClick={() => setShowCancelModal(false)} disabled={cancelLoading}>
                   No, Keep My Subscription
                 </button>
               </div>
