@@ -194,7 +194,15 @@ const EmailCleanup = () => {
   const { isAuthenticated, user } = useAuth();
   const { emailAccounts } = useDashboardData();
   const navigate = useNavigate();
+  // Initialize view based on subscription status - paid users skip onboarding
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>('onboarding');
+
+  // Auto-skip to tools view for paid users with connected email
+  useEffect(() => {
+    if (isPaid && emailAccounts && emailAccounts.length > 0) {
+      setCurrentView('tools');
+    }
+  }, [isPaid, emailAccounts]);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -436,8 +444,9 @@ const EmailCleanup = () => {
   // Get senders grouped by year
   const sendersByYear = getSendersByYear();
 
-  // Show onboarding funnel
-  if (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding')) {
+  // Show onboarding funnel (skip for paid users who have connected email)
+  const shouldShowOnboarding = currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan);
+  if (shouldShowOnboarding) {
     return (
       <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white">
         {/* Notification */}
@@ -568,8 +577,8 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Step 3: Start Cleaning */}
-            {currentStep === 3 && currentView === 'onboarding' && (
+            {/* Step 3: Start Cleaning - Only shown to free users */}
+            {currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan && (
               <div className="text-center">
                 <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Sparkles className="w-10 h-10 text-white" />
