@@ -622,24 +622,24 @@ const EmailCleanup = () => {
               </p>
             </div>
 
-            {/* Cleanup Tools Grid - 2x2 layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Cleanup Tools Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
               {cleanupTools.map((tool) => {
                 const IconComponent = tool.icon;
                 return (
                   <button
                     key={tool.id}
                     onClick={() => handleToolSelect(tool.id)}
-                    className="group relative overflow-hidden rounded-2xl p-8 text-left transition-all hover:scale-105 hover:shadow-xl"
+                    className="group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-xl"
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
                     <div className="relative z-10">
                       <div className="mb-4">
                         <div className="text-white">
-                          <IconComponent className="w-10 h-10" />
+                          <IconComponent className="w-8 h-8" />
                         </div>
                       </div>
-                      <h3 className="text-white font-semibold text-xl mb-2">
+                      <h3 className="text-white font-semibold text-lg mb-2">
                         {tool.title}
                       </h3>
                       <p className="text-white/80 text-sm">
@@ -652,34 +652,31 @@ const EmailCleanup = () => {
             </div>
 
             {/* How It Works Section */}
-            <div className="mt-12 bg-white rounded-xl border border-gray-200 p-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">How It Works</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="mt-12 bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-base font-medium text-gray-900 mb-4 text-center">How It Works</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
-                    <span className="text-white font-bold text-lg">1</span>
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-rose-500 mb-3">
+                    <Trash2 className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-2">Select a Tool</h4>
                   <p className="text-sm text-gray-600">
-                    Choose from our cleanup tools based on what you want to accomplish.
+                    View emails grouped by sender and delete in bulk.
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
-                    <span className="text-white font-bold text-lg">2</span>
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-violet-500 mb-3">
+                    <BellOff className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-2">Review & Select</h4>
                   <p className="text-sm text-gray-600">
-                    Browse your emails by sender and choose what to clean up.
+                    One-click unsubscribe from newsletters and mailing lists.
                   </p>
                 </div>
                 <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 mb-4">
-                    <span className="text-white font-bold text-lg">3</span>
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 mb-3">
+                    <Archive className="w-6 h-6 text-white" />
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-2">One-Click Clean</h4>
                   <p className="text-sm text-gray-600">
-                    Delete, archive, or unsubscribe with a single click.
+                    Archive old emails to keep your inbox clean.
                   </p>
                 </div>
               </div>
