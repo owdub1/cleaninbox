@@ -262,6 +262,24 @@ const EmailCleanup = () => {
     (acc: any) => acc.provider === 'Gmail' && acc.connection_status === 'connected'
   );
 
+  // Auto-sync when entering cleanup view with connected Gmail but no senders
+  const [hasAutoSynced, setHasAutoSynced] = useState(false);
+  useEffect(() => {
+    if (
+      currentView === 'cleanup' &&
+      connectedGmailAccount &&
+      !sendersLoading &&
+      !syncing &&
+      senders.length === 0 &&
+      !hasAutoSynced &&
+      !sendersError
+    ) {
+      console.log('Auto-syncing emails for:', connectedGmailAccount.email);
+      setHasAutoSynced(true);
+      syncEmails(connectedGmailAccount.email);
+    }
+  }, [currentView, connectedGmailAccount, sendersLoading, syncing, senders.length, hasAutoSynced, sendersError, syncEmails]);
+
   // Determine current onboarding step
   const hasEmailConnected = emailAccounts && emailAccounts.length > 0;
 
@@ -969,18 +987,23 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Loading state */}
-            {sendersLoading && (
+            {/* Loading/Syncing state */}
+            {(sendersLoading || syncing) && (
               <div className="flex items-center justify-center py-12">
-                <div className="flex items-center gap-3 text-gray-500">
-                  <RefreshCw className="w-6 h-6 animate-spin" />
-                  <span>Loading senders...</span>
+                <div className="flex flex-col items-center gap-3 text-gray-500">
+                  <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />
+                  <span className="text-lg font-medium">
+                    {syncing ? 'Syncing your emails...' : 'Loading senders...'}
+                  </span>
+                  {syncing && (
+                    <p className="text-sm text-gray-400">This may take a moment for large inboxes</p>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Empty state */}
-            {!sendersLoading && senders.length === 0 && (
+            {!sendersLoading && !syncing && senders.length === 0 && (
               <div className="text-center py-12">
                 <Mail className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-1">No emails found</h3>
@@ -1003,7 +1026,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Year-based dropdowns with real data */}
-            {!sendersLoading && senders.length > 0 && (
+            {!sendersLoading && !syncing && senders.length > 0 && (
               <div className="divide-y divide-gray-200">
                 {Object.keys(sendersByYear).sort((a, b) => Number(b) - Number(a)).map(year => (
                   <div key={year} className="overflow-hidden">
