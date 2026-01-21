@@ -257,28 +257,45 @@ const EmailCleanup = () => {
   const hasFreeTries = freeActionsRemaining > 0;
   const hasPaidPlan = isPaid;
 
-  // Get connected Gmail account
+  // Get connected Gmail account (check for 'connected' status)
   const connectedGmailAccount = emailAccounts?.find(
     (acc: any) => acc.provider === 'Gmail' && acc.connection_status === 'connected'
   );
 
-  // Auto-sync when entering cleanup view with connected Gmail but no senders
+  // Get any Gmail account (may need reconnection)
+  const anyGmailAccount = emailAccounts?.find(
+    (acc: any) => acc.provider === 'Gmail' || acc.email?.includes('gmail')
+  );
+
+  // Debug: log email accounts status
+  useEffect(() => {
+    if (emailAccounts && emailAccounts.length > 0) {
+      console.log('Email accounts:', emailAccounts.map(a => ({
+        email: a.email,
+        provider: a.provider,
+        status: a.connection_status
+      })));
+    }
+  }, [emailAccounts]);
+
+  // Auto-sync when entering cleanup view with Gmail account but no senders
   const [hasAutoSynced, setHasAutoSynced] = useState(false);
   useEffect(() => {
+    const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (
       currentView === 'cleanup' &&
-      connectedGmailAccount &&
+      accountToSync &&
       !sendersLoading &&
       !syncing &&
       senders.length === 0 &&
       !hasAutoSynced &&
       !sendersError
     ) {
-      console.log('Auto-syncing emails for:', connectedGmailAccount.email);
+      console.log('Auto-syncing emails for:', accountToSync.email);
       setHasAutoSynced(true);
-      syncEmails(connectedGmailAccount.email);
+      syncEmails(accountToSync.email);
     }
-  }, [currentView, connectedGmailAccount, sendersLoading, syncing, senders.length, hasAutoSynced, sendersError, syncEmails]);
+  }, [currentView, connectedGmailAccount, anyGmailAccount, sendersLoading, syncing, senders.length, hasAutoSynced, sendersError, syncEmails]);
 
   // Determine current onboarding step
   const hasEmailConnected = emailAccounts && emailAccounts.length > 0;
@@ -338,15 +355,18 @@ const EmailCleanup = () => {
   };
 
   const handleSync = async () => {
-    if (connectedGmailAccount) {
-      const success = await syncEmails(connectedGmailAccount.email);
+    // Use connected account, or fall back to any Gmail account
+    const accountToSync = connectedGmailAccount || anyGmailAccount;
+    if (accountToSync) {
+      console.log('Syncing emails for:', accountToSync.email);
+      const success = await syncEmails(accountToSync.email);
       if (success) {
         setNotification({ type: 'success', message: 'Emails synced successfully!' });
       } else {
-        setNotification({ type: 'error', message: 'Failed to sync emails. Please try again.' });
+        setNotification({ type: 'error', message: 'Failed to sync emails. Your Gmail may need to be reconnected.' });
       }
     } else {
-      setNotification({ type: 'error', message: 'No Gmail account connected. Please connect your Gmail first.' });
+      setNotification({ type: 'error', message: 'No Gmail account found. Please connect your Gmail first.' });
     }
   };
 
@@ -1010,18 +1030,29 @@ const EmailCleanup = () => {
                 <p className="text-gray-500 mb-4">
                   {connectedGmailAccount
                     ? 'Click "Sync Emails" to fetch your email senders.'
+                    : anyGmailAccount
+                    ? 'Your Gmail may need to be reconnected. Try syncing or reconnect in Dashboard.'
                     : 'Connect your Gmail account to get started.'}
                 </p>
-                {connectedGmailAccount && (
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  {(connectedGmailAccount || anyGmailAccount) && (
+                    <button
+                      onClick={handleSync}
+                      disabled={syncing}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                      Sync Emails
+                    </button>
+                  )}
                   <button
-                    onClick={handleSync}
-                    disabled={syncing}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                    onClick={() => navigate('/dashboard?tab=myemails')}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
                   >
-                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                    Sync Emails
+                    <Mail className="w-4 h-4" />
+                    {connectedGmailAccount ? 'Manage Email' : 'Connect Gmail'}
                   </button>
-                )}
+                </div>
               </div>
             )}
 
