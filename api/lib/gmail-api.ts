@@ -337,9 +337,25 @@ function isNewsletter(message: GmailMessage): boolean {
 export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderStats> {
   const senderMap = new Map<string, SenderStats>();
 
+  console.log(`Aggregating ${messages.length} messages by sender...`);
+
+  // Debug: log first message structure
+  if (messages.length > 0) {
+    const firstMsg = messages[0];
+    console.log('First message structure:', JSON.stringify({
+      id: firstMsg?.id,
+      hasPayload: !!firstMsg?.payload,
+      headers: firstMsg?.payload?.headers?.map(h => h.name) || 'no headers'
+    }));
+  }
+
+  let skippedNoFrom = 0;
   for (const message of messages) {
     const fromHeader = getHeader(message, 'From');
-    if (!fromHeader) continue;
+    if (!fromHeader) {
+      skippedNoFrom++;
+      continue;
+    }
 
     const { email, name } = parseSender(fromHeader);
     const messageDate = new Date(parseInt(message.internalDate)).toISOString();
@@ -382,6 +398,7 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     if (isPromotional(message)) stats.isPromotional = true;
   }
 
+  console.log(`Aggregation complete: ${senderMap.size} senders, skipped ${skippedNoFrom} messages without From header`);
   return senderMap;
 }
 
