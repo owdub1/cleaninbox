@@ -166,7 +166,7 @@ app.listen(PORT, () => {
   console.log(`📋 Routes registered: /api/auth/refresh, /api/emails/sync, /api/gmail/connect`);
 });
 
-// Graceful shutdown
+// Graceful shutdown handler
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully...');
   process.exit(0);
