@@ -192,21 +192,31 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
 
 const EmailCleanup = () => {
   const { isAuthenticated, user } = useAuth();
-  const { emailAccounts } = useDashboardData();
+  const { emailAccounts, loading: dashboardLoading } = useDashboardData();
   const navigate = useNavigate();
 
   // Subscription hook - get actual subscription status (needed early for view logic)
-  const { subscription, isPaid, isUnlimited } = useSubscription();
+  const { subscription, isPaid, isUnlimited, loading: subscriptionLoading } = useSubscription();
 
-  // Initialize view based on subscription status - paid users skip onboarding
-  const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>('onboarding');
+  // Determine initial view - paid users with email go straight to tools
+  const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
+  const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
+    shouldStartWithTools ? 'tools' : 'onboarding'
+  );
+  const [viewInitialized, setViewInitialized] = useState(false);
 
-  // Auto-skip to tools view for paid users with connected email
+  // Update view once subscription/dashboard data loads (only once)
   useEffect(() => {
-    if (isPaid && emailAccounts && emailAccounts.length > 0) {
-      setCurrentView('tools');
+    if (!viewInitialized && !subscriptionLoading && !dashboardLoading) {
+      if (isPaid && emailAccounts && emailAccounts.length > 0) {
+        setCurrentView('tools');
+      }
+      setViewInitialized(true);
     }
-  }, [isPaid, emailAccounts]);
+  }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized]);
+
+  // Show loading while determining view for authenticated users
+  const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
@@ -445,6 +455,18 @@ const EmailCleanup = () => {
 
   // Get senders grouped by year
   const sendersByYear = getSendersByYear();
+
+  // Show loading while determining initial view for authenticated users
+  if (isLoadingInitialView) {
+    return (
+      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show onboarding funnel (skip for paid users who have connected email)
   const shouldShowOnboarding = currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan);
