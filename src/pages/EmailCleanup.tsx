@@ -1166,8 +1166,8 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Delete & Clean Inbox View - Senders grouped by time period */}
-            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && (
+            {/* Delete & Clean Inbox View - Time period grouping when sorting by date */}
+            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && sortBy === 'date' && (
               <div className="divide-y divide-gray-200">
                 {sendersByTimePeriod.map(({ period, senders: periodSenders }) => {
                   const filteredSenders = filterAndSortSenders(periodSenders);
@@ -1221,14 +1221,26 @@ const EmailCleanup = () => {
                       {isExpanded && (
                         <div className="divide-y divide-gray-100">
                           {filteredSenders.map(sender => (
-                            <div key={sender.id} className="hover:bg-gray-50">
-                              <div className="px-4 py-3 pl-12 flex items-center justify-between">
-                                <div className="flex items-center flex-1">
+                            <div key={sender.id} className="overflow-hidden">
+                              <div className="px-4 py-3 pl-8 flex items-center justify-between hover:bg-gray-50">
+                                <button
+                                  className="flex items-center flex-1 text-left"
+                                  onClick={() => toggleSenderExpand(sender.email, sender.accountEmail)}
+                                >
+                                  {expandedSenders.includes(sender.email) ? (
+                                    <ChevronUpIcon className="h-4 w-4 text-gray-400 mr-2" />
+                                  ) : (
+                                    <ChevronDownIcon className="h-4 w-4 text-gray-400 mr-2" />
+                                  )}
                                   <input
                                     type="checkbox"
                                     className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
                                     checked={selectedSenders.includes(sender.email)}
-                                    onChange={() => toggleSenderSelection(sender.email)}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      toggleSenderSelection(sender.email);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
                                   />
                                   <div className="flex-1">
                                     <div className="flex items-center">
@@ -1237,10 +1249,7 @@ const EmailCleanup = () => {
                                     </div>
                                     <div className="text-xs text-gray-500">{sender.email}</div>
                                   </div>
-                                  <div className="text-xs text-gray-400 mr-4">
-                                    Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
-                                  </div>
-                                </div>
+                                </button>
                                 <div className="flex items-center gap-2">
                                   <button
                                     className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
@@ -1256,6 +1265,38 @@ const EmailCleanup = () => {
                                   </button>
                                 </div>
                               </div>
+                              {/* Individual emails dropdown */}
+                              {expandedSenders.includes(sender.email) && (
+                                <div className="bg-gray-50 px-4 py-3 pl-16 border-t border-gray-100">
+                                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    {loadingEmails === sender.email ? (
+                                      <div className="flex items-center justify-center py-4">
+                                        <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
+                                        <span className="text-sm text-gray-500">Loading emails...</span>
+                                      </div>
+                                    ) : senderEmails[sender.email]?.length > 0 ? (
+                                      senderEmails[sender.email].map(email => (
+                                        <div key={email.id} className="bg-white rounded-lg p-3 border border-gray-200">
+                                          <div className="flex items-center gap-2">
+                                            {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
+                                            <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
+                                              {email.subject}
+                                            </span>
+                                          </div>
+                                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
+                                          <div className="text-xs text-gray-400 mt-1">
+                                            {new Date(email.date).toLocaleDateString()}
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div className="text-center py-2 text-sm text-gray-500">
+                                        No emails found
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1263,6 +1304,94 @@ const EmailCleanup = () => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Delete & Clean Inbox View - Flat list with expandable senders when sorting by name or count */}
+            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
+              <div className="divide-y divide-gray-200">
+                {filterAndSortSenders(senders).map(sender => (
+                  <div key={sender.id} className="overflow-hidden">
+                    <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                      <button
+                        className="flex items-center flex-1 text-left"
+                        onClick={() => toggleSenderExpand(sender.email, sender.accountEmail)}
+                      >
+                        {expandedSenders.includes(sender.email) ? (
+                          <ChevronUpIcon className="h-4 w-4 text-gray-400 mr-2" />
+                        ) : (
+                          <ChevronDownIcon className="h-4 w-4 text-gray-400 mr-2" />
+                        )}
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
+                          checked={selectedSenders.includes(sender.email)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleSenderSelection(sender.email);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium text-gray-900">{sender.name}</span>
+                            <span className="ml-2 text-xs text-gray-500">({sender.emailCount} emails)</span>
+                          </div>
+                          <div className="text-xs text-gray-500">{sender.email}</div>
+                        </div>
+                        <div className="text-xs text-gray-400 mr-4">
+                          Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                          onClick={() => handleCleanupAction('archive', [sender])}
+                        >
+                          Archive All
+                        </button>
+                        <button
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                          onClick={() => handleCleanupAction('delete', [sender])}
+                        >
+                          Delete All
+                        </button>
+                      </div>
+                    </div>
+                    {/* Individual emails dropdown */}
+                    {expandedSenders.includes(sender.email) && (
+                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {loadingEmails === sender.email ? (
+                            <div className="flex items-center justify-center py-4">
+                              <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
+                              <span className="text-sm text-gray-500">Loading emails...</span>
+                            </div>
+                          ) : senderEmails[sender.email]?.length > 0 ? (
+                            senderEmails[sender.email].map(email => (
+                              <div key={email.id} className="bg-white rounded-lg p-3 border border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
+                                  <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
+                                    {email.subject}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {new Date(email.date).toLocaleDateString()}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-2 text-sm text-gray-500">
+                              No emails found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
