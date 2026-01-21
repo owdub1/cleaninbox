@@ -538,9 +538,10 @@ const EmailCleanup = () => {
     return senders.filter(s => selectedSenders.includes(s.email));
   };
 
-  // Get senders grouped by time period (Today, Yesterday, days of week, then months)
+  // Get senders grouped by time period (Today, Yesterday, days of week, months, then years)
   const getSendersByTimePeriod = (): { period: string; senders: Sender[]; sortOrder: number }[] => {
     const now = new Date();
+    const currentYear = now.getFullYear();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -556,6 +557,7 @@ const EmailCleanup = () => {
     for (const sender of senders) {
       const emailDate = new Date(sender.lastEmailDate);
       const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
+      const emailYear = emailDate.getFullYear();
 
       let period: string;
       let sortOrder: number;
@@ -572,11 +574,17 @@ const EmailCleanup = () => {
         // Sort order: 2-7 based on how many days ago
         const daysAgo = Math.floor((today.getTime() - emailDay.getTime()) / (1000 * 60 * 60 * 24));
         sortOrder = daysAgo + 1;
+      } else if (emailYear === currentYear || emailYear === currentYear - 1) {
+        // Current year or last year - group by month
+        period = `${monthNames[emailDate.getMonth()]} ${emailYear}`;
+        // Sort order: months from current year first, then previous year
+        const monthsAgo = (currentYear - emailYear) * 12 + (now.getMonth() - emailDate.getMonth());
+        sortOrder = 10 + monthsAgo;
       } else {
-        // Older than 7 days - group by month
-        period = `${monthNames[emailDate.getMonth()]} ${emailDate.getFullYear()}`;
-        // Sort order based on date (higher = older)
-        sortOrder = 100 + (now.getFullYear() - emailDate.getFullYear()) * 12 + (now.getMonth() - emailDate.getMonth());
+        // Older than last year - group by year
+        period = emailYear.toString();
+        // Sort order based on year (higher = older)
+        sortOrder = 500 + (currentYear - emailYear);
       }
 
       if (!grouped[period]) {
