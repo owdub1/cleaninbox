@@ -239,9 +239,18 @@ const EmailCleanup = () => {
 
   // Handler to start Gmail OAuth flow
   const handleConnectGmail = async () => {
-    const authUrl = await connectGmail();
-    if (authUrl) {
-      window.location.href = authUrl;
+    console.log('Starting Gmail OAuth flow...');
+    try {
+      const authUrl = await connectGmail();
+      console.log('Got auth URL:', authUrl);
+      if (authUrl) {
+        window.location.href = authUrl;
+      } else {
+        setNotification({ type: 'error', message: 'Failed to get Gmail authorization URL. Please try again.' });
+      }
+    } catch (err: any) {
+      console.error('Connect Gmail error:', err);
+      setNotification({ type: 'error', message: err.message || 'Failed to connect Gmail' });
     }
   };
 
