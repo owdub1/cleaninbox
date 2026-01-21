@@ -86,7 +86,16 @@ export default async function handler(
           .eq('id', account.id);
       }
     } catch (tokenError: any) {
-      console.error('Token error:', tokenError.message);
+      console.error('Token error for user', user.userId, 'email', account.gmail_email || email, ':', tokenError.message);
+
+      // Check if tokens exist at all
+      const { data: tokenCheck, error: checkError } = await supabase
+        .from('gmail_oauth_tokens')
+        .select('id, gmail_email, token_expiry')
+        .eq('user_id', user.userId);
+
+      console.log('Token check result:', { tokenCheck, checkError });
+
       // Update status to reflect the issue
       await supabase
         .from('email_accounts')
@@ -94,8 +103,12 @@ export default async function handler(
         .eq('id', account.id);
 
       return res.status(400).json({
-        error: 'Gmail connection expired. Please reconnect your Gmail account.',
-        code: 'TOKEN_EXPIRED'
+        error: `Gmail connection error: ${tokenError.message}. Please reconnect your Gmail account.`,
+        code: 'TOKEN_ERROR',
+        debug: {
+          gmailEmail: account.gmail_email || email,
+          tokensFound: tokenCheck?.length || 0
+        }
       });
     }
 
