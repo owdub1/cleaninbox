@@ -1098,47 +1098,101 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Delete & Clean Inbox View - Senders grouped, no unsubscribe */}
+            {/* Delete & Clean Inbox View - Senders grouped by year, no unsubscribe */}
             {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && (
               <div className="divide-y divide-gray-200">
-                {filterAndSortSenders(senders).map(sender => (
-                  <div key={sender.id} className="hover:bg-gray-50">
-                    <div className="px-4 py-3 flex items-center justify-between">
-                      <div className="flex items-center flex-1">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
-                          checked={selectedSenders.includes(sender.email)}
-                          onChange={() => toggleSenderSelection(sender.email)}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center">
-                            <span className="text-sm font-medium text-gray-900">{sender.name}</span>
-                            <span className="ml-2 text-xs text-gray-500">({sender.emailCount} emails)</span>
-                          </div>
-                          <div className="text-xs text-gray-500">{sender.email}</div>
+                {Object.keys(sendersByYear).sort((a, b) => Number(b) - Number(a)).map(year => {
+                  const yearSenders = filterAndSortSenders(sendersByYear[year]);
+                  const totalEmails = yearSenders.reduce((sum, s) => sum + s.emailCount, 0);
+                  const isExpanded = expandedYears.includes(year);
+
+                  return (
+                    <div key={year} className="overflow-hidden">
+                      {/* Year header */}
+                      <button
+                        className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                        onClick={() => toggleYear(year)}
+                      >
+                        <div className="flex items-center">
+                          {isExpanded ? (
+                            <ChevronUpIcon className="h-5 w-5 text-gray-500 mr-2" />
+                          ) : (
+                            <ChevronDownIcon className="h-5 w-5 text-gray-500 mr-2" />
+                          )}
+                          <FolderIcon className="h-5 w-5 text-indigo-500 mr-2" />
+                          <span className="text-base font-semibold text-gray-900">{year}</span>
+                          <span className="ml-3 text-sm text-gray-500">
+                            {yearSenders.length} sender{yearSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} emails
+                          </span>
                         </div>
-                        <div className="text-xs text-gray-400 mr-4">
-                          Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCleanupAction('archive', yearSenders);
+                            }}
+                          >
+                            Archive Year
+                          </button>
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCleanupAction('delete', yearSenders);
+                            }}
+                          >
+                            Delete Year
+                          </button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
-                          onClick={() => handleCleanupAction('archive', [sender])}
-                        >
-                          Archive All
-                        </button>
-                        <button
-                          className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                          onClick={() => handleCleanupAction('delete', [sender])}
-                        >
-                          Delete All
-                        </button>
-                      </div>
+                      </button>
+
+                      {/* Senders within year */}
+                      {isExpanded && (
+                        <div className="divide-y divide-gray-100">
+                          {yearSenders.map(sender => (
+                            <div key={sender.id} className="hover:bg-gray-50">
+                              <div className="px-4 py-3 pl-12 flex items-center justify-between">
+                                <div className="flex items-center flex-1">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
+                                    checked={selectedSenders.includes(sender.email)}
+                                    onChange={() => toggleSenderSelection(sender.email)}
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center">
+                                      <span className="text-sm font-medium text-gray-900">{sender.name}</span>
+                                      <span className="ml-2 text-xs text-gray-500">({sender.emailCount} emails)</span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">{sender.email}</div>
+                                  </div>
+                                  <div className="text-xs text-gray-400 mr-4">
+                                    Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                                    onClick={() => handleCleanupAction('archive', [sender])}
+                                  >
+                                    Archive All
+                                  </button>
+                                  <button
+                                    className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                    onClick={() => handleCleanupAction('delete', [sender])}
+                                  >
+                                    Delete All
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
