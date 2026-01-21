@@ -163,6 +163,7 @@ app.listen(PORT, () => {
   console.log(`🚀 CleanInbox API running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔒 CORS enabled for: ${allowedOrigins.join(', ')}`);
+  console.log(`📋 Routes registered: /api/auth/refresh, /api/emails/sync, /api/gmail/connect`);
 });
 
 // Graceful shutdown
