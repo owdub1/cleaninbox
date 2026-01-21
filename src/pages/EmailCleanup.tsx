@@ -361,6 +361,14 @@ const EmailCleanup = () => {
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId);
     setCurrentView('cleanup');
+    // Set default sort based on tool
+    if (toolId === 'delete') {
+      setSortBy('date');
+      setSortDirection('desc'); // Newest first, like Gmail
+    } else {
+      setSortBy('count');
+      setSortDirection('desc'); // Most emails first
+    }
   };
 
   const handleBackToTools = () => {
