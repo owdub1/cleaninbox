@@ -220,6 +220,7 @@ const EmailCleanup = () => {
 
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
+  const [expandedSenders, setExpandedSenders] = useState<string[]>([]); // For Unsubscribe view
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('count');
   const [sortDirection, setSortDirection] = useState('desc');
@@ -458,6 +459,14 @@ const EmailCleanup = () => {
     }
   };
 
+  const toggleSenderExpand = (senderEmail: string) => {
+    if (expandedSenders.includes(senderEmail)) {
+      setExpandedSenders(expandedSenders.filter(s => s !== senderEmail));
+    } else {
+      setExpandedSenders([...expandedSenders, senderEmail]);
+    }
+  };
+
   const toggleSortDirection = () => {
     setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
   };
@@ -510,6 +519,14 @@ const EmailCleanup = () => {
 
   // Get senders grouped by year
   const sendersByYear = getSendersByYear();
+
+  // Get senders that can be unsubscribed (for Unsubscribe tool)
+  const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe);
+
+  // Get all senders sorted by date (newest first) for Delete & Clean view
+  const allSendersSortedByDate = [...senders].sort((a, b) =>
+    new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime()
+  );
 
   // Show loading while determining initial view for authenticated users
   if (isLoadingInitialView) {
@@ -1073,112 +1090,226 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Year-based dropdowns with real data */}
-            {!sendersLoading && !syncing && senders.length > 0 && (
+            {/* Delete & Clean Inbox View - Senders grouped, no unsubscribe */}
+            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && (
               <div className="divide-y divide-gray-200">
-                {Object.keys(sendersByYear).sort((a, b) => Number(b) - Number(a)).map(year => (
-                  <div key={year} className="overflow-hidden">
-                    <button
-                      className="w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-50 focus:outline-none"
-                      onClick={() => toggleYear(year)}
-                    >
-                      <div className="flex items-center">
-                        <FolderIcon className="h-4 w-4 text-indigo-500 mr-2" />
-                        <span className="font-medium text-gray-900">{year}</span>
-                        <span className="ml-2 text-xs text-gray-500">
-                          ({sendersByYear[year].length} senders)
-                        </span>
-                      </div>
-                      {expandedYears.includes(year) ? (
-                        <ChevronUpIcon className="h-4 w-4 text-gray-500" />
-                      ) : (
-                        <ChevronDownIcon className="h-4 w-4 text-gray-500" />
-                      )}
-                    </button>
-                    {expandedYears.includes(year) && (
-                      <div className="bg-gray-50 px-4 py-3">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-gray-100">
-                              <tr>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  <input type="checkbox" className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Sender
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Email Count
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Last Email
-                                </th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {filterAndSortSenders(sendersByYear[year]).map(sender => (
-                                <tr key={sender.id} className="hover:bg-gray-50">
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <input
-                                      type="checkbox"
-                                      className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                      checked={selectedSenders.includes(sender.email)}
-                                      onChange={() => toggleSenderSelection(sender.email)}
-                                    />
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                      <div>
-                                        <div className="text-sm font-medium text-gray-900">{sender.name}</div>
-                                        <div className="text-xs text-gray-500">{sender.email}</div>
-                                      </div>
-                                      {sender.isNewsletter && (
-                                        <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                                          Newsletter
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{sender.emailCount} emails</div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">
-                                      {new Date(sender.lastEmailDate).toLocaleDateString()}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                    {sender.hasUnsubscribe && (
-                                      <button
-                                        className="text-purple-600 hover:text-purple-900 mr-2 text-xs"
-                                        onClick={() => handleCleanupAction('unsubscribe', [sender])}
-                                      >
-                                        Unsubscribe
-                                      </button>
-                                    )}
-                                    <button
-                                      className="text-indigo-600 hover:text-indigo-900 mr-2 text-xs"
-                                      onClick={() => handleCleanupAction('archive', [sender])}
-                                    >
-                                      Archive
-                                    </button>
-                                    <button
-                                      className="text-red-600 hover:text-red-900 text-xs"
-                                      onClick={() => handleCleanupAction('delete', [sender])}
-                                    >
-                                      Delete
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                {filterAndSortSenders(senders).map(sender => (
+                  <div key={sender.id} className="hover:bg-gray-50">
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center flex-1">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
+                          checked={selectedSenders.includes(sender.email)}
+                          onChange={() => toggleSenderSelection(sender.email)}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium text-gray-900">{sender.name}</span>
+                            <span className="ml-2 text-xs text-gray-500">({sender.emailCount} emails)</span>
+                          </div>
+                          <div className="text-xs text-gray-500">{sender.email}</div>
+                        </div>
+                        <div className="text-xs text-gray-400 mr-4">
+                          Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
                         </div>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                          onClick={() => handleCleanupAction('archive', [sender])}
+                        >
+                          Archive All
+                        </button>
+                        <button
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                          onClick={() => handleCleanupAction('delete', [sender])}
+                        >
+                          Delete All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Unsubscribe View - Only senders with unsubscribe option, expandable */}
+            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'unsubscribe' && (
+              <div className="divide-y divide-gray-200">
+                {unsubscribableSenders.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BellOff className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">No newsletters found</h3>
+                    <p className="text-gray-500">
+                      No senders with unsubscribe options were found in your emails.
+                    </p>
+                  </div>
+                ) : (
+                  filterAndSortSenders(unsubscribableSenders).map(sender => (
+                    <div key={sender.id} className="overflow-hidden">
+                      <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                        <button
+                          className="flex items-center flex-1 text-left"
+                          onClick={() => toggleSenderExpand(sender.email)}
+                        >
+                          {expandedSenders.includes(sender.email) ? (
+                            <ChevronUpIcon className="h-4 w-4 text-gray-400 mr-2" />
+                          ) : (
+                            <ChevronDownIcon className="h-4 w-4 text-gray-400 mr-2" />
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-gray-900">{sender.name}</span>
+                              <span className="ml-2 text-xs text-gray-500">({sender.emailCount} emails)</span>
+                              {sender.isNewsletter && (
+                                <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                  Newsletter
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">{sender.email}</div>
+                          </div>
+                        </button>
+                        <button
+                          className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                          onClick={() => handleCleanupAction('unsubscribe', [sender])}
+                        >
+                          Unsubscribe
+                        </button>
+                      </div>
+                      {expandedSenders.includes(sender.email) && (
+                        <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                          <div className="text-xs text-gray-500 mb-2">
+                            Recent emails from this sender:
+                          </div>
+                          <div className="space-y-2">
+                            {/* Show placeholder for individual emails - would need API to fetch actual emails */}
+                            <div className="bg-white rounded-lg p-3 border border-gray-200">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="text-sm text-gray-700">
+                                    Last email: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {sender.emailCount} total emails from this sender
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                                    onClick={() => handleCleanupAction('archive', [sender])}
+                                  >
+                                    Archive All
+                                  </button>
+                                  <button
+                                    className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                    onClick={() => handleCleanupAction('delete', [sender])}
+                                  >
+                                    Delete All
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Archive Old Emails View */}
+            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'archive' && (
+              <div className="divide-y divide-gray-200">
+                {filterAndSortSenders(senders).map(sender => (
+                  <div key={sender.id} className="hover:bg-gray-50">
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center flex-1">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-3"
+                          checked={selectedSenders.includes(sender.email)}
+                          onChange={() => toggleSenderSelection(sender.email)}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium text-gray-900">{sender.name}</span>
+                            <span className="ml-2 text-xs text-gray-500">({sender.emailCount} emails)</span>
+                          </div>
+                          <div className="text-xs text-gray-500">{sender.email}</div>
+                        </div>
+                        <div className="text-xs text-gray-400 mr-4">
+                          Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                        onClick={() => handleCleanupAction('archive', [sender])}
+                      >
+                        Archive All
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Top Senders View */}
+            {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'top-senders' && (
+              <div className="divide-y divide-gray-200">
+                {[...senders].sort((a, b) => b.emailCount - a.emailCount).slice(0, 20).map((sender, index) => (
+                  <div key={sender.id} className="hover:bg-gray-50">
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center flex-1">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm mr-3">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center">
+                            <span className="text-sm font-medium text-gray-900">{sender.name}</span>
+                            {sender.isNewsletter && (
+                              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                Newsletter
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">{sender.email}</div>
+                        </div>
+                        <div className="flex items-center mr-4">
+                          <div className="w-24 bg-gray-200 rounded-full h-2 mr-2">
+                            <div
+                              className="bg-gradient-to-r from-amber-400 to-orange-500 h-2 rounded-full"
+                              style={{ width: `${Math.min((sender.emailCount / senders[0]?.emailCount) * 100, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-semibold text-gray-700">{sender.emailCount}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {sender.hasUnsubscribe && (
+                          <button
+                            className="px-3 py-1.5 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded"
+                            onClick={() => handleCleanupAction('unsubscribe', [sender])}
+                          >
+                            Unsubscribe
+                          </button>
+                        )}
+                        <button
+                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                          onClick={() => handleCleanupAction('archive', [sender])}
+                        >
+                          Archive
+                        </button>
+                        <button
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                          onClick={() => handleCleanupAction('delete', [sender])}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
