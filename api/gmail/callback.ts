@@ -54,16 +54,20 @@ export default async function handler(
     // Verify state parameter (CSRF protection)
     const stateData = verifyOAuthState(state);
     if (!stateData) {
+      console.error('Invalid OAuth state');
       return res.redirect(`${APP_URL}/email-cleanup?error=invalid_state`);
     }
 
     const { userId } = stateData;
+    console.log('Gmail callback for user:', userId);
 
     // Exchange authorization code for tokens
     const tokens = await exchangeCodeForTokens(code);
+    console.log('Got tokens, expires_in:', tokens.expires_in);
 
     // Get Gmail profile
     const profile = await getGmailProfile(tokens.access_token);
+    console.log('Gmail profile:', profile.email);
 
     // Check if this Gmail account is already connected to another user
     const { data: existingToken } = await supabase
@@ -127,18 +131,24 @@ export default async function handler(
     }
 
     // Store encrypted OAuth tokens
+    console.log('Storing tokens for:', { userId, emailAccountId, email: profile.email });
     const { id: tokenId } = await storeOAuthTokens(
       userId,
       emailAccountId,
       profile.email,
       tokens
     );
+    console.log('Tokens stored with ID:', tokenId);
 
     // Update email account with token reference
-    await supabase
+    const { error: updateError } = await supabase
       .from('email_accounts')
       .update({ oauth_token_id: tokenId })
       .eq('id', emailAccountId);
+
+    if (updateError) {
+      console.error('Failed to update email account:', updateError);
+    }
 
     // Log to activity_log for Recent Activity display
     await supabase
