@@ -65,11 +65,13 @@ async function gmailRequest(
 
   if (!response.ok) {
     const error = await response.text();
+    console.error('Gmail API error response:', response.status, error);
     throw new Error(`Gmail API error: ${response.status} - ${error}`);
   }
 
   // Handle empty responses (like successful deletes)
   const text = await response.text();
+  console.log('Gmail API raw response length:', text.length);
   return text ? JSON.parse(text) : null;
 }
 
@@ -94,7 +96,10 @@ export async function listMessages(
   const queryString = params.toString();
   const endpoint = `/messages${queryString ? `?${queryString}` : ''}`;
 
-  return gmailRequest(accessToken, endpoint);
+  console.log('Gmail API request:', endpoint);
+  const result = await gmailRequest(accessToken, endpoint);
+  console.log('Gmail API response:', JSON.stringify(result).substring(0, 500));
+  return result;
 }
 
 /**
