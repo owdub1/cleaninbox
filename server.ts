@@ -43,6 +43,7 @@ const PORT = process.env.PORT || 3001;
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
   'https://cleaninbox.vercel.app',
   process.env.FRONTEND_URL || ''
 ].filter(Boolean);
@@ -52,9 +53,15 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
 
+    // Allow all Vercel preview/production URLs
+    if (origin.includes('vercel.app') || origin.includes('cleaninbox')) {
+      return callback(null, true);
+    }
+
     if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
       callback(null, true);
     } else {
+      console.warn('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
