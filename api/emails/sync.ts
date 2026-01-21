@@ -113,7 +113,9 @@ export default async function handler(
     }
 
     // Fetch sender statistics from Gmail
+    console.log('Fetching sender stats from Gmail...');
     const senderStats = await fetchSenderStats(accessToken, Math.min(maxMessages, 2000));
+    console.log('Fetched senders:', senderStats.length, 'Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
 
     // Update sender cache in database
     const sendersToUpsert = senderStats.map((sender: SenderStats) => ({
@@ -134,14 +136,19 @@ export default async function handler(
 
     // Upsert senders in batches
     const BATCH_SIZE = 100;
+    console.log('Upserting', sendersToUpsert.length, 'senders to database...');
     for (let i = 0; i < sendersToUpsert.length; i += BATCH_SIZE) {
       const batch = sendersToUpsert.slice(i, i + BATCH_SIZE);
-      await supabase
+      const { error: upsertError } = await supabase
         .from('email_senders')
         .upsert(batch, {
           onConflict: 'email_account_id,sender_email'
         });
+      if (upsertError) {
+        console.error('Upsert error:', upsertError);
+      }
     }
+    console.log('Upsert complete');
 
     // Update email account stats
     const totalEmails = senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);
