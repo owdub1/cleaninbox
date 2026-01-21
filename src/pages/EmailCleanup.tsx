@@ -235,7 +235,15 @@ const EmailCleanup = () => {
   }>({ isOpen: false, action: 'delete', senders: [] });
 
   // Gmail connection hooks
-  const { handleOAuthCallback, clearCallbackParams } = useGmailConnection();
+  const { handleOAuthCallback, clearCallbackParams, connectGmail } = useGmailConnection();
+
+  // Handler to start Gmail OAuth flow
+  const handleConnectGmail = async () => {
+    const authUrl = await connectGmail();
+    if (authUrl) {
+      window.location.href = authUrl;
+    }
+  };
 
   // Email senders hook
   const {
@@ -1046,11 +1054,11 @@ const EmailCleanup = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => navigate('/dashboard?tab=myemails')}
+                    onClick={handleConnectGmail}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
                   >
                     <Mail className="w-4 h-4" />
-                    {connectedGmailAccount ? 'Manage Email' : 'Connect Gmail'}
+                    {connectedGmailAccount ? 'Reconnect Gmail' : 'Connect Gmail'}
                   </button>
                 </div>
               </div>
