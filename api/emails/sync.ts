@@ -67,18 +67,37 @@ export default async function handler(
       });
     }
 
-    if (account.connection_status !== 'connected') {
+    // Try to get valid access token (refreshes if needed)
+    // This will throw if no valid tokens exist
+    let accessToken: string;
+    try {
+      const tokenResult = await getValidAccessToken(
+        user.userId,
+        account.gmail_email || email
+      );
+      accessToken = tokenResult.accessToken;
+
+      // If we got here, tokens are valid - ensure connection_status is correct
+      if (account.connection_status !== 'connected') {
+        console.log('Auto-fixing connection_status for account:', email);
+        await supabase
+          .from('email_accounts')
+          .update({ connection_status: 'connected', updated_at: new Date().toISOString() })
+          .eq('id', account.id);
+      }
+    } catch (tokenError: any) {
+      console.error('Token error:', tokenError.message);
+      // Update status to reflect the issue
+      await supabase
+        .from('email_accounts')
+        .update({ connection_status: 'expired', updated_at: new Date().toISOString() })
+        .eq('id', account.id);
+
       return res.status(400).json({
-        error: 'Gmail account is not connected',
-        code: 'NOT_CONNECTED'
+        error: 'Gmail connection expired. Please reconnect your Gmail account.',
+        code: 'TOKEN_EXPIRED'
       });
     }
-
-    // Get valid access token (refreshes if needed)
-    const { accessToken } = await getValidAccessToken(
-      user.userId,
-      account.gmail_email || email
-    );
 
     // Fetch sender statistics from Gmail
     const senderStats = await fetchSenderStats(accessToken, Math.min(maxMessages, 2000));
