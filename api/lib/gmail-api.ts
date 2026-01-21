@@ -107,12 +107,13 @@ export async function listMessages(
 export async function getMessage(
   accessToken: string,
   messageId: string,
-  format: 'full' | 'metadata' | 'minimal' = 'metadata'
+  format: 'full' | 'metadata' | 'minimal' = 'full'
 ): Promise<GmailMessage> {
-  const metadataHeaders = 'From,Subject,List-Unsubscribe,List-Unsubscribe-Post';
+  // Use format=full to ensure headers are always returned
+  // metadata format with metadataHeaders can be unreliable
   return gmailRequest(
     accessToken,
-    `/messages/${messageId}?format=${format}&metadataHeaders=${metadataHeaders}`
+    `/messages/${messageId}?format=${format}`
   );
 }
 
