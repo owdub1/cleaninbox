@@ -219,7 +219,7 @@ const EmailCleanup = () => {
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [expandedYears, setExpandedYears] = useState<string[]>([new Date().getFullYear().toString()]);
+  const [expandedPeriods, setExpandedPeriods] = useState<string[]>(['Today', 'Yesterday']); // Time periods expanded by default
   const [expandedSenders, setExpandedSenders] = useState<string[]>([]); // For Unsubscribe view
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('count');
@@ -459,11 +459,11 @@ const EmailCleanup = () => {
     setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
   };
 
-  const toggleYear = (year: string) => {
-    if (expandedYears.includes(year)) {
-      setExpandedYears(expandedYears.filter(y => y !== year));
+  const togglePeriod = (period: string) => {
+    if (expandedPeriods.includes(period)) {
+      setExpandedPeriods(expandedPeriods.filter(p => p !== period));
     } else {
-      setExpandedYears([...expandedYears, year]);
+      setExpandedPeriods([...expandedPeriods, period]);
     }
   };
 
@@ -525,7 +525,62 @@ const EmailCleanup = () => {
     return senders.filter(s => selectedSenders.includes(s.email));
   };
 
-  // Get senders grouped by year
+  // Get senders grouped by time period (Today, Yesterday, days of week, then months)
+  const getSendersByTimePeriod = (): { period: string; senders: Sender[]; sortOrder: number }[] => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const grouped: Record<string, { senders: Sender[]; sortOrder: number }> = {};
+
+    for (const sender of senders) {
+      const emailDate = new Date(sender.lastEmailDate);
+      const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
+
+      let period: string;
+      let sortOrder: number;
+
+      if (emailDay.getTime() === today.getTime()) {
+        period = 'Today';
+        sortOrder = 0;
+      } else if (emailDay.getTime() === yesterday.getTime()) {
+        period = 'Yesterday';
+        sortOrder = 1;
+      } else if (emailDay > sevenDaysAgo) {
+        // Within last 7 days - show day name
+        period = dayNames[emailDate.getDay()];
+        // Sort order: 2-7 based on how many days ago
+        const daysAgo = Math.floor((today.getTime() - emailDay.getTime()) / (1000 * 60 * 60 * 24));
+        sortOrder = daysAgo + 1;
+      } else {
+        // Older than 7 days - group by month
+        period = `${monthNames[emailDate.getMonth()]} ${emailDate.getFullYear()}`;
+        // Sort order based on date (higher = older)
+        sortOrder = 100 + (now.getFullYear() - emailDate.getFullYear()) * 12 + (now.getMonth() - emailDate.getMonth());
+      }
+
+      if (!grouped[period]) {
+        grouped[period] = { senders: [], sortOrder };
+      }
+      grouped[period].senders.push(sender);
+    }
+
+    // Convert to array and sort by sortOrder
+    return Object.entries(grouped)
+      .map(([period, data]) => ({ period, senders: data.senders, sortOrder: data.sortOrder }))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  };
+
+  const sendersByTimePeriod = getSendersByTimePeriod();
+
+  // Get senders grouped by year (keeping for backward compatibility)
   const sendersByYear = getSendersByYear();
 
   // Get senders that can be unsubscribed (for Unsubscribe tool)
@@ -1098,20 +1153,22 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Delete & Clean Inbox View - Senders grouped by year, no unsubscribe */}
+            {/* Delete & Clean Inbox View - Senders grouped by time period */}
             {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && (
               <div className="divide-y divide-gray-200">
-                {Object.keys(sendersByYear).sort((a, b) => Number(b) - Number(a)).map(year => {
-                  const yearSenders = filterAndSortSenders(sendersByYear[year]);
-                  const totalEmails = yearSenders.reduce((sum, s) => sum + s.emailCount, 0);
-                  const isExpanded = expandedYears.includes(year);
+                {sendersByTimePeriod.map(({ period, senders: periodSenders }) => {
+                  const filteredSenders = filterAndSortSenders(periodSenders);
+                  const totalEmails = filteredSenders.reduce((sum, s) => sum + s.emailCount, 0);
+                  const isExpanded = expandedPeriods.includes(period);
+
+                  if (filteredSenders.length === 0) return null;
 
                   return (
-                    <div key={year} className="overflow-hidden">
-                      {/* Year header */}
+                    <div key={period} className="overflow-hidden">
+                      {/* Time period header */}
                       <button
                         className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                        onClick={() => toggleYear(year)}
+                        onClick={() => togglePeriod(period)}
                       >
                         <div className="flex items-center">
                           {isExpanded ? (
@@ -1120,9 +1177,9 @@ const EmailCleanup = () => {
                             <ChevronDownIcon className="h-5 w-5 text-gray-500 mr-2" />
                           )}
                           <FolderIcon className="h-5 w-5 text-indigo-500 mr-2" />
-                          <span className="text-base font-semibold text-gray-900">{year}</span>
+                          <span className="text-base font-semibold text-gray-900">{period}</span>
                           <span className="ml-3 text-sm text-gray-500">
-                            {yearSenders.length} sender{yearSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} emails
+                            {filteredSenders.length} sender{filteredSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} emails
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1130,27 +1187,27 @@ const EmailCleanup = () => {
                             className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCleanupAction('archive', yearSenders);
+                              handleCleanupAction('archive', filteredSenders);
                             }}
                           >
-                            Archive Year
+                            Archive All
                           </button>
                           <button
                             className="px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCleanupAction('delete', yearSenders);
+                              handleCleanupAction('delete', filteredSenders);
                             }}
                           >
-                            Delete Year
+                            Delete All
                           </button>
                         </div>
                       </button>
 
-                      {/* Senders within year */}
+                      {/* Senders within time period */}
                       {isExpanded && (
                         <div className="divide-y divide-gray-100">
-                          {yearSenders.map(sender => (
+                          {filteredSenders.map(sender => (
                             <div key={sender.id} className="hover:bg-gray-50">
                               <div className="px-4 py-3 pl-12 flex items-center justify-between">
                                 <div className="flex items-center flex-1">
