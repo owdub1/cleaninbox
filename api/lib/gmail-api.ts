@@ -71,7 +71,6 @@ async function gmailRequest(
 
   // Handle empty responses (like successful deletes)
   const text = await response.text();
-  console.log('Gmail API raw response length:', text.length);
   return text ? JSON.parse(text) : null;
 }
 
@@ -96,9 +95,9 @@ export async function listMessages(
   const queryString = params.toString();
   const endpoint = `/messages${queryString ? `?${queryString}` : ''}`;
 
-  console.log('Gmail API request:', endpoint);
   const result = await gmailRequest(accessToken, endpoint);
-  console.log('Gmail API response:', JSON.stringify(result).substring(0, 500));
+  const messageCount = result?.messages?.length || 0;
+  console.log(`Gmail API: listed ${messageCount} messages`);
   return result;
 }
 
@@ -118,23 +117,41 @@ export async function getMessage(
 }
 
 /**
- * Batch get multiple messages
+ * Batch get multiple messages with rate limiting
  */
 export async function batchGetMessages(
   accessToken: string,
   messageIds: string[],
   format: 'full' | 'metadata' | 'minimal' = 'metadata'
 ): Promise<GmailMessage[]> {
-  // Gmail batch API is complex, so we'll do parallel requests with limit
-  const BATCH_SIZE = 50;
+  // Gmail rate limits: 250 quota units per second per user
+  // getMessage uses ~5 quota units, so max ~50/sec
+  // Use smaller batches with delays to avoid rate limits
+  const BATCH_SIZE = 10; // Reduced from 50
+  const DELAY_MS = 200; // Delay between batches
   const results: GmailMessage[] = [];
+
+  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE}...`);
 
   for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
     const batch = messageIds.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(id => getMessage(accessToken, id, format).catch(() => null))
+      batch.map(id => getMessage(accessToken, id, format).catch((err) => {
+        console.warn(`Failed to get message ${id}:`, err.message);
+        return null;
+      }))
     );
     results.push(...batchResults.filter(Boolean) as GmailMessage[]);
+
+    // Add delay between batches to avoid rate limiting
+    if (i + BATCH_SIZE < messageIds.length) {
+      await new Promise(resolve => setTimeout(resolve, DELAY_MS));
+    }
+
+    // Log progress every 100 messages
+    if ((i + BATCH_SIZE) % 100 === 0 || i + BATCH_SIZE >= messageIds.length) {
+      console.log(`Processed ${Math.min(i + BATCH_SIZE, messageIds.length)}/${messageIds.length} messages`);
+    }
   }
 
   return results;
