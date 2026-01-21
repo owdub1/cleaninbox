@@ -23,6 +23,7 @@ import gmailDisconnect from './api/gmail/disconnect.js';
 // Email routes
 import emailsSync from './api/emails/sync.js';
 import emailsSenders from './api/emails/senders.js';
+import emailsBySender from './api/emails/by-sender.js';
 
 // Cleanup routes
 import cleanupDelete from './api/cleanup/delete.js';
@@ -121,6 +122,7 @@ app.post('/api/gmail/disconnect', wrapHandler(gmailDisconnect));
 // Email routes
 app.post('/api/emails/sync', wrapHandler(emailsSync));
 app.get('/api/emails/senders', wrapHandler(emailsSenders));
+app.get('/api/emails/by-sender', wrapHandler(emailsBySender));
 
 // Cleanup routes
 app.post('/api/cleanup/delete', wrapHandler(cleanupDelete));

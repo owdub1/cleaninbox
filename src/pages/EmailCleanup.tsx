@@ -32,7 +32,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useGmailConnection } from '../hooks/useGmailConnection';
-import { useEmailSenders, Sender } from '../hooks/useEmailSenders';
+import { useEmailSenders, Sender, EmailMessage } from '../hooks/useEmailSenders';
 import { useCleanupActions } from '../hooks/useCleanupActions';
 import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
@@ -263,8 +263,13 @@ const EmailCleanup = () => {
     error: sendersError,
     fetchSenders,
     syncEmails,
-    getSendersByYear
+    getSendersByYear,
+    fetchEmailsBySender
   } = useEmailSenders({ autoFetch: true });
+
+  // State for storing loaded emails by sender
+  const [senderEmails, setSenderEmails] = useState<Record<string, EmailMessage[]>>({});
+  const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
 
   // Cleanup actions hook
   const { deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
@@ -467,11 +472,19 @@ const EmailCleanup = () => {
     }
   };
 
-  const toggleSenderExpand = (senderEmail: string) => {
+  const toggleSenderExpand = async (senderEmail: string, accountEmail?: string) => {
     if (expandedSenders.includes(senderEmail)) {
       setExpandedSenders(expandedSenders.filter(s => s !== senderEmail));
     } else {
       setExpandedSenders([...expandedSenders, senderEmail]);
+
+      // Fetch emails for this sender if not already loaded
+      if (!senderEmails[senderEmail] && accountEmail) {
+        setLoadingEmails(senderEmail);
+        const emails = await fetchEmailsBySender(senderEmail, accountEmail, 50);
+        setSenderEmails(prev => ({ ...prev, [senderEmail]: emails }));
+        setLoadingEmails(null);
+      }
     }
   };
 
@@ -1270,7 +1283,7 @@ const EmailCleanup = () => {
                       <div className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
                         <button
                           className="flex items-center flex-1 text-left"
-                          onClick={() => toggleSenderExpand(sender.email)}
+                          onClick={() => toggleSenderExpand(sender.email, sender.accountEmail)}
                         >
                           {expandedSenders.includes(sender.email) ? (
                             <ChevronUpIcon className="h-4 w-4 text-gray-400 mr-2" />
@@ -1299,37 +1312,59 @@ const EmailCleanup = () => {
                       </div>
                       {expandedSenders.includes(sender.email) && (
                         <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
-                          <div className="text-xs text-gray-500 mb-2">
-                            Recent emails from this sender:
-                          </div>
-                          <div className="space-y-2">
-                            {/* Show placeholder for individual emails - would need API to fetch actual emails */}
-                            <div className="bg-white rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <div className="text-sm text-gray-700">
-                                    Last email: {new Date(sender.lastEmailDate).toLocaleDateString()}
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {sender.emailCount} total emails from this sender
-                                  </div>
-                                </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
-                                    onClick={() => handleCleanupAction('archive', [sender])}
-                                  >
-                                    Archive All
-                                  </button>
-                                  <button
-                                    className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                                    onClick={() => handleCleanupAction('delete', [sender])}
-                                  >
-                                    Delete All
-                                  </button>
-                                </div>
-                              </div>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs text-gray-500">
+                              Emails from this sender ({sender.emailCount} total):
                             </div>
+                            <div className="flex gap-2">
+                              <button
+                                className="px-2 py-1 text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                                onClick={() => handleCleanupAction('archive', [sender])}
+                              >
+                                Archive All
+                              </button>
+                              <button
+                                className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                onClick={() => handleCleanupAction('delete', [sender])}
+                              >
+                                Delete All
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-2 max-h-80 overflow-y-auto">
+                            {loadingEmails === sender.email ? (
+                              <div className="flex items-center justify-center py-4">
+                                <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
+                                <span className="text-sm text-gray-500">Loading emails...</span>
+                              </div>
+                            ) : senderEmails[sender.email]?.length > 0 ? (
+                              senderEmails[sender.email].map(email => (
+                                <div key={email.id} className="bg-white rounded-lg p-3 border border-gray-200 hover:border-gray-300">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        {email.isUnread && (
+                                          <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                                        )}
+                                        <span className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                          {email.subject}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                        {email.snippet}
+                                      </p>
+                                      <div className="text-xs text-gray-400 mt-1">
+                                        {new Date(email.date).toLocaleDateString()} at {new Date(email.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-4 text-sm text-gray-500">
+                                No emails found. Try syncing your emails.
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}

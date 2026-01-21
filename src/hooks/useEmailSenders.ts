@@ -18,6 +18,15 @@ export interface Sender {
   accountEmail: string;
 }
 
+export interface EmailMessage {
+  id: string;
+  threadId: string;
+  subject: string;
+  snippet: string;
+  date: string;
+  isUnread: boolean;
+}
+
 interface SendersResponse {
   senders: Sender[];
   pagination: {
@@ -248,6 +257,50 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     return senders.filter(sender => new Date(sender.lastEmailDate) < cutoffDate);
   }, [senders]);
 
+  /**
+   * Fetch individual emails from a specific sender
+   */
+  const fetchEmailsBySender = useCallback(async (
+    senderEmail: string,
+    accountEmail: string,
+    limit: number = 20
+  ): Promise<EmailMessage[]> => {
+    if (!token) {
+      console.error('Authentication required to fetch emails');
+      return [];
+    }
+
+    try {
+      const params = new URLSearchParams({
+        senderEmail,
+        accountEmail,
+        limit: limit.toString()
+      });
+
+      const response = await fetch(
+        `${API_URL}/api/emails/by-sender?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch emails');
+      }
+
+      return data.emails || [];
+    } catch (err: any) {
+      console.error('Fetch emails by sender error:', err);
+      return [];
+    }
+  }, [token]);
+
   // Auto-fetch on mount if enabled (only once)
   useEffect(() => {
     if (options.autoFetch && token && !hasFetched) {
@@ -270,5 +323,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     getUnsubscribableSenders,
     getSendersByEmailCount,
     getSendersOlderThan,
+    fetchEmailsBySender,
   };
 };
