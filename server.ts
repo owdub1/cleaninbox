@@ -135,8 +135,14 @@ app.post('/api/subscription/cancel', wrapHandler(subscriptionCancel));
 app.get('/api/activity/get', wrapHandler(activityGet));
 app.post('/api/activity/log', wrapHandler(activityLog));
 
+// Health check endpoint
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // 404 handler
 app.use((req: Request, res: Response) => {
+  console.log('404 for:', req.method, req.path);
   res.status(404).json({
     error: 'Not found',
     path: req.path
