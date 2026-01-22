@@ -274,18 +274,44 @@ function parseSender(fromHeader: string): { email: string; name: string } {
   // "John Doe <john@example.com>"
   // "john@example.com"
   // "<john@example.com>"
+  // John Doe <john@example.com>
 
-  const match = fromHeader.match(/^(?:"?([^"<]*)"?\s*)?<?([^>]+@[^>]+)>?$/);
-  if (match) {
+  const trimmed = fromHeader.trim();
+
+  // Check for format: Name <email@domain.com> or "Name" <email@domain.com>
+  const angleMatch = trimmed.match(/^(?:"?(.+?)"?\s*)?<([^<>]+@[^<>]+)>$/);
+  if (angleMatch) {
     return {
-      name: (match[1] || '').trim(),
-      email: match[2].toLowerCase().trim(),
+      name: (angleMatch[1] || '').trim().replace(/^["']|["']$/g, ''),
+      email: angleMatch[2].toLowerCase().trim(),
     };
   }
 
+  // Check for plain email address (no angle brackets, no name)
+  const plainEmailMatch = trimmed.match(/^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/);
+  if (plainEmailMatch) {
+    return {
+      name: '',
+      email: plainEmailMatch[1].toLowerCase().trim(),
+    };
+  }
+
+  // Fallback: try to extract any email-like pattern
+  const emailExtract = trimmed.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  if (emailExtract) {
+    // Get the part before the email as the name
+    const emailIndex = trimmed.indexOf(emailExtract[1]);
+    const namePart = trimmed.substring(0, emailIndex).trim().replace(/[<>"']/g, '').trim();
+    return {
+      name: namePart,
+      email: emailExtract[1].toLowerCase().trim(),
+    };
+  }
+
+  // Last resort: return the whole thing as email
   return {
     name: '',
-    email: fromHeader.toLowerCase().trim(),
+    email: trimmed.toLowerCase(),
   };
 }
 
