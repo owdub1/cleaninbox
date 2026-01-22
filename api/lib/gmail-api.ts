@@ -514,6 +514,7 @@ export async function fetchSenderStats(
     const response = await listMessages(accessToken, {
       maxResults: Math.min(100, maxMessages - allMessageRefs.length),
       pageToken,
+      labelIds: ['INBOX'], // Only fetch inbox messages, not sent/drafts/etc
     });
 
     if (!response.messages || response.messages.length === 0) break;
