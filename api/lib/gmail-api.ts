@@ -278,6 +278,11 @@ function parseSender(fromHeader: string): { email: string; name: string } {
 
   const trimmed = fromHeader.trim();
 
+  // Handle empty or invalid input
+  if (!trimmed || trimmed === '<>' || trimmed === '""' || trimmed === "''") {
+    return { name: '', email: '' };
+  }
+
   // Check for format: Name <email@domain.com> or "Name" <email@domain.com>
   const angleMatch = trimmed.match(/^(?:"?(.+?)"?\s*)?<([^<>]+@[^<>]+)>$/);
   if (angleMatch) {
