@@ -526,7 +526,7 @@ export async function fetchSenderStats(
     const response = await listMessages(accessToken, {
       maxResults: Math.min(100, maxMessages - allMessageRefs.length),
       pageToken,
-      // No filter - fetch all messages and let the user's own email filter handle sent messages
+      q: '-in:sent -in:drafts -in:trash -in:spam', // Exclude sent, drafts, trash, spam
     });
 
     if (!response.messages || response.messages.length === 0) break;
