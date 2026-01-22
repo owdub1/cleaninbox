@@ -528,9 +528,10 @@ export async function fetchSenderStats(
     return [];
   }
 
-  // Get message details
+  // Get message details - use 'full' format to ensure headers are always returned
+  // 'metadata' format can be unreliable and skip the From header
   const messageIds = allMessageRefs.map(m => m.id);
-  const messages = await batchGetMessages(accessToken, messageIds, 'metadata');
+  const messages = await batchGetMessages(accessToken, messageIds, 'full');
 
   // Aggregate by sender
   const senderMap = aggregateBySender(messages);
