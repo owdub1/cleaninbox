@@ -102,19 +102,24 @@ export async function listMessages(
 }
 
 /**
- * Get full message details
+ * Get message details with specific headers
  */
 export async function getMessage(
   accessToken: string,
   messageId: string,
-  format: 'full' | 'metadata' | 'minimal' = 'full'
+  format: 'full' | 'metadata' | 'minimal' = 'metadata',
+  metadataHeaders?: string[]
 ): Promise<GmailMessage> {
-  // Use format=full to ensure headers are always returned
-  // metadata format with metadataHeaders can be unreliable
-  return gmailRequest(
-    accessToken,
-    `/messages/${messageId}?format=${format}`
-  );
+  let endpoint = `/messages/${messageId}?format=${format}`;
+
+  // When using metadata format, explicitly request the headers we need
+  // This is faster than 'full' format and more reliable
+  if (format === 'metadata' && metadataHeaders && metadataHeaders.length > 0) {
+    const headersParam = metadataHeaders.map(h => `metadataHeaders=${encodeURIComponent(h)}`).join('&');
+    endpoint += `&${headersParam}`;
+  }
+
+  return gmailRequest(accessToken, endpoint);
 }
 
 /**
@@ -123,22 +128,25 @@ export async function getMessage(
 export async function batchGetMessages(
   accessToken: string,
   messageIds: string[],
-  format: 'full' | 'metadata' | 'minimal' = 'metadata'
+  format: 'full' | 'metadata' | 'minimal' = 'metadata',
+  metadataHeaders?: string[]
 ): Promise<GmailMessage[]> {
   // Gmail rate limits: 250 quota units per second per user
-  // getMessage uses ~5 quota units, so max ~50/sec
-  // Use smaller batches with delays to avoid rate limits
-  const BATCH_SIZE = 10; // Reduced from 50
-  const DELAY_MS = 200; // Delay between batches
+  // metadata format uses fewer quota units than full format
+  // Increase batch size for metadata format for better performance
+  const BATCH_SIZE = format === 'metadata' ? 25 : 10;
+  const DELAY_MS = 100; // Reduced delay for metadata format
   const results: GmailMessage[] = [];
+  let failedCount = 0;
 
-  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE}...`);
+  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} (format: ${format})...`);
 
   for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
     const batch = messageIds.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(
-      batch.map(id => getMessage(accessToken, id, format).catch((err) => {
+      batch.map(id => getMessage(accessToken, id, format, metadataHeaders).catch((err) => {
         console.warn(`Failed to get message ${id}:`, err.message);
+        failedCount++;
         return null;
       }))
     );
@@ -153,6 +161,10 @@ export async function batchGetMessages(
     if ((i + BATCH_SIZE) % 100 === 0 || i + BATCH_SIZE >= messageIds.length) {
       console.log(`Processed ${Math.min(i + BATCH_SIZE, messageIds.length)}/${messageIds.length} messages`);
     }
+  }
+
+  if (failedCount > 0) {
+    console.warn(`Warning: ${failedCount} messages failed to fetch`);
   }
 
   return results;
@@ -526,13 +538,19 @@ export async function fetchSenderStats(
   }
 
   if (allMessageRefs.length === 0) {
+    console.log('No messages found in Gmail');
     return [];
   }
 
-  // Get message details - use 'full' format to ensure headers are always returned
-  // 'metadata' format can be unreliable and skip the From header
+  console.log(`Gmail API listed ${allMessageRefs.length} messages to fetch`);
+
+  // Get message details - use 'metadata' format with explicit headers for performance
+  // This is much faster than 'full' format and avoids rate limiting issues
   const messageIds = allMessageRefs.map(m => m.id);
-  const messages = await batchGetMessages(accessToken, messageIds, 'full');
+  const requiredHeaders = ['From', 'List-Unsubscribe', 'List-Unsubscribe-Post', 'Date', 'Subject'];
+  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
+
+  console.log(`Successfully fetched ${messages.length} of ${messageIds.length} messages (${messageIds.length - messages.length} failed)`);
 
   // Aggregate by sender
   const senderMap = aggregateBySender(messages);
