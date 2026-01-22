@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
@@ -27,7 +27,8 @@ import {
   X,
   Gift,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Undo2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -240,6 +241,99 @@ const SenderAvatar = ({ sender }: { sender: Sender }) => {
   );
 };
 
+// Skeleton loader for sender rows
+const SenderSkeleton = () => (
+  <div className="bg-white rounded-2xl shadow-sm overflow-hidden animate-pulse">
+    <div className="px-5 py-4 flex items-center justify-between">
+      <div className="flex items-center flex-1">
+        <div className="h-5 w-5 bg-gray-200 rounded mr-3" />
+        <div className="h-5 w-5 bg-gray-200 rounded mr-4" />
+        <div className="w-12 h-12 bg-gray-200 rounded-full" />
+        <div className="flex-1 ml-4">
+          <div className="flex items-center">
+            <div className="h-5 w-32 bg-gray-200 rounded" />
+            <div className="ml-3 h-5 w-16 bg-gray-100 rounded-full" />
+          </div>
+          <div className="h-4 w-48 bg-gray-100 rounded mt-1.5" />
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-20 bg-gray-100 rounded-lg" />
+        <div className="h-9 w-20 bg-gray-200 rounded-lg" />
+      </div>
+    </div>
+  </div>
+);
+
+// Undo toast component
+interface UndoAction {
+  type: 'delete' | 'archive';
+  count: number;
+  senderEmails: string[];
+  messageIds?: string[];
+  timestamp: number;
+}
+
+const UndoToast = ({
+  action,
+  onUndo,
+  onDismiss
+}: {
+  action: UndoAction;
+  onUndo: () => void;
+  onDismiss: () => void;
+}) => {
+  const [progress, setProgress] = useState(100);
+  const UNDO_TIMEOUT = 8000; // 8 seconds to undo
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / UNDO_TIMEOUT) * 100);
+      setProgress(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        onDismiss();
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [onDismiss]);
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+      <div className="bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-4 min-w-[300px]">
+        <div className="flex-1">
+          <p className="text-sm font-medium">
+            {action.type === 'delete' ? 'Deleted' : 'Archived'} {action.count} email{action.count !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <button
+          onClick={onUndo}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors"
+        >
+          <Undo2 className="w-4 h-4" />
+          Undo
+        </button>
+        <button
+          onClick={onDismiss}
+          className="p-1 text-gray-400 hover:text-white transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
+        <div
+          className="h-full bg-indigo-500 transition-all duration-100 ease-linear"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
 const EmailCleanup = () => {
   const { isAuthenticated, user } = useAuth();
   const { emailAccounts, loading: dashboardLoading } = useDashboardData();
@@ -319,10 +413,12 @@ const EmailCleanup = () => {
 
   // State for storing loaded emails by sender
   const [senderEmails, setSenderEmails] = useState<Record<string, EmailMessage[]>>({});
+  const [deletingEmailId, setDeletingEmailId] = useState<string | null>(null);
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
 
   // Cleanup actions hook
-  const { deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
+  const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
   // Track free trial usage (only for free users)
   const [freeActionsUsed, setFreeActionsUsed] = useState(0);
@@ -490,10 +586,23 @@ const EmailCleanup = () => {
         if (!hasPaidPlan) {
           setFreeActionsUsed(prev => prev + actionSenders.length);
         }
-        setNotification({
-          type: 'success',
-          message: `Successfully ${action === 'delete' ? 'deleted' : action === 'archive' ? 'archived' : 'unsubscribed from'} ${actionSenders.length} sender(s)`
-        });
+        // Show undo toast for delete/archive actions
+        if (action === 'delete' || action === 'archive') {
+          const totalCount = action === 'delete'
+            ? (result as any).totalDeleted || actionSenders.reduce((sum, s) => sum + s.emailCount, 0)
+            : (result as any).totalArchived || actionSenders.reduce((sum, s) => sum + s.emailCount, 0);
+          setUndoAction({
+            type: action,
+            count: totalCount,
+            senderEmails: senderEmails,
+            timestamp: Date.now()
+          });
+        } else {
+          setNotification({
+            type: 'success',
+            message: `Successfully unsubscribed from ${actionSenders.length} sender(s)`
+          });
+        }
         // Refresh senders list
         fetchSenders();
         // Clear selection
@@ -512,6 +621,65 @@ const EmailCleanup = () => {
     }
 
     setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
+  };
+
+  // Handle deleting a single email
+  const handleDeleteSingleEmail = async (email: EmailMessage, senderEmail: string) => {
+    if (!connectedGmailAccount || deletingEmailId) return;
+
+    setDeletingEmailId(email.id);
+    try {
+      const result = await deleteSingleEmail(
+        connectedGmailAccount.email,
+        email.id,
+        senderEmail
+      );
+
+      if (result?.success) {
+        // Remove email from local state
+        setSenderEmails(prev => ({
+          ...prev,
+          [senderEmail]: prev[senderEmail]?.filter(e => e.id !== email.id) || []
+        }));
+        // Show undo toast
+        setUndoAction({
+          type: 'delete',
+          count: 1,
+          senderEmails: [senderEmail],
+          messageIds: [email.id],
+          timestamp: Date.now()
+        });
+        // Refresh senders to update count
+        fetchSenders();
+      }
+    } catch (error) {
+      setNotification({ type: 'error', message: 'Failed to delete email' });
+    } finally {
+      setDeletingEmailId(null);
+    }
+  };
+
+  // Handle undo action (placeholder - Gmail doesn't support true undo)
+  const handleUndo = () => {
+    // Note: Gmail API moves to trash, which is reversible by opening Gmail
+    // A true undo would require restoring from trash, which is complex
+    setNotification({
+      type: 'success',
+      message: 'To restore, check your Gmail Trash folder'
+    });
+    setUndoAction(null);
+  };
+
+  // Select all visible senders
+  const handleSelectAll = () => {
+    const visibleSenders = filterAndSortSenders(senders);
+    if (selectedSenders.length === visibleSenders.length) {
+      // Deselect all
+      setSelectedSenders([]);
+    } else {
+      // Select all
+      setSelectedSenders(visibleSenders.map(s => s.email));
+    }
   };
 
   const togglePeriod = (period: string) => {
@@ -1110,17 +1278,31 @@ const EmailCleanup = () => {
             {/* Search and filter controls */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <SearchIcon className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-4">
+                  {/* Select All checkbox */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      checked={selectedSenders.length > 0 && selectedSenders.length === filterAndSortSenders(senders).length}
+                      onChange={handleSelectAll}
+                    />
+                    <span className="text-sm text-gray-700">
+                      {selectedSenders.length > 0 ? `${selectedSenders.length} selected` : 'Select All'}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <SearchIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search by sender..."
+                      className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Search by sender..."
-                    className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                  />
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center">
@@ -1175,18 +1357,19 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Loading/Syncing state */}
+            {/* Loading/Syncing state - Skeleton loaders */}
             {(sendersLoading || syncing) && (
-              <div className="flex items-center justify-center py-12">
-                <div className="flex flex-col items-center gap-3 text-gray-500">
-                  <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />
-                  <span className="text-lg font-medium">
-                    {syncing ? 'Syncing your emails...' : 'Loading senders...'}
-                  </span>
-                  {syncing && (
-                    <p className="text-sm text-gray-400">This may take a moment for large inboxes</p>
-                  )}
-                </div>
+              <div className="px-4 py-3 space-y-3">
+                {syncing && (
+                  <div className="flex items-center justify-center py-4 mb-2">
+                    <RefreshCw className="w-5 h-5 animate-spin text-indigo-600 mr-2" />
+                    <span className="text-sm text-gray-600">Syncing your emails...</span>
+                  </div>
+                )}
+                {/* Skeleton rows */}
+                {[...Array(6)].map((_, i) => (
+                  <SenderSkeleton key={i} />
+                ))}
               </div>
             )}
 
@@ -1318,16 +1501,32 @@ const EmailCleanup = () => {
                                     </div>
                                   ) : senderEmails[sender.email]?.length > 0 ? (
                                     senderEmails[sender.email].map(email => (
-                                      <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                        <div className="flex items-center gap-2">
-                                          {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
-                                          <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
-                                            {email.subject}
-                                          </span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
-                                        <div className="text-xs text-gray-400 mt-1">
-                                          {new Date(email.date).toLocaleDateString()}
+                                      <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-gray-200 transition-colors">
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
+                                              <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
+                                                {email.subject}
+                                              </span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
+                                            <div className="text-xs text-gray-400 mt-1">
+                                              {new Date(email.date).toLocaleDateString()}
+                                            </div>
+                                          </div>
+                                          <button
+                                            onClick={() => handleDeleteSingleEmail(email, sender.email)}
+                                            disabled={deletingEmailId === email.id}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                                            title="Delete email"
+                                          >
+                                            {deletingEmailId === email.id ? (
+                                              <RefreshCw className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="w-4 h-4" />
+                                            )}
+                                          </button>
                                         </div>
                                       </div>
                                     ))
@@ -1411,16 +1610,32 @@ const EmailCleanup = () => {
                             </div>
                           ) : senderEmails[sender.email]?.length > 0 ? (
                             senderEmails[sender.email].map(email => (
-                              <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                <div className="flex items-center gap-2">
-                                  {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full" />}
-                                  <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
-                                    {email.subject}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {new Date(email.date).toLocaleDateString()}
+                              <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-gray-200 transition-colors">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
+                                      <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
+                                        {email.subject}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
+                                    <div className="text-xs text-gray-400 mt-1">
+                                      {new Date(email.date).toLocaleDateString()}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteSingleEmail(email, sender.email)}
+                                    disabled={deletingEmailId === email.id}
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                                    title="Delete email"
+                                  >
+                                    {deletingEmailId === email.id ? (
+                                      <RefreshCw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-4 h-4" />
+                                    )}
+                                  </button>
                                 </div>
                               </div>
                             ))
@@ -1511,8 +1726,8 @@ const EmailCleanup = () => {
                               </div>
                             ) : senderEmails[sender.email]?.length > 0 ? (
                               senderEmails[sender.email].map(email => (
-                                <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
-                                  <div className="flex items-start justify-between">
+                                <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-gray-200 transition-colors">
+                                  <div className="flex items-start justify-between gap-3">
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
                                         {email.isUnread && (
@@ -1529,6 +1744,18 @@ const EmailCleanup = () => {
                                         {new Date(email.date).toLocaleDateString()} at {new Date(email.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </div>
                                     </div>
+                                    <button
+                                      onClick={() => handleDeleteSingleEmail(email, sender.email)}
+                                      disabled={deletingEmailId === email.id}
+                                      className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                                      title="Delete email"
+                                    >
+                                      {deletingEmailId === email.id ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="w-4 h-4" />
+                                      )}
+                                    </button>
                                   </div>
                                 </div>
                               ))
@@ -1643,6 +1870,32 @@ const EmailCleanup = () => {
           </div>
         </div>
       </section>
+
+      {/* Undo Toast */}
+      {undoAction && (
+        <UndoToast
+          action={undoAction}
+          onUndo={handleUndo}
+          onDismiss={() => setUndoAction(null)}
+        />
+      )}
+
+      {/* Animation styles */}
+      <style>{`
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

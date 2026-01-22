@@ -39,10 +39,62 @@ interface UnsubscribeResult {
   error?: string;
 }
 
+interface DeleteSingleResult {
+  success: boolean;
+  messageId: string;
+  message?: string;
+}
+
 export const useCleanupActions = () => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Delete a single email by message ID
+   */
+  const deleteSingleEmail = useCallback(async (
+    accountEmail: string,
+    messageId: string,
+    senderEmail?: string
+  ): Promise<DeleteSingleResult | null> => {
+    if (!token) {
+      setError('Authentication required');
+      return null;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${API_URL}/api/cleanup/delete-single`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountEmail,
+          messageId,
+          senderEmail,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete email');
+      }
+
+      return data as DeleteSingleResult;
+    } catch (err: any) {
+      console.error('Delete single email error:', err);
+      setError(err.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
 
   /**
    * Delete all emails from specified senders
@@ -204,6 +256,7 @@ export const useCleanupActions = () => {
   }, [deleteEmails, archiveEmails]);
 
   return {
+    deleteSingleEmail,
     deleteEmails,
     archiveEmails,
     unsubscribe,
