@@ -1442,9 +1442,11 @@ const EmailCleanup = () => {
                       {/* Time period divider header - always visible, not collapsible */}
                       <div className="px-4 py-2 bg-gray-100 border-y border-gray-200 flex items-center justify-between sticky top-0 z-10">
                         <div className="flex items-center">
-                          <span className="text-sm font-semibold text-gray-700">{period}</span>
+                          <span className="text-sm font-semibold text-gray-700">
+                            {period === 'Today' || period === 'Yesterday' ? `Last email: ${period.toLowerCase()}` : `Last email: ${period}`}
+                          </span>
                           <span className="ml-2 text-xs text-gray-500">
-                            {filteredSenders.length} sender{filteredSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} emails
+                            {filteredSenders.length} sender{filteredSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} total emails
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
