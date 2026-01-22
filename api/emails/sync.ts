@@ -114,8 +114,14 @@ export default async function handler(
 
     // Fetch sender statistics from Gmail
     console.log('Fetching sender stats from Gmail...');
-    const senderStats = await fetchSenderStats(accessToken, Math.min(maxMessages, 2000));
-    console.log('Fetched senders:', senderStats.length, 'Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
+    const allSenderStats = await fetchSenderStats(accessToken, Math.min(maxMessages, 2000));
+
+    // Filter out user's own email address (sent/replied emails show up with user as sender)
+    const userEmail = (account.gmail_email || email).toLowerCase();
+    const senderStats = allSenderStats.filter((sender: SenderStats) =>
+      sender.email.toLowerCase() !== userEmail
+    );
+    console.log('Fetched senders:', senderStats.length, '(filtered from', allSenderStats.length, ') Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
 
     // Update sender cache in database
     const sendersToUpsert = senderStats.map((sender: SenderStats) => ({
@@ -133,6 +139,16 @@ export default async function handler(
       is_promotional: sender.isPromotional,
       updated_at: new Date().toISOString()
     }));
+
+    // Remove user's own email from senders table if it exists (from previous syncs)
+    const { error: deleteOwnError } = await supabase
+      .from('email_senders')
+      .delete()
+      .eq('email_account_id', account.id)
+      .eq('sender_email', userEmail);
+    if (deleteOwnError) {
+      console.warn('Could not delete own email from senders:', deleteOwnError);
+    }
 
     // Upsert senders in batches
     const BATCH_SIZE = 100;
