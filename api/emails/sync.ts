@@ -153,9 +153,19 @@ export default async function handler(
       });
     }
 
+    // Determine if this is an incremental sync (has previous sync) or full sync
+    const isIncrementalSync = !!account.last_synced;
+    const lastSyncDate = account.last_synced ? new Date(account.last_synced) : undefined;
+
     // Fetch sender statistics from Gmail
-    console.log('Fetching sender stats from Gmail...');
-    const allSenderStats = await fetchSenderStats(accessToken, Math.min(maxMessages, 2000));
+    // For incremental sync, only fetch emails since last sync (much faster)
+    // For first sync, fetch all recent emails
+    console.log(`${isIncrementalSync ? 'Incremental' : 'Full'} sync starting...`);
+    const allSenderStats = await fetchSenderStats(
+      accessToken,
+      isIncrementalSync ? 500 : Math.min(maxMessages, 2000), // Smaller batch for incremental
+      lastSyncDate
+    );
 
     // Filter out user's own email address (sent/replied emails show up with user as sender)
     const userEmail = (account.gmail_email || email).toLowerCase();
@@ -164,22 +174,61 @@ export default async function handler(
     );
     console.log('Fetched senders:', senderStats.length, '(filtered from', allSenderStats.length, ') Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
 
-    // Update sender cache in database
-    const sendersToUpsert = senderStats.map((sender: SenderStats) => ({
-      user_id: user.userId,
-      email_account_id: account.id,
-      sender_email: sender.email,
-      sender_name: sender.name,
-      email_count: sender.count,
-      unread_count: sender.unreadCount,
-      first_email_date: sender.firstDate,
-      last_email_date: sender.lastDate,
-      unsubscribe_link: sender.unsubscribeLink || null,
-      has_unsubscribe: sender.hasUnsubscribe,
-      is_newsletter: sender.isNewsletter,
-      is_promotional: sender.isPromotional,
-      updated_at: new Date().toISOString()
-    }));
+    // For incremental sync, we need to add to existing counts, not replace
+    // For full sync, we replace the data
+    let sendersToUpsert;
+
+    if (isIncrementalSync && senderStats.length > 0) {
+      // Get existing sender data to merge with
+      const { data: existingSenders } = await supabase
+        .from('email_senders')
+        .select('sender_email, email_count, unread_count, first_email_date')
+        .eq('email_account_id', account.id);
+
+      const existingMap = new Map(
+        (existingSenders || []).map(s => [s.sender_email, s])
+      );
+
+      sendersToUpsert = senderStats.map((sender: SenderStats) => {
+        const existing = existingMap.get(sender.email);
+        return {
+          user_id: user.userId,
+          email_account_id: account.id,
+          sender_email: sender.email,
+          sender_name: sender.name,
+          // Add new counts to existing counts for incremental sync
+          email_count: (existing?.email_count || 0) + sender.count,
+          unread_count: (existing?.unread_count || 0) + sender.unreadCount,
+          // Keep earliest first_email_date
+          first_email_date: existing?.first_email_date && existing.first_email_date < sender.firstDate
+            ? existing.first_email_date
+            : sender.firstDate,
+          last_email_date: sender.lastDate, // Always update to latest
+          unsubscribe_link: sender.unsubscribeLink || null,
+          has_unsubscribe: sender.hasUnsubscribe,
+          is_newsletter: sender.isNewsletter,
+          is_promotional: sender.isPromotional,
+          updated_at: new Date().toISOString()
+        };
+      });
+    } else {
+      // Full sync - replace all data
+      sendersToUpsert = senderStats.map((sender: SenderStats) => ({
+        user_id: user.userId,
+        email_account_id: account.id,
+        sender_email: sender.email,
+        sender_name: sender.name,
+        email_count: sender.count,
+        unread_count: sender.unreadCount,
+        first_email_date: sender.firstDate,
+        last_email_date: sender.lastDate,
+        unsubscribe_link: sender.unsubscribeLink || null,
+        has_unsubscribe: sender.hasUnsubscribe,
+        is_newsletter: sender.isNewsletter,
+        is_promotional: sender.isPromotional,
+        updated_at: new Date().toISOString()
+      }));
+    }
 
     // Remove user's own email from senders table if it exists (from previous syncs)
     const { error: deleteOwnError } = await supabase

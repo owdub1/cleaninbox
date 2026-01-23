@@ -132,34 +132,50 @@ export async function batchGetMessages(
   metadataHeaders?: string[]
 ): Promise<GmailMessage[]> {
   // Gmail rate limits: 250 quota units per second per user
-  // metadata format uses fewer quota units than full format
-  // Increase batch size for metadata format for better performance
-  const BATCH_SIZE = format === 'metadata' ? 25 : 10;
-  const DELAY_MS = 100; // Reduced delay for metadata format
+  // Optimized for speed: larger batches, minimal delays, parallel processing
+  const BATCH_SIZE = format === 'metadata' ? 50 : 20;
+  const PARALLEL_BATCHES = 3; // Process 3 batches concurrently
+  const DELAY_MS = 50; // Small delay between parallel rounds
   const results: GmailMessage[] = [];
   let failedCount = 0;
 
-  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} (format: ${format})...`);
+  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} x${PARALLEL_BATCHES} parallel (format: ${format})...`);
 
-  for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
-    const batch = messageIds.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(id => getMessage(accessToken, id, format, metadataHeaders).catch((err) => {
-        console.warn(`Failed to get message ${id}:`, err.message);
-        failedCount++;
-        return null;
-      }))
-    );
-    results.push(...batchResults.filter(Boolean) as GmailMessage[]);
+  // Process batches in parallel groups
+  for (let i = 0; i < messageIds.length; i += BATCH_SIZE * PARALLEL_BATCHES) {
+    const parallelBatches: Promise<(GmailMessage | null)[]>[] = [];
 
-    // Add delay between batches to avoid rate limiting
-    if (i + BATCH_SIZE < messageIds.length) {
+    // Create parallel batch promises
+    for (let j = 0; j < PARALLEL_BATCHES; j++) {
+      const startIdx = i + (j * BATCH_SIZE);
+      if (startIdx >= messageIds.length) break;
+
+      const batch = messageIds.slice(startIdx, startIdx + BATCH_SIZE);
+      parallelBatches.push(
+        Promise.all(
+          batch.map(id => getMessage(accessToken, id, format, metadataHeaders).catch((err) => {
+            failedCount++;
+            return null;
+          }))
+        )
+      );
+    }
+
+    // Wait for all parallel batches to complete
+    const batchResults = await Promise.all(parallelBatches);
+    for (const batch of batchResults) {
+      results.push(...batch.filter(Boolean) as GmailMessage[]);
+    }
+
+    // Small delay between parallel rounds to avoid rate limiting
+    if (i + BATCH_SIZE * PARALLEL_BATCHES < messageIds.length) {
       await new Promise(resolve => setTimeout(resolve, DELAY_MS));
     }
 
-    // Log progress every 100 messages
-    if ((i + BATCH_SIZE) % 100 === 0 || i + BATCH_SIZE >= messageIds.length) {
-      console.log(`Processed ${Math.min(i + BATCH_SIZE, messageIds.length)}/${messageIds.length} messages`);
+    // Log progress
+    const processed = Math.min(i + BATCH_SIZE * PARALLEL_BATCHES, messageIds.length);
+    if (processed % 200 === 0 || processed >= messageIds.length) {
+      console.log(`Processed ${processed}/${messageIds.length} messages`);
     }
   }
 
@@ -513,20 +529,31 @@ export async function archiveEmailsFromSender(
 
 /**
  * Fetch and aggregate sender statistics from Gmail
+ * @param afterDate - Optional date for incremental sync (only fetch emails after this date)
  */
 export async function fetchSenderStats(
   accessToken: string,
-  maxMessages: number = 1000
+  maxMessages: number = 1000,
+  afterDate?: Date
 ): Promise<SenderStats[]> {
   // Fetch message list
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
 
+  // Build query - exclude sent/drafts/trash/spam, optionally filter by date
+  let query = '-in:sent -in:drafts -in:trash -in:spam';
+  if (afterDate) {
+    // Gmail uses YYYY/MM/DD format for after: query
+    const dateStr = `${afterDate.getFullYear()}/${String(afterDate.getMonth() + 1).padStart(2, '0')}/${String(afterDate.getDate()).padStart(2, '0')}`;
+    query += ` after:${dateStr}`;
+    console.log(`Incremental sync: fetching emails after ${dateStr}`);
+  }
+
   while (allMessageRefs.length < maxMessages) {
     const response = await listMessages(accessToken, {
       maxResults: Math.min(100, maxMessages - allMessageRefs.length),
       pageToken,
-      q: '-in:sent -in:drafts -in:trash -in:spam', // Exclude sent, drafts, trash, spam
+      q: query,
     });
 
     if (!response.messages || response.messages.length === 0) break;
@@ -538,11 +565,11 @@ export async function fetchSenderStats(
   }
 
   if (allMessageRefs.length === 0) {
-    console.log('No messages found in Gmail');
+    console.log('No messages found in Gmail' + (afterDate ? ' since last sync' : ''));
     return [];
   }
 
-  console.log(`Gmail API listed ${allMessageRefs.length} messages to fetch`);
+  console.log(`Gmail API listed ${allMessageRefs.length} messages to fetch` + (afterDate ? ' (incremental)' : ' (full)'));
 
   // Get message details - use 'metadata' format with explicit headers for performance
   // This is much faster than 'full' format and avoids rate limiting issues
