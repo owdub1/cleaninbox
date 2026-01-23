@@ -53,7 +53,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
-    limit: options.limit || 100,
+    limit: options.limit || 500,
     offset: 0,
   });
   const [hasFetched, setHasFetched] = useState(false);

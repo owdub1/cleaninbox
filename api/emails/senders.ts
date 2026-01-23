@@ -56,7 +56,7 @@ export default async function handler(
     email, // Filter by specific email account
     sortBy = 'count', // 'count', 'name', 'date'
     sortDirection = 'desc',
-    limit = '100',
+    limit = '500',
     offset = '0',
     filter // 'newsletter', 'promotional', 'unsubscribable'
   } = req.query;
