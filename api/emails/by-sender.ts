@@ -114,10 +114,15 @@ export default async function handler(
     // Sort by date (newest first)
     emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // Get accurate count from Gmail's estimate
-    const actualCount = messageList.resultSizeEstimate || emails.length;
+    // Use actual fetched count - more reliable than Gmail's resultSizeEstimate
+    // If we fetched the max limit, there might be more, so use the estimate
+    const fetchedCount = emails.length;
+    const estimateCount = messageList.resultSizeEstimate || fetchedCount;
+    const actualCount = fetchedCount >= parseInt(limit as string) ? estimateCount : fetchedCount;
 
-    // Update the sender's email count in the database if it differs
+    console.log(`by-sender: ${senderEmail} - fetched ${fetchedCount}, estimate ${estimateCount}, using ${actualCount}`);
+
+    // Update the sender's email count in the database if the new count is higher
     // This corrects the count when we have more accurate data from Gmail
     if (actualCount > 0) {
       const { data: account } = await supabase
@@ -128,14 +133,26 @@ export default async function handler(
         .single();
 
       if (account) {
-        await supabase
+        // Get current count first
+        const { data: currentSender } = await supabase
           .from('email_senders')
-          .update({
-            email_count: actualCount,
-            updated_at: new Date().toISOString()
-          })
+          .select('email_count')
           .eq('email_account_id', account.id)
-          .eq('sender_email', senderEmail);
+          .eq('sender_email', senderEmail)
+          .single();
+
+        // Only update if the new count is higher (more accurate)
+        if (!currentSender || actualCount > currentSender.email_count) {
+          console.log(`Updating ${senderEmail} count from ${currentSender?.email_count || 0} to ${actualCount}`);
+          await supabase
+            .from('email_senders')
+            .update({
+              email_count: actualCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('email_account_id', account.id)
+            .eq('sender_email', senderEmail);
+        }
       }
     }
 

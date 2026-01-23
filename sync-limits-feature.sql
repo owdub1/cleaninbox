@@ -1,0 +1,15 @@
+-- Sync Frequency Limits Feature
+-- No database changes required - uses existing last_synced column in email_accounts table
+--
+-- Plan limits for sync frequency:
+-- - Free: 1 sync per day (24 hours / 1440 minutes)
+-- - Basic: 6 syncs per day (every 4 hours / 240 minutes)
+-- - Pro: 24 syncs per day (every 1 hour / 60 minutes)
+-- - Unlimited: No limit (0 minutes)
+--
+-- The sync endpoint checks the user's subscription plan and compares
+-- last_synced timestamp against the plan's syncIntervalMinutes.
+-- If not enough time has passed, returns 429 with:
+-- - error message
+-- - nextSyncAvailable timestamp
+-- - upgradeMessage (if applicable)

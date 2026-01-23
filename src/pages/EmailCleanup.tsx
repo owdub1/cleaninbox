@@ -702,8 +702,8 @@ const EmailCleanup = () => {
     } else {
       setExpandedSenders([...expandedSenders, senderEmail]);
 
-      // Fetch emails for this sender if not already loaded
-      if (!senderEmails[senderEmail] && accountEmail) {
+      // Always fetch fresh emails when expanding (to get accurate count and latest emails)
+      if (accountEmail) {
         setLoadingEmails(senderEmail);
         const emails = await fetchEmailsBySender(senderEmail, accountEmail, 50);
         setSenderEmails(prev => ({ ...prev, [senderEmail]: emails }));
