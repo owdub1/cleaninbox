@@ -114,9 +114,34 @@ export default async function handler(
     // Sort by date (newest first)
     emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    // Get accurate count from Gmail's estimate
+    const actualCount = messageList.resultSizeEstimate || emails.length;
+
+    // Update the sender's email count in the database if it differs
+    // This corrects the count when we have more accurate data from Gmail
+    if (actualCount > 0) {
+      const { data: account } = await supabase
+        .from('email_accounts')
+        .select('id')
+        .eq('user_id', user.userId)
+        .eq('email', accountEmail)
+        .single();
+
+      if (account) {
+        await supabase
+          .from('email_senders')
+          .update({
+            email_count: actualCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+      }
+    }
+
     return res.status(200).json({
       emails,
-      total: messageList.resultSizeEstimate || emails.length
+      total: actualCount
     });
 
   } catch (error: any) {

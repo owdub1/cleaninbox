@@ -270,6 +270,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
   /**
    * Fetch individual emails from a specific sender
+   * Also updates the sender's email count if the API returns a different total
    */
   const fetchEmailsBySender = useCallback(async (
     senderEmail: string,
@@ -303,6 +304,18 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch emails');
+      }
+
+      // Update the sender's email count in local state if it differs
+      // This ensures the UI shows the accurate count from Gmail
+      if (data.total) {
+        setSenders(prevSenders =>
+          prevSenders.map(sender =>
+            sender.email === senderEmail && sender.emailCount !== data.total
+              ? { ...sender, emailCount: data.total }
+              : sender
+          )
+        );
       }
 
       return data.emails || [];
