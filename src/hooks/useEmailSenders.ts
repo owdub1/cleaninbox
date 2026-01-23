@@ -126,14 +126,15 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
   /**
    * Sync emails from Gmail
+   * Returns object with success status and optional error details
    */
   const syncEmails = useCallback(async (
     email: string,
     maxMessages: number = 1000
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string }> => {
     if (!token) {
       setError('Authentication required');
-      return false;
+      return { success: false };
     }
 
     try {
@@ -152,17 +153,27 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle sync limit reached (429)
+        if (response.status === 429 && data.code === 'SYNC_LIMIT_REACHED') {
+          setError(data.error);
+          return {
+            success: false,
+            limitReached: true,
+            nextSyncAvailable: data.nextSyncAvailable,
+            upgradeMessage: data.upgradeMessage
+          };
+        }
         throw new Error(data.error || 'Failed to sync emails');
       }
 
       // Refresh senders after sync
       await fetchSenders({ email });
 
-      return true;
+      return { success: true };
     } catch (err: any) {
       console.error('Sync emails error:', err);
       setError(err.message);
-      return false;
+      return { success: false };
     } finally {
       setSyncing(false);
     }

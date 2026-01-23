@@ -536,9 +536,15 @@ const EmailCleanup = () => {
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
       console.log('Syncing emails for:', accountToSync.email);
-      const success = await syncEmails(accountToSync.email);
-      if (success) {
+      const result = await syncEmails(accountToSync.email);
+      if (result.success) {
         setNotification({ type: 'success', message: 'Emails synced successfully!' });
+      } else if (result.limitReached) {
+        // Show sync limit message with upgrade suggestion
+        const message = result.upgradeMessage
+          ? `${sendersError}. ${result.upgradeMessage}`
+          : sendersError || 'Sync limit reached.';
+        setNotification({ type: 'error', message });
       } else {
         setNotification({ type: 'error', message: 'Failed to sync emails. Your Gmail may need to be reconnected.' });
       }

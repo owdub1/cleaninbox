@@ -13,6 +13,7 @@ import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
 import { fetchSenderStats, SenderStats } from '../lib/gmail-api.js';
+import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -55,7 +56,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status')
+      .select('id, gmail_email, connection_status, last_synced')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -65,6 +66,46 @@ export default async function handler(
         error: 'Email account not found',
         code: 'ACCOUNT_NOT_FOUND'
       });
+    }
+
+    // Check sync frequency limit based on subscription plan
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('plan')
+      .eq('user_id', user.userId)
+      .single();
+
+    const planKey = (subscription?.plan?.toLowerCase() || 'free') as keyof typeof PLAN_LIMITS;
+    const planLimits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
+    const syncIntervalMinutes = planLimits.syncIntervalMinutes;
+
+    // Check if enough time has passed since last sync (skip for unlimited plans)
+    if (syncIntervalMinutes > 0 && account.last_synced) {
+      const lastSyncTime = new Date(account.last_synced).getTime();
+      const now = Date.now();
+      const minutesSinceLastSync = (now - lastSyncTime) / (1000 * 60);
+
+      if (minutesSinceLastSync < syncIntervalMinutes) {
+        const minutesRemaining = Math.ceil(syncIntervalMinutes - minutesSinceLastSync);
+        const hoursRemaining = minutesRemaining >= 60 ? Math.ceil(minutesRemaining / 60) : 0;
+        const timeMessage = hoursRemaining > 0
+          ? `${hoursRemaining} hour${hoursRemaining > 1 ? 's' : ''}`
+          : `${minutesRemaining} minute${minutesRemaining > 1 ? 's' : ''}`;
+
+        return res.status(429).json({
+          error: `Sync limit reached. You can sync again in ${timeMessage}.`,
+          code: 'SYNC_LIMIT_REACHED',
+          nextSyncAvailable: new Date(lastSyncTime + syncIntervalMinutes * 60 * 1000).toISOString(),
+          plan: planKey,
+          upgradeMessage: planKey === 'free'
+            ? 'Upgrade to Basic for syncing every 4 hours, or Pro for hourly syncing.'
+            : planKey === 'basic'
+            ? 'Upgrade to Pro for hourly syncing, or Unlimited for unlimited syncing.'
+            : planKey === 'pro'
+            ? 'Upgrade to Unlimited for unlimited syncing.'
+            : undefined
+        });
+      }
     }
 
     // Try to get valid access token (refreshes if needed)

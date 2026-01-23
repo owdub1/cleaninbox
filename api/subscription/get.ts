@@ -18,14 +18,17 @@ const supabase = createClient(
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // Plan definitions with limits
-const PLAN_LIMITS = {
+// syncIntervalMinutes: minimum minutes between syncs (0 = no limit)
+export const PLAN_LIMITS = {
   free: {
     name: 'Free',
     emailLimit: 1,
     emailProcessingLimit: 100,
+    syncIntervalMinutes: 1440, // 24 hours - 1 sync per day
     features: [
       'Import up to 100 emails total',
       'Connect 1 email account',
+      'Sync once per day',
       'Standard unsubscribe speed',
       'Email support'
     ]
@@ -34,9 +37,11 @@ const PLAN_LIMITS = {
     name: 'Basic',
     emailLimit: 2,
     emailProcessingLimit: 1000,
+    syncIntervalMinutes: 240, // 4 hours - 6 syncs per day
     features: [
       'Import up to 1,000 emails total',
       'Connect up to 2 email accounts',
+      'Sync every 4 hours',
       'Standard unsubscribe speed',
       'Email support',
       'Basic analytics'
@@ -46,9 +51,11 @@ const PLAN_LIMITS = {
     name: 'Pro',
     emailLimit: 3,
     emailProcessingLimit: 5000,
+    syncIntervalMinutes: 60, // 1 hour - 24 syncs per day
     features: [
       'Import up to 5,000 emails total',
       'Connect up to 3 email accounts',
+      'Sync every hour',
       'Faster unsubscribe speed',
       'Priority email support',
       'Advanced analytics',
@@ -59,9 +66,11 @@ const PLAN_LIMITS = {
     name: 'Unlimited',
     emailLimit: 5,
     emailProcessingLimit: 999999999,
+    syncIntervalMinutes: 0, // No limit
     features: [
       'Unlimited email importing',
       'Connect up to 5 email accounts',
+      'Unlimited syncing',
       'Fastest unsubscribe speed',
       'Priority phone & email support',
       'Advanced analytics',
@@ -131,6 +140,7 @@ export default async function handler(
           period: 'monthly',
           emailLimit: freePlan.emailLimit,
           emailProcessingLimit: freePlan.emailProcessingLimit,
+          syncIntervalMinutes: freePlan.syncIntervalMinutes,
           features: freePlan.features,
           nextBillingDate: null
         }
@@ -150,6 +160,7 @@ export default async function handler(
         period: subscription.period,
         emailLimit: planLimits.emailLimit,
         emailProcessingLimit: planLimits.emailProcessingLimit,
+        syncIntervalMinutes: planLimits.syncIntervalMinutes,
         features: planLimits.features,
         nextBillingDate: subscription.next_billing_date
       }

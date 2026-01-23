@@ -9,6 +9,7 @@ export interface Subscription {
   period: string;
   emailLimit: number;
   emailProcessingLimit: number;
+  syncIntervalMinutes: number;
   features: string[];
   nextBillingDate: string | null;
 }
@@ -21,9 +22,11 @@ const DEFAULT_FREE_SUBSCRIPTION: Subscription = {
   period: 'monthly',
   emailLimit: 1,
   emailProcessingLimit: 100,
+  syncIntervalMinutes: 1440,
   features: [
     'Import up to 100 emails total',
     'Connect 1 email account',
+    'Sync once per day',
     'Standard unsubscribe speed',
     'Email support'
   ],
