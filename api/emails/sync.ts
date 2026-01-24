@@ -256,12 +256,20 @@ export default async function handler(
     }
     console.log('Upsert complete');
 
-    // Update email account stats
-    const totalEmails = senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);
+    // Calculate actual total emails from all senders in database
+    const { data: allSenders } = await supabase
+      .from('email_senders')
+      .select('email_count')
+      .eq('email_account_id', account.id);
+
+    const actualTotalEmails = allSenders?.reduce((sum, s) => sum + (s.email_count || 0), 0) || 0;
+
+    // Update email account stats with actual total
+    const syncedEmails = senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);
     await supabase
       .from('email_accounts')
       .update({
-        total_emails: totalEmails,
+        total_emails: actualTotalEmails,
         last_synced: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -273,14 +281,15 @@ export default async function handler(
       .insert({
         user_id: user.userId,
         action_type: 'email_sync',
-        description: `Synced ${totalEmails.toLocaleString()} emails from ${senderStats.length} senders`,
-        metadata: { totalEmails, totalSenders: senderStats.length, email }
+        description: `Synced ${syncedEmails.toLocaleString()} emails from ${senderStats.length} senders`,
+        metadata: { syncedEmails, totalEmails: actualTotalEmails, totalSenders: senderStats.length, email }
       });
 
     return res.status(200).json({
       success: true,
       totalSenders: senderStats.length,
-      totalEmails,
+      totalEmails: actualTotalEmails,
+      syncedEmails,
       message: 'Email sync completed successfully'
     });
 

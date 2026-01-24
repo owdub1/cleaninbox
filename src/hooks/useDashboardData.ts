@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../lib/api';
 
 export interface DashboardStats {
   emailsProcessed: number;
@@ -20,7 +21,7 @@ export interface EmailAccount {
 }
 
 export const useDashboardData = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     emailsProcessed: 0,
     unsubscribed: 0,
@@ -31,7 +32,7 @@ export const useDashboardData = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!user) {
+    if (!user || !token) {
       setLoading(false);
       return;
     }
@@ -39,34 +40,6 @@ export const useDashboardData = () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Fetch user stats
-      const { data: statsData, error: statsError } = await supabase
-        .from('user_stats')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      // If no stats exist, create them
-      if (!statsData && !statsError) {
-        const { data: newStats, error: createError } = await supabase
-          .from('user_stats')
-          .insert([{ user_id: user.id, emails_processed: 0, unsubscribed: 0 }])
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Error creating user stats:', createError);
-        } else {
-          setStats({
-            emailsProcessed: 0,
-            unsubscribed: 0,
-            emailAccounts: 0
-          });
-        }
-      } else if (statsError) {
-        console.error('Error fetching stats:', statsError);
-      }
 
       // Fetch email accounts
       const { data: accountsData, error: accountsError } = await supabase
@@ -78,14 +51,26 @@ export const useDashboardData = () => {
         console.error('Error fetching email accounts:', accountsError);
       }
 
-      // Update stats only if we have valid statsData
-      if (statsData) {
-        setStats({
-          emailsProcessed: statsData.emails_processed || 0,
-          unsubscribed: statsData.unsubscribed || 0,
-          emailAccounts: accountsData?.length || 0
-        });
-      }
+      // Calculate total emails from email_accounts.total_emails
+      // This is updated by the sync endpoint to reflect actual emails in app
+      const totalEmailsLoaded = accountsData?.reduce(
+        (sum, account) => sum + (account.total_emails || 0),
+        0
+      ) || 0;
+
+      // Get unsubscribed count from user_stats
+      const { data: userStats } = await supabase
+        .from('user_stats')
+        .select('unsubscribed')
+        .eq('user_id', user.id)
+        .single();
+
+      // Update stats
+      setStats({
+        emailsProcessed: totalEmailsLoaded,
+        unsubscribed: userStats?.unsubscribed || 0,
+        emailAccounts: accountsData?.length || 0
+      });
 
       // Update email accounts
       setEmailAccounts(accountsData?.map(account => ({
@@ -105,7 +90,7 @@ export const useDashboardData = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, token]);
 
   useEffect(() => {
     fetchDashboardData();

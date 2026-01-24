@@ -191,23 +191,39 @@ export default async function handler(
       });
 
     if (success) {
-      // Update user stats
-      await supabase
+      // Update user stats (fetch current, then increment)
+      const { data: currentStats } = await supabase
         .from('user_stats')
-        .update({
-          unsubscribed: supabase.rpc('increment_stat', { amount: 1 }),
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.userId);
+        .select('unsubscribed')
+        .eq('user_id', user.userId)
+        .single();
+
+      if (currentStats) {
+        await supabase
+          .from('user_stats')
+          .update({
+            unsubscribed: (currentStats.unsubscribed || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.userId);
+      }
 
       // Update email account unsubscribed count
-      await supabase
+      const { data: currentAccount } = await supabase
         .from('email_accounts')
-        .update({
-          unsubscribed: supabase.rpc('increment_stat', { amount: 1 }),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', account.id);
+        .select('unsubscribed')
+        .eq('id', account.id)
+        .single();
+
+      if (currentAccount) {
+        await supabase
+          .from('email_accounts')
+          .update({
+            unsubscribed: (currentAccount.unsubscribed || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', account.id);
+      }
 
       // Log to activity_log for Recent Activity display
       await supabase
