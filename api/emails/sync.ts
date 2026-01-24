@@ -20,10 +20,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// More relaxed rate limit for sync operations
+// More relaxed rate limit for sync operations (allows syncing multiple accounts)
 const limiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 5, // 5 syncs per minute
+  maxRequests: 10, // 10 syncs per minute (allows multiple accounts)
   message: 'Too many sync requests. Please wait before syncing again.'
 });
 
