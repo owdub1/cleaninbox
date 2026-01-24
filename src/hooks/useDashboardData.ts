@@ -51,12 +51,21 @@ export const useDashboardData = () => {
         console.error('Error fetching email accounts:', accountsError);
       }
 
-      // Calculate total emails from email_accounts.total_emails
-      // This is updated by the sync endpoint to reflect actual emails in app
-      const totalEmailsLoaded = accountsData?.reduce(
-        (sum, account) => sum + (account.total_emails || 0),
-        0
-      ) || 0;
+      // Fetch senders to get actual email count (same source as Email Cleanup page)
+      const sendersResponse = await fetch(`${API_URL}/api/emails/senders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      let totalEmailsLoaded = 0;
+      if (sendersResponse.ok) {
+        const sendersData = await sendersResponse.json();
+        totalEmailsLoaded = sendersData.senders?.reduce(
+          (sum: number, sender: any) => sum + (sender.emailCount || 0),
+          0
+        ) || 0;
+      }
 
       // Get unsubscribed count from user_stats
       const { data: userStats } = await supabase
