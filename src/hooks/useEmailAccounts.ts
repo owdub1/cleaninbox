@@ -72,10 +72,16 @@ export const useEmailAccounts = () => {
     }
   };
 
-  const syncEmailAccount = async (accountId: string, email?: string) => {
+  const syncEmailAccount = async (
+    accountId: string,
+    email?: string,
+    options: { fullSync?: boolean } = {}
+  ) => {
     if (!user) {
       throw new Error('User must be authenticated');
     }
+
+    const { fullSync = false } = options;
 
     try {
       setLoading(true);
@@ -105,7 +111,7 @@ export const useEmailAccounts = () => {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ email: emailAddress })
+        body: JSON.stringify({ email: emailAddress, fullSync })
       });
 
       const data = await response.json();

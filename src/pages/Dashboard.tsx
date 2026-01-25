@@ -9,7 +9,7 @@ import { useActivity } from '../hooks/useActivity';
 import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading, refetch: refetchDashboard } = useDashboardData();
-  const { addEmailAccount, removeEmailAccount, syncEmailAccount } = useEmailAccounts();
+  const { addEmailAccount, removeEmailAccount } = useEmailAccounts();
   const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled } = useSubscription();
   const { activities, loading: activityLoading, formatRelativeTime } = useActivity(5);
   const [activeTab, setActiveTab] = useState('overview');
@@ -1196,6 +1196,7 @@ const Dashboard = () => {
     stats: {
       emailsProcessed: dbStats.emailsProcessed,
       unsubscribed: dbStats.unsubscribed,
+      deleted: dbStats.deleted,
       emailAccounts: dbStats.emailAccounts
     },
     paymentHistory: [{
@@ -1240,16 +1241,6 @@ const Dashboard = () => {
   const handleConnectEmail = async (email: string, provider: string) => {
     await addEmailAccount(email, provider);
     // The useDashboardData hook will automatically refresh and update connectedEmails
-  };
-  const handleSyncEmail = async (emailAccount) => {
-    try {
-      const result = await syncEmailAccount(emailAccount.id, emailAccount.email);
-      // Refetch dashboard data to update the UI
-      await refetchDashboard();
-      alert(`Synced ${emailAccount.email} successfully! Found ${result.totalEmails?.toLocaleString() || 0} emails from ${result.totalSenders || 0} senders.`);
-    } catch (error: any) {
-      alert('Failed to sync email account: ' + error.message);
-    }
   };
   const handleDisconnectEmail = email => {
     setEmailToDisconnect(email);
@@ -1478,10 +1469,10 @@ const Dashboard = () => {
                       </div>
                       <div className="ml-4">
                         <h3 className="text-lg font-medium text-gray-900">
-                          Unsubscribed
+                          Unsubscribed / Deleted
                         </h3>
                         <p className="text-2xl font-bold text-green-600">
-                          {userData.stats.unsubscribed}
+                          {userData.stats.unsubscribed} / {userData.stats.deleted || 0}
                         </p>
                       </div>
                     </div>
@@ -1532,37 +1523,38 @@ const Dashboard = () => {
                           </p>
                         </div>
                       </div>}
-                      <div>
-                        {isCancelled ? (
-                          <span className="inline-flex items-center px-4 py-2 rounded-md font-medium bg-gray-100 text-gray-500">
-                            Subscription Cancelled
-                          </span>
-                        ) : (
-                          <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
-                            Cancel Subscription
-                          </button>
-                        )}
-                      </div>
                     </div>
                     <div className="mt-6">
                       <h4 className="text-md font-medium text-gray-900 mb-4">
                         Recent Activity
                       </h4>
-                      <div className="space-y-4">
+                      <div className="space-y-2">
                         {activityLoading ? (
                           <div className="flex items-center justify-center py-4">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
                           </div>
                         ) : activities.length > 0 ? (
                           activities.map((activity) => (
-                            <div key={activity.id} className="flex items-start">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm text-gray-900">
-                                  {activity.description}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {formatRelativeTime(activity.created_at)}
-                                </p>
+                            <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                                activity.action_type === 'email_sync' ? 'bg-blue-100' :
+                                activity.action_type === 'unsubscribe' ? 'bg-green-100' :
+                                activity.action_type === 'delete' ? 'bg-red-100' :
+                                'bg-purple-100'
+                              }`}>
+                                {activity.action_type === 'email_sync' ? (
+                                  <RefreshCwIcon className="h-4 w-4 text-blue-600" />
+                                ) : activity.action_type === 'unsubscribe' ? (
+                                  <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                                ) : activity.action_type === 'delete' ? (
+                                  <TrashIcon className="h-4 w-4 text-red-600" />
+                                ) : (
+                                  <MailIcon className="h-4 w-4 text-purple-600" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-gray-900">{activity.description}</p>
+                                <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(activity.created_at)}</p>
                               </div>
                             </div>
                           ))
@@ -1579,146 +1571,81 @@ const Dashboard = () => {
             {/* Email Accounts Tab (formerly My Emails) */}
             {activeTab === 'myemails' && <div>
                 <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
+                  <div className="px-6 py-5 border-b border-gray-200">
                     <h3 className="text-lg font-medium text-gray-900">
                       Connected Email Accounts
                     </h3>
-                    <button className="bg-gradient-to-r from-blue-600 to-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:from-blue-700 hover:to-purple-800 transition-colors flex items-center" onClick={handleConnectNewEmail}>
-                      <PlusIcon className="h-4 w-4 mr-2" />
-                      Connect New Email
-                    </button>
                   </div>
                   <div className="p-6">
-                    {connectedEmails.length > 0 ? <div className="space-y-6">
-                        {connectedEmails.map((emailAccount, index) => <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-100">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                              <div className="mb-4 md:mb-0">
-                                <div className="flex items-center">
-                                  <InboxIcon className="h-5 w-5 text-purple-600 mr-2" />
-                                  <h4 className="text-lg font-medium text-gray-900">
-                                    {emailAccount.email}
-                                  </h4>
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  Provider: {emailAccount.provider} | Last
-                                  synced: {formatDateTime(emailAccount.lastSynced)}
-                                </p>
+                    <div className="space-y-6">
+                      {connectedEmails.map((emailAccount, index) => (
+                        <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-100">
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div className="mb-4 md:mb-0">
+                              <div className="flex items-center">
+                                <InboxIcon className="h-5 w-5 text-purple-600 mr-2" />
+                                <h4 className="text-lg font-medium text-gray-900">
+                                  {emailAccount.email}
+                                </h4>
                               </div>
-                              <div className="flex space-x-2">
-                                <button className="bg-blue-50 text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-100 transition-colors flex items-center" onClick={() => handleSyncEmail(emailAccount)}>
-                                  <RefreshCwIcon className="h-3 w-3 mr-1" />
-                                  Sync Now
-                                </button>
-                                <button className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-100 transition-colors flex items-center" onClick={() => handleDisconnectEmail(emailAccount)}>
-                                  <TrashIcon className="h-3 w-3 mr-1" />
-                                  Disconnect
-                                </button>
-                              </div>
+                              <p className="text-sm text-gray-500 mt-1">
+                                Provider: {emailAccount.provider} | Last synced: {formatDateTime(emailAccount.lastSynced)}
+                              </p>
                             </div>
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="bg-white p-4 rounded-lg shadow-sm">
-                                <p className="text-sm text-gray-500">
-                                  Total Emails
-                                </p>
-                                <p className="text-xl font-bold text-gray-900">
-                                  {emailAccount.totalEmails.toLocaleString()}
-                                </p>
-                              </div>
-                              <div className="bg-white p-4 rounded-lg shadow-sm">
-                                <p className="text-sm text-gray-500">
-                                  Processed
-                                </p>
-                                <p className="text-xl font-bold text-purple-600">
-                                  {emailAccount.processedEmails.toLocaleString()}
-                                </p>
-                              </div>
-                              <div className="bg-white p-4 rounded-lg shadow-sm">
-                                <p className="text-sm text-gray-500">
-                                  Unsubscribed
-                                </p>
-                                <p className="text-xl font-bold text-green-600">
-                                  {emailAccount.unsubscribed.toLocaleString()}
-                                </p>
-                              </div>
+                            <button className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-100 transition-colors flex items-center" onClick={() => handleDisconnectEmail(emailAccount)}>
+                              <TrashIcon className="h-3 w-3 mr-1" />
+                              Disconnect
+                            </button>
+                          </div>
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-4 rounded-lg shadow-sm">
+                              <p className="text-sm text-gray-500">Total Emails</p>
+                              <p className="text-xl font-bold text-gray-900">
+                                {emailAccount.totalEmails.toLocaleString()}
+                              </p>
                             </div>
-                            <div className="mt-4">
-                              <button className="text-purple-600 text-sm font-medium hover:text-purple-800 flex items-center">
-                                <EyeIcon className="h-4 w-4 mr-1" />
-                                View Detailed Stats
-                              </button>
+                            <div className="bg-white p-4 rounded-lg shadow-sm">
+                              <p className="text-sm text-gray-500">Processed</p>
+                              <p className="text-xl font-bold text-purple-600">
+                                {emailAccount.processedEmails.toLocaleString()}
+                              </p>
                             </div>
-                          </div>)}
-                      </div> : <div className="text-center py-12">
-                        <MailIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          No Email Accounts Connected
-                        </h3>
-                        <p className="text-gray-500 mb-6">
-                          Connect your email accounts to start cleaning your
-                          inbox
-                        </p>
-                        <button className="bg-gradient-to-r from-blue-600 to-purple-700 text-white px-4 py-2 rounded-md font-medium hover:from-blue-700 hover:to-purple-800 transition-colors" onClick={handleConnectNewEmail}>
-                          Connect Email Account
-                        </button>
-                      </div>}
-                  </div>
-                </div>
-                {dbEmailAccounts.length > 0 && <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Email Cleanup Status
-                    </h3>
-                  </div>
-                  <div className="p-6">
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">
-                            Overall Progress
-                          </span>
-                          <span className="text-sm font-medium text-gray-700">
-                            0%
-                          </span>
+                            <div className="bg-white p-4 rounded-lg shadow-sm">
+                              <p className="text-sm text-gray-500">Unsubscribed</p>
+                              <p className="text-xl font-bold text-green-600">
+                                {emailAccount.unsubscribed.toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <button className="text-purple-600 text-sm font-medium hover:text-purple-800 flex items-center">
+                              <EyeIcon className="h-4 w-4 mr-1" />
+                              View Detailed Stats
+                            </button>
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-purple-600 h-2.5 rounded-full" style={{
-                        width: '0%'
-                      }}></div>
+                      ))}
+
+                      {/* Add New Email Account Card */}
+                      <button
+                        onClick={handleConnectNewEmail}
+                        className="w-full bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all duration-200 cursor-pointer group"
+                      >
+                        <div className="flex flex-col items-center justify-center py-8">
+                          <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-purple-100 flex items-center justify-center mb-4 transition-colors">
+                            <PlusIcon className="h-6 w-6 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                          </div>
+                          <h4 className="text-lg font-medium text-gray-500 group-hover:text-purple-600 transition-colors">
+                            Add Email Account
+                          </h4>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Connect another Gmail account
+                          </p>
                         </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">
-                            Newsletters Processed
-                          </span>
-                          <span className="text-sm font-medium text-gray-700">
-                            0%
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-blue-600 h-2.5 rounded-full" style={{
-                        width: '0%'
-                      }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">
-                            Marketing Emails
-                          </span>
-                          <span className="text-sm font-medium text-gray-700">
-                            0%
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-purple-600 h-2.5 rounded-full" style={{
-                        width: '0%'
-                      }}></div>
-                        </div>
-                      </div>
+                      </button>
                     </div>
                   </div>
-                </div>}
+                </div>
               </div>}
             {/* Subscription Tab */}
             {activeTab === 'subscription' && <div>

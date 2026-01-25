@@ -6,6 +6,7 @@ import { API_URL } from '../lib/api';
 export interface DashboardStats {
   emailsProcessed: number;
   unsubscribed: number;
+  deleted: number;
   emailAccounts: number;
 }
 
@@ -20,14 +21,24 @@ export interface EmailAccount {
   unsubscribed: number;
 }
 
+export interface ActivityItem {
+  id: string;
+  action_type: string;
+  description: string;
+  created_at: string;
+  metadata?: Record<string, any>;
+}
+
 export const useDashboardData = () => {
   const { user, token } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     emailsProcessed: 0,
     unsubscribed: 0,
+    deleted: 0,
     emailAccounts: 0
   });
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,17 +78,28 @@ export const useDashboardData = () => {
         ) || 0;
       }
 
-      // Get unsubscribed count from user_stats
+      // Get unsubscribed and deleted counts from user_stats
       const { data: userStats } = await supabase
         .from('user_stats')
-        .select('unsubscribed')
+        .select('unsubscribed, emails_processed')
         .eq('user_id', user.id)
         .single();
+
+      // Fetch recent activity
+      const { data: activityData } = await supabase
+        .from('activity_log')
+        .select('id, action_type, description, created_at, metadata')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setRecentActivity(activityData || []);
 
       // Update stats
       setStats({
         emailsProcessed: totalEmailsLoaded,
         unsubscribed: userStats?.unsubscribed || 0,
+        deleted: userStats?.emails_processed || 0,
         emailAccounts: accountsData?.length || 0
       });
 
@@ -105,5 +127,5 @@ export const useDashboardData = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  return { stats, emailAccounts, loading, error, refetch: fetchDashboardData };
+  return { stats, emailAccounts, recentActivity, loading, error, refetch: fetchDashboardData };
 };

@@ -19,6 +19,7 @@ import ResetPassword from './pages/ResetPassword';
 import OAuthCallback from './pages/OAuthCallback';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { CookieConsent } from './components/CookieConsent';
 // Scroll to top component
 function ScrollToTop() {
   const {
@@ -62,6 +63,7 @@ function AppWithAuth() {
         </Routes>
       </main>
       <Footer />
+      <CookieConsent />
     </div>;
 }
 export function App() {
