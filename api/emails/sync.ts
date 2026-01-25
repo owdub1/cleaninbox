@@ -155,24 +155,19 @@ export default async function handler(
 
     // Determine sync mode:
     // - First sync (no last_synced): Full sync to get all historical emails
-    // - Stuck at 0 emails: Force full sync to recover
     // - Stale sync (>30 days): Full sync to refresh data
     // - Subsequent syncs: Quick incremental sync (only new emails)
     const isFirstSync = !account.last_synced;
-    const isStuckAtZero = account.total_emails === 0 && !!account.last_synced;
 
     // Check if last sync was more than 30 days ago
     const STALE_SYNC_DAYS = 30;
     const isStaleSync = account.last_synced &&
       (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
 
-    const isFullSync = isFirstSync || isStuckAtZero || isStaleSync || fullSync;
+    const isFullSync = isFirstSync || isStaleSync || fullSync;
     const isIncrementalSync = !isFullSync;
     const lastSyncDate = isIncrementalSync ? new Date(account.last_synced) : undefined;
 
-    if (isStuckAtZero) {
-      console.log('Account has 0 emails with last_synced set - forcing full sync to recover');
-    }
     if (isStaleSync) {
       console.log(`Last sync was over ${STALE_SYNC_DAYS} days ago - forcing full sync to refresh`);
     }
@@ -185,7 +180,7 @@ export default async function handler(
       ? Math.min(10000, emailLimit)  // Full sync: up to 10k or plan limit
       : 500;  // Incremental: just recent changes
 
-    const syncType = isFirstSync ? 'FIRST' : isStaleSync ? 'STALE' : isStuckAtZero ? 'RECOVERY' : isIncrementalSync ? 'Incremental' : 'FULL';
+    const syncType = isFirstSync ? 'FIRST' : isStaleSync ? 'STALE' : isIncrementalSync ? 'Incremental' : 'FULL';
     console.log(`${syncType} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
     const allSenderStats = await fetchSenderStats(
       accessToken,
