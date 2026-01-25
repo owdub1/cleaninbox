@@ -93,13 +93,15 @@ export default async function handler(
 
     if (existingAccount) {
       // Update existing account
+      // Note: Don't set last_synced here - we want the first sync after reconnecting
+      // to be a full sync, not an incremental sync looking for emails after "now"
       await supabase
         .from('email_accounts')
         .update({
           provider: 'Gmail',
           gmail_email: profile.email,
           connection_status: 'connected',
-          last_synced: new Date().toISOString(),
+          last_synced: null,  // Reset so first sync is a full sync
           updated_at: new Date().toISOString()
         })
         .eq('id', existingAccount.id);
@@ -107,6 +109,7 @@ export default async function handler(
       emailAccountId = existingAccount.id;
     } else {
       // Create new email account
+      // Note: last_synced is null so first sync does a full sync, not incremental
       const { data: newAccount, error: insertError } = await supabase
         .from('email_accounts')
         .insert({
@@ -115,7 +118,7 @@ export default async function handler(
           provider: 'Gmail',
           gmail_email: profile.email,
           connection_status: 'connected',
-          last_synced: new Date().toISOString(),
+          last_synced: null,  // First sync should be a full sync
           total_emails: 0,
           processed_emails: 0,
           unsubscribed: 0

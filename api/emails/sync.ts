@@ -159,11 +159,12 @@ export default async function handler(
 
     // Fetch sender statistics from Gmail
     // For incremental sync, only fetch emails since last sync (much faster)
-    // For first sync, fetch all recent emails
-    console.log(`${isIncrementalSync ? 'Incremental' : 'Full'} sync starting...`);
+    // For first sync, fetch emails up to the plan's limit
+    const emailLimit = planLimits.emailProcessingLimit;
+    console.log(`${isIncrementalSync ? 'Incremental' : 'Full'} sync starting... (plan: ${planKey}, limit: ${emailLimit})`);
     const allSenderStats = await fetchSenderStats(
       accessToken,
-      isIncrementalSync ? 500 : Math.min(maxMessages, 2000), // Smaller batch for incremental
+      isIncrementalSync ? 500 : Math.min(maxMessages, emailLimit), // Respect plan's email limit
       lastSyncDate
     );
 
