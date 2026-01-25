@@ -1533,6 +1533,19 @@ const Dashboard = () => {
                           </p>
                         </div>
                       </div>}
+                      {isPaid && (
+                        <div>
+                          {isCancelled ? (
+                            <span className="inline-flex items-center px-4 py-2 rounded-md font-medium bg-gray-100 text-gray-500">
+                              Subscription Cancelled
+                            </span>
+                          ) : (
+                            <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
+                              Cancel Subscription
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="mt-6">
                       <h4 className="text-md font-medium text-gray-900 mb-4">
