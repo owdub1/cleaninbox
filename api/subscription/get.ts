@@ -86,12 +86,24 @@ interface JWTPayload {
   email: string;
 }
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://cleaninbox.vercel.app',
+  'https://www.cleaninbox.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.VITE_APP_URL,
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', process.env.VITE_APP_URL || 'http://localhost:5173');
+  // Set CORS headers - check if origin is allowed
+  const origin = req.headers.origin || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
