@@ -56,7 +56,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status, last_synced')
+      .select('id, gmail_email, connection_status, last_synced, total_emails')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -155,22 +155,28 @@ export default async function handler(
 
     // Determine sync mode:
     // - fullSync=true: Fetch ALL emails (no date filter, higher limit) for accurate counts
+    // - total_emails=0: Force full sync to fix accounts stuck at 0
     // - incremental: Only fetch emails since last sync (fast)
     // - first sync: Fetch recent emails up to plan limit
-    const isIncrementalSync = !fullSync && !!account.last_synced;
+    const forceFullSync = fullSync || (account.total_emails === 0 && !!account.last_synced);
+    const isIncrementalSync = !forceFullSync && !!account.last_synced;
     const lastSyncDate = isIncrementalSync ? new Date(account.last_synced) : undefined;
+
+    if (forceFullSync && account.total_emails === 0) {
+      console.log('Account has 0 emails with last_synced set - forcing full sync to recover');
+    }
 
     // Fetch sender statistics from Gmail
     const emailLimit = planLimits.emailProcessingLimit;
     // Full sync uses a high limit (up to 10000) to get accurate counts
     // Incremental uses 500, regular sync uses plan limit
-    const messagesToFetch = fullSync
+    const messagesToFetch = forceFullSync
       ? Math.min(10000, emailLimit)  // Full sync: fetch up to 10k for accurate counts
       : isIncrementalSync
         ? 500  // Incremental: just recent changes
         : Math.min(maxMessages, emailLimit);  // First sync: plan limit
 
-    console.log(`${fullSync ? 'FULL' : isIncrementalSync ? 'Incremental' : 'Initial'} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
+    console.log(`${forceFullSync ? 'FULL' : isIncrementalSync ? 'Incremental' : 'Initial'} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
     const allSenderStats = await fetchSenderStats(
       accessToken,
       messagesToFetch,

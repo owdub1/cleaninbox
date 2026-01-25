@@ -9,7 +9,7 @@ import { useActivity } from '../hooks/useActivity';
 import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading, refetch: refetchDashboard } = useDashboardData();
-  const { addEmailAccount, removeEmailAccount } = useEmailAccounts();
+  const { addEmailAccount, removeEmailAccount, syncEmailAccount } = useEmailAccounts();
   const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled } = useSubscription();
   const { activities, loading: activityLoading, formatRelativeTime } = useActivity(5);
   const [activeTab, setActiveTab] = useState('overview');
@@ -1242,6 +1242,16 @@ const Dashboard = () => {
     await addEmailAccount(email, provider);
     // The useDashboardData hook will automatically refresh and update connectedEmails
   };
+  const handleSyncEmail = async (emailAccount) => {
+    try {
+      const result = await syncEmailAccount(emailAccount.id, emailAccount.email, { fullSync: true });
+      // Refetch dashboard data to update the UI
+      await refetchDashboard();
+      alert(`Synced ${emailAccount.email}! Found ${result.totalEmails?.toLocaleString() || 0} emails from ${result.totalSenders || 0} senders.`);
+    } catch (error: any) {
+      alert('Failed to sync: ' + error.message);
+    }
+  };
   const handleDisconnectEmail = email => {
     setEmailToDisconnect(email);
     setShowDisconnectModal(true);
@@ -1592,10 +1602,16 @@ const Dashboard = () => {
                                 Provider: {emailAccount.provider} | Last synced: {formatDateTime(emailAccount.lastSynced)}
                               </p>
                             </div>
-                            <button className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-100 transition-colors flex items-center" onClick={() => handleDisconnectEmail(emailAccount)}>
-                              <TrashIcon className="h-3 w-3 mr-1" />
-                              Disconnect
-                            </button>
+                            <div className="flex space-x-2">
+                              <button className="bg-blue-50 text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-100 transition-colors flex items-center" onClick={() => handleSyncEmail(emailAccount)}>
+                                <RefreshCwIcon className="h-3 w-3 mr-1" />
+                                Sync Now
+                              </button>
+                              <button className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-100 transition-colors flex items-center" onClick={() => handleDisconnectEmail(emailAccount)}>
+                                <TrashIcon className="h-3 w-3 mr-1" />
+                                Disconnect
+                              </button>
+                            </div>
                           </div>
                           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-white p-4 rounded-lg shadow-sm">
