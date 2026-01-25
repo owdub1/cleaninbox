@@ -1244,7 +1244,7 @@ const Dashboard = () => {
   };
   const handleSyncEmail = async (emailAccount) => {
     try {
-      const result = await syncEmailAccount(emailAccount.id, emailAccount.email, { fullSync: true });
+      const result = await syncEmailAccount(emailAccount.id, emailAccount.email);
       // Refetch dashboard data to update the UI
       await refetchDashboard();
       alert(`Synced ${emailAccount.email}! Found ${result.totalEmails?.toLocaleString() || 0} emails from ${result.totalSenders || 0} senders.`);

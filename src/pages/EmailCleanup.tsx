@@ -546,17 +546,14 @@ const EmailCleanup = () => {
     setCurrentView('tools');
   };
 
-  const handleSync = async (fullSync: boolean = false) => {
+  const handleSync = async () => {
     // Use connected account, or fall back to any Gmail account
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
-      console.log(`${fullSync ? 'Full' : 'Quick'} syncing emails for:`, accountToSync.email);
-      const result = await syncEmails(accountToSync.email, { fullSync });
+      console.log('Syncing emails for:', accountToSync.email);
+      const result = await syncEmails(accountToSync.email);
       if (result.success) {
-        const message = fullSync
-          ? 'Full sync completed! Email counts are now accurate.'
-          : 'Emails synced successfully!';
-        setNotification({ type: 'success', message });
+        setNotification({ type: 'success', message: 'Emails synced successfully!' });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
         const message = result.upgradeMessage
@@ -1338,39 +1335,13 @@ const EmailCleanup = () => {
                 {connectedGmailAccount && (
                   <div className="flex items-center">
                     <button
-                      onClick={() => handleSync(false)}
+                      onClick={() => handleSync()}
                       disabled={syncing}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-l-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                      {syncing ? 'Syncing...' : 'Sync'}
+                      {syncing ? 'Syncing...' : 'Sync Now'}
                     </button>
-                    <div className="relative group">
-                      <button
-                        disabled={syncing}
-                        className="flex items-center px-2 py-2 bg-indigo-700 text-white rounded-r-lg hover:bg-indigo-800 disabled:opacity-50 transition-colors border-l border-indigo-500"
-                      >
-                        <ChevronDownIcon className="w-4 h-4" />
-                      </button>
-                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                        <button
-                          onClick={() => handleSync(false)}
-                          disabled={syncing}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
-                        >
-                          <div className="font-medium">Quick Sync</div>
-                          <div className="text-xs text-gray-500">Fast, recent emails only</div>
-                        </button>
-                        <button
-                          onClick={() => handleSync(true)}
-                          disabled={syncing}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg border-t border-gray-100"
-                        >
-                          <div className="font-medium">Full Sync</div>
-                          <div className="text-xs text-gray-500">Slower, accurate counts</div>
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>

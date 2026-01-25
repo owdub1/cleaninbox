@@ -154,29 +154,28 @@ export default async function handler(
     }
 
     // Determine sync mode:
-    // - fullSync=true: Fetch ALL emails (no date filter, higher limit) for accurate counts
-    // - total_emails=0: Force full sync to fix accounts stuck at 0
-    // - incremental: Only fetch emails since last sync (fast)
-    // - first sync: Fetch recent emails up to plan limit
-    const forceFullSync = fullSync || (account.total_emails === 0 && !!account.last_synced);
-    const isIncrementalSync = !forceFullSync && !!account.last_synced;
+    // - First sync (no last_synced): Full sync to get all historical emails
+    // - Stuck at 0 emails: Force full sync to recover
+    // - Subsequent syncs: Quick incremental sync (only new emails)
+    const isFirstSync = !account.last_synced;
+    const isStuckAtZero = account.total_emails === 0 && !!account.last_synced;
+    const isFullSync = isFirstSync || isStuckAtZero || fullSync;
+    const isIncrementalSync = !isFullSync;
     const lastSyncDate = isIncrementalSync ? new Date(account.last_synced) : undefined;
 
-    if (forceFullSync && account.total_emails === 0) {
+    if (isStuckAtZero) {
       console.log('Account has 0 emails with last_synced set - forcing full sync to recover');
     }
 
     // Fetch sender statistics from Gmail
     const emailLimit = planLimits.emailProcessingLimit;
-    // Full sync uses a high limit (up to 10000) to get accurate counts
-    // Incremental uses 500, regular sync uses plan limit
-    const messagesToFetch = forceFullSync
-      ? Math.min(10000, emailLimit)  // Full sync: fetch up to 10k for accurate counts
-      : isIncrementalSync
-        ? 500  // Incremental: just recent changes
-        : Math.min(maxMessages, emailLimit);  // First sync: plan limit
+    // Full sync (first time or recovery): fetch up to plan limit for accurate counts
+    // Incremental: just recent changes (500 max for speed)
+    const messagesToFetch = isFullSync
+      ? Math.min(10000, emailLimit)  // Full sync: up to 10k or plan limit
+      : 500;  // Incremental: just recent changes
 
-    console.log(`${forceFullSync ? 'FULL' : isIncrementalSync ? 'Incremental' : 'Initial'} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
+    console.log(`${isFirstSync ? 'FIRST' : isIncrementalSync ? 'Incremental' : 'FULL'} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
     const allSenderStats = await fetchSenderStats(
       accessToken,
       messagesToFetch,
