@@ -43,7 +43,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { email, maxMessages = 1000 } = req.body;
+  const { email, maxMessages = 1000, fullSync = false } = req.body;
 
   if (!email) {
     return res.status(400).json({
@@ -153,18 +153,27 @@ export default async function handler(
       });
     }
 
-    // Determine if this is an incremental sync (has previous sync) or full sync
-    const isIncrementalSync = !!account.last_synced;
-    const lastSyncDate = account.last_synced ? new Date(account.last_synced) : undefined;
+    // Determine sync mode:
+    // - fullSync=true: Fetch ALL emails (no date filter, higher limit) for accurate counts
+    // - incremental: Only fetch emails since last sync (fast)
+    // - first sync: Fetch recent emails up to plan limit
+    const isIncrementalSync = !fullSync && !!account.last_synced;
+    const lastSyncDate = isIncrementalSync ? new Date(account.last_synced) : undefined;
 
     // Fetch sender statistics from Gmail
-    // For incremental sync, only fetch emails since last sync (much faster)
-    // For first sync, fetch emails up to the plan's limit
     const emailLimit = planLimits.emailProcessingLimit;
-    console.log(`${isIncrementalSync ? 'Incremental' : 'Full'} sync starting... (plan: ${planKey}, limit: ${emailLimit})`);
+    // Full sync uses a high limit (up to 10000) to get accurate counts
+    // Incremental uses 500, regular sync uses plan limit
+    const messagesToFetch = fullSync
+      ? Math.min(10000, emailLimit)  // Full sync: fetch up to 10k for accurate counts
+      : isIncrementalSync
+        ? 500  // Incremental: just recent changes
+        : Math.min(maxMessages, emailLimit);  // First sync: plan limit
+
+    console.log(`${fullSync ? 'FULL' : isIncrementalSync ? 'Incremental' : 'Initial'} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
     const allSenderStats = await fetchSenderStats(
       accessToken,
-      isIncrementalSync ? 500 : Math.min(maxMessages, emailLimit), // Respect plan's email limit
+      messagesToFetch,
       lastSyncDate
     );
 

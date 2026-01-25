@@ -122,7 +122,7 @@ export default async function handler(
 
     console.log(`by-sender: ${senderEmail} - fetched ${fetchedCount}, estimate ${estimateCount}, using ${actualCount}`);
 
-    // Update the sender's email count in the database if the new count is higher
+    // Update the sender's email count in the database if it differs
     // This corrects the count when we have more accurate data from Gmail
     if (actualCount > 0) {
       const { data: account } = await supabase
@@ -141,8 +141,8 @@ export default async function handler(
           .eq('sender_email', senderEmail)
           .single();
 
-        // Only update if the new count is higher (more accurate)
-        if (!currentSender || actualCount > currentSender.email_count) {
+        // Update if the count differs (sync may have missed old emails, or emails were deleted)
+        if (!currentSender || actualCount !== currentSender.email_count) {
           console.log(`Updating ${senderEmail} count from ${currentSender?.email_count || 0} to ${actualCount}`);
           await supabase
             .from('email_senders')

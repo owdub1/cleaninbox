@@ -126,12 +126,18 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
   /**
    * Sync emails from Gmail
+   * @param email - Email account to sync
+   * @param options - Sync options
+   * @param options.maxMessages - Max messages to fetch (default 1000)
+   * @param options.fullSync - If true, fetches all emails for accurate counts (slower)
    * Returns object with success status and optional error details
    */
   const syncEmails = useCallback(async (
     email: string,
-    maxMessages: number = 1000
+    options: { maxMessages?: number; fullSync?: boolean } = {}
   ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string }> => {
+    const { maxMessages = 1000, fullSync = false } = options;
+
     if (!token) {
       setError('Authentication required');
       return { success: false };
@@ -147,7 +153,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, maxMessages }),
+        body: JSON.stringify({ email, maxMessages, fullSync }),
       });
 
       const data = await response.json();

@@ -372,6 +372,9 @@ const EmailCleanup = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Account selector state - for users with multiple email accounts
+  const [selectedAccountEmail, setSelectedAccountEmail] = useState<string | null>(null);
+
   // Cleanup confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -426,10 +429,22 @@ const EmailCleanup = () => {
   const hasFreeTries = freeActionsRemaining > 0;
   const hasPaidPlan = isPaid;
 
-  // Get connected Gmail account (check for 'connected' status)
-  const connectedGmailAccount = emailAccounts?.find(
+  // Get all connected Gmail accounts
+  const connectedGmailAccounts = emailAccounts?.filter(
     (acc: any) => acc.provider === 'Gmail' && acc.connection_status === 'connected'
-  );
+  ) || [];
+
+  // Set initial selected account when accounts load
+  useEffect(() => {
+    if (connectedGmailAccounts.length > 0 && !selectedAccountEmail) {
+      setSelectedAccountEmail(connectedGmailAccounts[0].email);
+    }
+  }, [connectedGmailAccounts, selectedAccountEmail]);
+
+  // Get the currently selected Gmail account
+  const connectedGmailAccount = selectedAccountEmail
+    ? emailAccounts?.find((acc: any) => acc.email === selectedAccountEmail && acc.connection_status === 'connected')
+    : connectedGmailAccounts[0];
 
   // Get any Gmail account (may need reconnection)
   const anyGmailAccount = emailAccounts?.find(
@@ -494,12 +509,12 @@ const EmailCleanup = () => {
     }
   }, [notification]);
 
-  // Show senders error as notification
+  // Show senders error as notification (only when authenticated)
   useEffect(() => {
-    if (sendersError) {
+    if (sendersError && isAuthenticated && sendersError !== 'Authentication required') {
       setNotification({ type: 'error', message: sendersError });
     }
-  }, [sendersError]);
+  }, [sendersError, isAuthenticated]);
 
   const getCurrentStep = () => {
     if (!isAuthenticated) return 1;
@@ -531,14 +546,17 @@ const EmailCleanup = () => {
     setCurrentView('tools');
   };
 
-  const handleSync = async () => {
+  const handleSync = async (fullSync: boolean = false) => {
     // Use connected account, or fall back to any Gmail account
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
-      console.log('Syncing emails for:', accountToSync.email);
-      const result = await syncEmails(accountToSync.email);
+      console.log(`${fullSync ? 'Full' : 'Quick'} syncing emails for:`, accountToSync.email);
+      const result = await syncEmails(accountToSync.email, { fullSync });
       if (result.success) {
-        setNotification({ type: 'success', message: 'Emails synced successfully!' });
+        const message = fullSync
+          ? 'Full sync completed! Email counts are now accurate.'
+          : 'Emails synced successfully!';
+        setNotification({ type: 'success', message });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
         const message = result.upgradeMessage
@@ -736,6 +754,15 @@ const EmailCleanup = () => {
   // Filter and sort senders
   const filterAndSortSenders = (senderList: Sender[]) => {
     let filtered = [...senderList];
+
+    // Filter by selected account when multiple accounts exist
+    if (selectedAccountEmail && connectedGmailAccounts.length > 1) {
+      filtered = filtered.filter(item => item.accountEmail === selectedAccountEmail);
+    }
+
+    // Hide senders with 0 emails (already deleted)
+    filtered = filtered.filter(item => item.emailCount > 0);
+
     if (searchTerm) {
       filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -849,8 +876,8 @@ const EmailCleanup = () => {
   // Get senders grouped by year (keeping for backward compatibility)
   const sendersByYear = getSendersByYear();
 
-  // Get senders that can be unsubscribed (for Unsubscribe tool)
-  const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe);
+  // Get senders that can be unsubscribed (for Unsubscribe tool) - exclude 0 email senders
+  const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
 
   // Get all senders sorted by date (newest first) for Delete & Clean view
   const allSendersSortedByDate = [...senders].sort((a, b) =>
@@ -1288,16 +1315,65 @@ const EmailCleanup = () => {
                   {selectedToolData?.description || 'Organize and clean your inbox by year and sender'}
                 </p>
               </div>
-              {connectedGmailAccount && (
-                <button
-                  onClick={handleSync}
-                  disabled={syncing}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Syncing...' : 'Sync Emails'}
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {/* Account Selector - show when multiple accounts connected */}
+                {connectedGmailAccounts.length > 1 && (
+                  <div className="relative">
+                    <select
+                      value={selectedAccountEmail || ''}
+                      onChange={(e) => setSelectedAccountEmail(e.target.value)}
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+                    >
+                      {connectedGmailAccounts.map((account: any) => (
+                        <option key={account.id} value={account.email}>
+                          {account.email}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                      <ChevronDownIcon className="h-4 w-4" />
+                    </div>
+                  </div>
+                )}
+                {connectedGmailAccount && (
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => handleSync(false)}
+                      disabled={syncing}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-l-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                      {syncing ? 'Syncing...' : 'Sync'}
+                    </button>
+                    <div className="relative group">
+                      <button
+                        disabled={syncing}
+                        className="flex items-center px-2 py-2 bg-indigo-700 text-white rounded-r-lg hover:bg-indigo-800 disabled:opacity-50 transition-colors border-l border-indigo-500"
+                      >
+                        <ChevronDownIcon className="w-4 h-4" />
+                      </button>
+                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                        <button
+                          onClick={() => handleSync(false)}
+                          disabled={syncing}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                        >
+                          <div className="font-medium">Quick Sync</div>
+                          <div className="text-xs text-gray-500">Fast, recent emails only</div>
+                        </button>
+                        <button
+                          onClick={() => handleSync(true)}
+                          disabled={syncing}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg border-t border-gray-100"
+                        >
+                          <div className="font-medium">Full Sync</div>
+                          <div className="text-xs text-gray-500">Slower, accurate counts</div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1415,7 +1491,7 @@ const EmailCleanup = () => {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {(connectedGmailAccount || anyGmailAccount) && (
                     <button
-                      onClick={handleSync}
+                      onClick={() => handleSync(false)}
                       disabled={syncing}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                     >
@@ -1868,28 +1944,6 @@ const EmailCleanup = () => {
                           </div>
                           <span className="text-base font-semibold text-gray-700">{sender.emailCount}</span>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {sender.hasUnsubscribe && (
-                          <button
-                            className="px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                            onClick={() => handleCleanupAction('unsubscribe', [sender])}
-                          >
-                            Unsubscribe
-                          </button>
-                        )}
-                        <button
-                          className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          onClick={() => handleCleanupAction('archive', [sender])}
-                        >
-                          Archive
-                        </button>
-                        <button
-                          className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
-                          onClick={() => handleCleanupAction('delete', [sender])}
-                        >
-                          Delete
-                        </button>
                       </div>
                     </div>
                   </div>
