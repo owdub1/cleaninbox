@@ -70,12 +70,18 @@ export const useDashboardData = () => {
       });
 
       let totalEmailsLoaded = 0;
+      let emailCountsByAccount: Record<string, number> = {};
       if (sendersResponse.ok) {
         const sendersData = await sendersResponse.json();
-        totalEmailsLoaded = sendersData.senders?.reduce(
-          (sum: number, sender: any) => sum + (sender.emailCount || 0),
-          0
-        ) || 0;
+        // Calculate total and per-account email counts
+        sendersData.senders?.forEach((sender: any) => {
+          const count = sender.emailCount || 0;
+          totalEmailsLoaded += count;
+          // Group by account email
+          if (sender.accountEmail) {
+            emailCountsByAccount[sender.accountEmail] = (emailCountsByAccount[sender.accountEmail] || 0) + count;
+          }
+        });
       }
 
       // Get unsubscribed and deleted counts from user_stats
@@ -103,14 +109,14 @@ export const useDashboardData = () => {
         emailAccounts: accountsData?.length || 0
       });
 
-      // Update email accounts
+      // Update email accounts - use actual sender counts instead of stored total_emails
       setEmailAccounts(accountsData?.map(account => ({
         id: account.id,
         email: account.email,
         provider: account.provider || 'Unknown',
         connection_status: account.connection_status || 'disconnected',
         lastSynced: account.last_synced || '',
-        totalEmails: account.total_emails || 0,
+        totalEmails: emailCountsByAccount[account.email] || 0,
         processedEmails: account.processed_emails || 0,
         unsubscribed: account.unsubscribed || 0
       })) || []);
