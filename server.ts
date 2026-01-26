@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
+// CleanInbox API Server - v1.1
+
 // Import API handlers
 import signup from './api/auth/signup.js';
 import login from './api/auth/login.js';
