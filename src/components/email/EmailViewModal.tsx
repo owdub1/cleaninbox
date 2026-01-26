@@ -214,7 +214,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                 Message ID: {email.id}
               </div>
               <a
-                href={`https://mail.google.com/mail/u/0/#inbox/${email.threadId}`}
+                href={`https://mail.google.com/mail/?authuser=${encodeURIComponent(accountEmail)}#inbox/${email.threadId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
