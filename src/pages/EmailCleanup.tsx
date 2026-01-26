@@ -37,6 +37,7 @@ import { useEmailSenders, Sender, EmailMessage } from '../hooks/useEmailSenders'
 import { useCleanupActions } from '../hooks/useCleanupActions';
 import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
+import EmailViewModal from '../components/email/EmailViewModal';
 
 // Free trial limit
 const FREE_TRIAL_LIMIT = 5;
@@ -419,6 +420,8 @@ const EmailCleanup = () => {
   const [deletingEmailId, setDeletingEmailId] = useState<string | null>(null);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
+  // State for viewing individual email
+  const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string } | null>(null);
 
   // Cleanup actions hook
   const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
@@ -1257,6 +1260,20 @@ const EmailCleanup = () => {
         loading={cleanupLoading}
       />
 
+      {/* Email View Modal */}
+      <EmailViewModal
+        isOpen={!!viewingEmail}
+        onClose={() => setViewingEmail(null)}
+        messageId={viewingEmail?.messageId || ''}
+        accountEmail={viewingEmail?.accountEmail || ''}
+        onDelete={viewingEmail ? () => {
+          const email = senderEmails[viewingEmail.senderEmail]?.find(e => e.id === viewingEmail.messageId);
+          if (email) {
+            handleDeleteSingleEmail(email, viewingEmail.senderEmail);
+          }
+        } : undefined}
+      />
+
       {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
@@ -1577,9 +1594,12 @@ const EmailCleanup = () => {
                                     </div>
                                   ) : senderEmails[sender.email]?.length > 0 ? (
                                     senderEmails[sender.email].map(email => (
-                                      <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-gray-200 transition-colors">
+                                      <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
                                         <div className="flex items-start justify-between gap-3">
-                                          <div className="flex-1 min-w-0">
+                                          <div
+                                            className="flex-1 min-w-0"
+                                            onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email })}
+                                          >
                                             <div className="flex items-center gap-2">
                                               {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
                                               <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
@@ -1592,7 +1612,7 @@ const EmailCleanup = () => {
                                             </div>
                                           </div>
                                           <button
-                                            onClick={() => handleDeleteSingleEmail(email, sender.email)}
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email); }}
                                             disabled={deletingEmailId === email.id}
                                             className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                                             title="Delete email"
@@ -1686,9 +1706,12 @@ const EmailCleanup = () => {
                             </div>
                           ) : senderEmails[sender.email]?.length > 0 ? (
                             senderEmails[sender.email].map(email => (
-                              <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-gray-200 transition-colors">
+                              <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
                                 <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1 min-w-0">
+                                  <div
+                                    className="flex-1 min-w-0"
+                                    onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email })}
+                                  >
                                     <div className="flex items-center gap-2">
                                       {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
                                       <span className={`text-sm truncate ${email.isUnread ? 'font-semibold' : ''}`}>
@@ -1701,7 +1724,7 @@ const EmailCleanup = () => {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={() => handleDeleteSingleEmail(email, sender.email)}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email); }}
                                     disabled={deletingEmailId === email.id}
                                     className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                                     title="Delete email"
@@ -1802,9 +1825,12 @@ const EmailCleanup = () => {
                               </div>
                             ) : senderEmails[sender.email]?.length > 0 ? (
                               senderEmails[sender.email].map(email => (
-                                <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-gray-200 transition-colors">
+                                <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
                                   <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
+                                    <div
+                                      className="flex-1 min-w-0"
+                                      onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email })}
+                                    >
                                       <div className="flex items-center gap-2">
                                         {email.isUnread && (
                                           <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
@@ -1821,7 +1847,7 @@ const EmailCleanup = () => {
                                       </div>
                                     </div>
                                     <button
-                                      onClick={() => handleDeleteSingleEmail(email, sender.email)}
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email); }}
                                       disabled={deletingEmailId === email.id}
                                       className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                                       title="Delete email"

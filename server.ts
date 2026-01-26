@@ -26,6 +26,7 @@ import gmailDisconnect from './api/gmail/disconnect.js';
 import emailsSync from './api/emails/sync.js';
 import emailsSenders from './api/emails/senders.js';
 import emailsBySender from './api/emails/by-sender.js';
+import emailsGet from './api/emails/get.js';
 import emailsDebugSender from './api/emails/debug-sender.js';
 
 // Cleanup routes
@@ -127,6 +128,7 @@ app.post('/api/gmail/disconnect', wrapHandler(gmailDisconnect));
 app.post('/api/emails/sync', wrapHandler(emailsSync));
 app.get('/api/emails/senders', wrapHandler(emailsSenders));
 app.get('/api/emails/by-sender', wrapHandler(emailsBySender));
+app.get('/api/emails/get', wrapHandler(emailsGet));
 app.get('/api/emails/debug-sender', wrapHandler(emailsDebugSender));
 
 // Cleanup routes
