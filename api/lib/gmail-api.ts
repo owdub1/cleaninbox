@@ -10,6 +10,34 @@
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
+// Rate limiting configuration
+const RATE_LIMIT = {
+  MAX_CONCURRENT: 10,         // Max parallel requests (Gmail allows ~25, we use 10 for safety)
+  REQUESTS_PER_SECOND: 40,    // Target 40/sec (limit is 50/sec)
+  DELAY_BETWEEN_BATCHES: 250, // 250ms between batches
+  MAX_RETRIES: 3,             // Retry failed requests up to 3 times
+  INITIAL_BACKOFF_MS: 1000,   // Start with 1 second backoff
+  MAX_BACKOFF_MS: 32000,      // Max 32 second backoff
+};
+
+/**
+ * Sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate exponential backoff with jitter
+ */
+function getBackoffMs(attempt: number): number {
+  const exponentialBackoff = RATE_LIMIT.INITIAL_BACKOFF_MS * Math.pow(2, attempt);
+  const cappedBackoff = Math.min(exponentialBackoff, RATE_LIMIT.MAX_BACKOFF_MS);
+  // Add 0-50% jitter to prevent thundering herd
+  const jitter = cappedBackoff * Math.random() * 0.5;
+  return cappedBackoff + jitter;
+}
+
 export interface GmailMessage {
   id: string;
   threadId: string;
@@ -47,12 +75,13 @@ export interface SenderStats {
 }
 
 /**
- * Make authenticated request to Gmail API
+ * Make authenticated request to Gmail API with retry logic
  */
 async function gmailRequest(
   accessToken: string,
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount: number = 0
 ): Promise<any> {
   const response = await fetch(`${GMAIL_API_BASE}${endpoint}`, {
     ...options,
@@ -65,7 +94,19 @@ async function gmailRequest(
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('Gmail API error response:', response.status, error);
+
+    // Handle rate limit errors with exponential backoff
+    if ((response.status === 429 || response.status === 403) && retryCount < RATE_LIMIT.MAX_RETRIES) {
+      const backoffMs = getBackoffMs(retryCount);
+      console.warn(`Rate limited (${response.status}), retrying in ${Math.round(backoffMs)}ms (attempt ${retryCount + 1}/${RATE_LIMIT.MAX_RETRIES})`);
+      await sleep(backoffMs);
+      return gmailRequest(accessToken, endpoint, options, retryCount + 1);
+    }
+
+    // Only log full error for non-rate-limit errors or after all retries exhausted
+    if (response.status !== 429 && response.status !== 403) {
+      console.error('Gmail API error response:', response.status, error);
+    }
     throw new Error(`Gmail API error: ${response.status} - ${error}`);
   }
 
@@ -124,6 +165,7 @@ export async function getMessage(
 
 /**
  * Batch get multiple messages with rate limiting
+ * Uses conservative settings to avoid Gmail API rate limits
  */
 export async function batchGetMessages(
   accessToken: string,
@@ -131,50 +173,37 @@ export async function batchGetMessages(
   format: 'full' | 'metadata' | 'minimal' = 'metadata',
   metadataHeaders?: string[]
 ): Promise<GmailMessage[]> {
-  // Gmail rate limits: 250 quota units per second per user
-  // Optimized for speed: larger batches, minimal delays, parallel processing
-  const BATCH_SIZE = format === 'metadata' ? 50 : 20;
-  const PARALLEL_BATCHES = 3; // Process 3 batches concurrently
-  const DELAY_MS = 50; // Small delay between parallel rounds
+  // Conservative rate limiting to stay well under Gmail's limits
+  // - 10 concurrent requests (Gmail allows ~25)
+  // - 250ms delay between batches (~40 req/sec, limit is 50)
+  const BATCH_SIZE = RATE_LIMIT.MAX_CONCURRENT;
+  const DELAY_MS = RATE_LIMIT.DELAY_BETWEEN_BATCHES;
   const results: GmailMessage[] = [];
   let failedCount = 0;
 
-  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} x${PARALLEL_BATCHES} parallel (format: ${format})...`);
+  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} with ${DELAY_MS}ms delay (format: ${format})...`);
 
-  // Process batches in parallel groups
-  for (let i = 0; i < messageIds.length; i += BATCH_SIZE * PARALLEL_BATCHES) {
-    const parallelBatches: Promise<(GmailMessage | null)[]>[] = [];
+  for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
+    const batch = messageIds.slice(i, i + BATCH_SIZE);
 
-    // Create parallel batch promises
-    for (let j = 0; j < PARALLEL_BATCHES; j++) {
-      const startIdx = i + (j * BATCH_SIZE);
-      if (startIdx >= messageIds.length) break;
+    // Process batch with parallel requests
+    const batchResults = await Promise.all(
+      batch.map(id => getMessage(accessToken, id, format, metadataHeaders).catch((err) => {
+        failedCount++;
+        return null;
+      }))
+    );
 
-      const batch = messageIds.slice(startIdx, startIdx + BATCH_SIZE);
-      parallelBatches.push(
-        Promise.all(
-          batch.map(id => getMessage(accessToken, id, format, metadataHeaders).catch((err) => {
-            failedCount++;
-            return null;
-          }))
-        )
-      );
+    results.push(...batchResults.filter(Boolean) as GmailMessage[]);
+
+    // Delay between batches to respect rate limits
+    if (i + BATCH_SIZE < messageIds.length) {
+      await sleep(DELAY_MS);
     }
 
-    // Wait for all parallel batches to complete
-    const batchResults = await Promise.all(parallelBatches);
-    for (const batch of batchResults) {
-      results.push(...batch.filter(Boolean) as GmailMessage[]);
-    }
-
-    // Small delay between parallel rounds to avoid rate limiting
-    if (i + BATCH_SIZE * PARALLEL_BATCHES < messageIds.length) {
-      await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-    }
-
-    // Log progress
-    const processed = Math.min(i + BATCH_SIZE * PARALLEL_BATCHES, messageIds.length);
-    if (processed % 200 === 0 || processed >= messageIds.length) {
+    // Log progress every 100 messages or at the end
+    const processed = Math.min(i + BATCH_SIZE, messageIds.length);
+    if (processed % 100 === 0 || processed >= messageIds.length) {
       console.log(`Processed ${processed}/${messageIds.length} messages`);
     }
   }
@@ -211,7 +240,7 @@ export async function deleteMessage(
 }
 
 /**
- * Batch trash messages
+ * Batch trash messages with rate limiting
  */
 export async function batchTrashMessages(
   accessToken: string,
@@ -220,8 +249,9 @@ export async function batchTrashMessages(
   const success: string[] = [];
   const failed: string[] = [];
 
-  // Process in parallel batches
-  const BATCH_SIZE = 25;
+  const BATCH_SIZE = RATE_LIMIT.MAX_CONCURRENT;
+  const DELAY_MS = RATE_LIMIT.DELAY_BETWEEN_BATCHES;
+
   for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
     const batch = messageIds.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(
@@ -235,6 +265,11 @@ export async function batchTrashMessages(
         failed.push(batch[idx]);
       }
     });
+
+    // Delay between batches
+    if (i + BATCH_SIZE < messageIds.length) {
+      await sleep(DELAY_MS);
+    }
   }
 
   return { success, failed };
@@ -256,7 +291,7 @@ export async function archiveMessage(
 }
 
 /**
- * Batch archive messages
+ * Batch archive messages with rate limiting
  */
 export async function batchArchiveMessages(
   accessToken: string,
@@ -265,7 +300,9 @@ export async function batchArchiveMessages(
   const success: string[] = [];
   const failed: string[] = [];
 
-  const BATCH_SIZE = 25;
+  const BATCH_SIZE = RATE_LIMIT.MAX_CONCURRENT;
+  const DELAY_MS = RATE_LIMIT.DELAY_BETWEEN_BATCHES;
+
   for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
     const batch = messageIds.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(
@@ -279,6 +316,11 @@ export async function batchArchiveMessages(
         failed.push(batch[idx]);
       }
     });
+
+    // Delay between batches
+    if (i + BATCH_SIZE < messageIds.length) {
+      await sleep(DELAY_MS);
+    }
   }
 
   return { success, failed };
@@ -562,6 +604,9 @@ export async function fetchSenderStats(
 
     if (!response.nextPageToken) break;
     pageToken = response.nextPageToken;
+
+    // Small delay between pagination requests
+    await sleep(100);
   }
 
   if (allMessageRefs.length === 0) {
