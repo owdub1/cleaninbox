@@ -344,7 +344,7 @@ export default async function handler(
         emailVerified: true
       },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
 
     // Generate refresh token (7 days)

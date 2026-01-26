@@ -28,8 +28,8 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const CSRF_TOKEN_KEY = 'csrf_token';
 const USER_KEY = 'auth_user';
 
-// Refresh token 2 minutes before expiry (15min - 2min = 13min)
-const REFRESH_INTERVAL = 13 * 60 * 1000;
+// Refresh token once per day (tokens last 7 days, refresh at day 6)
+const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
 export const AuthProvider: React.FC<{
   children: React.ReactNode;
@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{
 
   /**
    * Refresh the access token using the refresh token
+   * Does NOT logout on failure - keeps existing session to avoid disruption
    */
   const refreshToken = async (): Promise<boolean> => {
     const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -58,9 +59,9 @@ export const AuthProvider: React.FC<{
       });
 
       if (!response.ok) {
-        // Refresh token is invalid or expired
-        console.error('Token refresh failed');
-        logout();
+        // Don't logout on refresh failure - token might still be valid
+        // Only log the error and return false
+        console.warn('Token refresh failed with status:', response.status);
         return false;
       }
 
@@ -73,8 +74,8 @@ export const AuthProvider: React.FC<{
 
       return true;
     } catch (error) {
-      console.error('Error refreshing token:', error);
-      logout();
+      // Network error - don't logout, just log and return false
+      console.warn('Error refreshing token (keeping session):', error);
       return false;
     }
   };

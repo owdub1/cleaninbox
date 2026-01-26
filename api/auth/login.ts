@@ -289,7 +289,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Record successful login
     await recordLoginAttempt(user.id, email, ipAddress, userAgent, true, undefined);
 
-    // Generate JWT (short-lived access token - 15 minutes)
+    // Generate JWT access token (7 days - long-lived for better UX)
     const token = jwt.sign(
       {
         userId: user.id,
@@ -297,7 +297,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailVerified: user.email_verified
       },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
 
     // Generate refresh token (7 or 30 days based on Remember Me)

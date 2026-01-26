@@ -113,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Generate new access token (15 minutes)
+    // Generate new access token (7 days - long-lived for better UX)
     const newAccessToken = jwt.sign(
       {
         userId: user.id,
@@ -121,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailVerified: user.email_verified
       },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '7d' }
     );
 
     // Optionally rotate refresh token (best practice for security)
