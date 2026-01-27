@@ -270,18 +270,36 @@ export default async function handler(
     // Upsert senders in batches (now using composite key: email_account_id, sender_email, sender_name)
     const BATCH_SIZE = 100;
     console.log('Upserting', sendersToUpsert.length, 'senders to database...');
-    for (let i = 0; i < sendersToUpsert.length; i += BATCH_SIZE) {
-      const batch = sendersToUpsert.slice(i, i + BATCH_SIZE);
-      const { error: upsertError } = await supabase
+
+    // For full sync, delete existing senders first to avoid constraint issues
+    if (isFullSync) {
+      const { error: deleteSendersError } = await supabase
         .from('email_senders')
-        .upsert(batch, {
-          onConflict: 'email_account_id,sender_email,sender_name'
-        });
-      if (upsertError) {
-        console.error('Upsert error:', upsertError);
+        .delete()
+        .eq('email_account_id', account.id);
+      if (deleteSendersError) {
+        console.warn('Failed to clear old senders:', deleteSendersError);
+      } else {
+        console.log('Cleared existing senders for full sync');
       }
     }
-    console.log('Upsert complete');
+
+    for (let i = 0; i < sendersToUpsert.length; i += BATCH_SIZE) {
+      const batch = sendersToUpsert.slice(i, i + BATCH_SIZE);
+      // Use insert for full sync (we deleted above), upsert for incremental
+      const { error: senderError } = isFullSync
+        ? await supabase.from('email_senders').insert(batch)
+        : await supabase.from('email_senders').upsert(batch, {
+            onConflict: 'email_account_id,sender_email,sender_name'
+          });
+      if (senderError) {
+        console.error('Sender insert/upsert error:', senderError);
+        if (batch.length > 0) {
+          console.error('First item in failed batch:', JSON.stringify(batch[0], null, 2));
+        }
+      }
+    }
+    console.log('Sender upsert complete');
 
     // Store individual emails in the emails table
     if (emailRecords.length > 0) {
@@ -312,16 +330,19 @@ export default async function handler(
         labels: email.labels,
       }));
 
-      // Upsert emails in batches
+      // Insert emails in batches (we deleted existing ones above for full sync)
+      // Use insert instead of upsert to avoid constraint matching issues
       for (let i = 0; i < emailsToUpsert.length; i += BATCH_SIZE) {
         const batch = emailsToUpsert.slice(i, i + BATCH_SIZE);
-        const { error: emailUpsertError } = await supabase
+        const { error: emailInsertError } = await supabase
           .from('emails')
-          .upsert(batch, {
-            onConflict: 'email_account_id,gmail_message_id'
-          });
-        if (emailUpsertError) {
-          console.error('Email upsert error:', emailUpsertError);
+          .insert(batch);
+        if (emailInsertError) {
+          console.error('Email insert error:', emailInsertError);
+          // Log first item in batch for debugging
+          if (batch.length > 0) {
+            console.error('First item in failed batch:', JSON.stringify(batch[0], null, 2));
+          }
         }
       }
       console.log('Email storage complete');
