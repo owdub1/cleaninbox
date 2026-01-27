@@ -98,10 +98,14 @@ export const useCleanupActions = () => {
 
   /**
    * Delete all emails from specified senders
+   * @param accountEmail - The Gmail account email
+   * @param senderEmails - Array of sender email addresses
+   * @param senderNames - Optional array of sender names (for name+email grouping)
    */
   const deleteEmails = useCallback(async (
     accountEmail: string,
-    senderEmails: string[]
+    senderEmails: string[],
+    senderNames?: string[]
   ): Promise<DeleteResult | null> => {
     if (!token) {
       setError('Authentication required');
@@ -117,16 +121,23 @@ export const useCleanupActions = () => {
       setLoading(true);
       setError(null);
 
+      const body: any = {
+        accountEmail,
+        senderEmails,
+      };
+
+      // Include sender names if provided (enables name+email grouping)
+      if (senderNames && senderNames.length === senderEmails.length) {
+        body.senderNames = senderNames;
+      }
+
       const response = await fetch(`${API_URL}/api/cleanup/delete`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          accountEmail,
-          senderEmails,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -147,10 +158,14 @@ export const useCleanupActions = () => {
 
   /**
    * Archive all emails from specified senders
+   * @param accountEmail - The Gmail account email
+   * @param senderEmails - Array of sender email addresses
+   * @param senderNames - Optional array of sender names (for name+email grouping)
    */
   const archiveEmails = useCallback(async (
     accountEmail: string,
-    senderEmails: string[]
+    senderEmails: string[],
+    senderNames?: string[]
   ): Promise<ArchiveResult | null> => {
     if (!token) {
       setError('Authentication required');
@@ -166,16 +181,23 @@ export const useCleanupActions = () => {
       setLoading(true);
       setError(null);
 
+      const body: any = {
+        accountEmail,
+        senderEmails,
+      };
+
+      // Include sender names if provided (enables name+email grouping)
+      if (senderNames && senderNames.length === senderEmails.length) {
+        body.senderNames = senderNames;
+      }
+
       const response = await fetch(`${API_URL}/api/cleanup/archive`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          accountEmail,
-          senderEmails,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -242,16 +264,21 @@ export const useCleanupActions = () => {
 
   /**
    * Execute bulk cleanup action
+   * @param accountEmail - The Gmail account email
+   * @param senderEmails - Array of sender email addresses
+   * @param action - The cleanup action ('delete' or 'archive')
+   * @param senderNames - Optional array of sender names (for name+email grouping)
    */
   const bulkCleanup = useCallback(async (
     accountEmail: string,
     senderEmails: string[],
-    action: 'delete' | 'archive'
+    action: 'delete' | 'archive',
+    senderNames?: string[]
   ): Promise<DeleteResult | ArchiveResult | null> => {
     if (action === 'delete') {
-      return deleteEmails(accountEmail, senderEmails);
+      return deleteEmails(accountEmail, senderEmails, senderNames);
     } else {
-      return archiveEmails(accountEmail, senderEmails);
+      return archiveEmails(accountEmail, senderEmails, senderNames);
     }
   }, [deleteEmails, archiveEmails]);
 

@@ -4,6 +4,7 @@
  * POST /api/cleanup/delete
  *
  * Deletes all emails from specified sender(s) by moving them to trash.
+ * Uses local database for message IDs (fast) then deletes from Gmail.
  * Requires authenticated user with connected Gmail account.
  */
 
@@ -12,7 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { deleteEmailsFromSender } from '../lib/gmail-api.js';
+import { batchTrashMessages, deleteEmailsFromSender } from '../lib/gmail-api.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -42,7 +43,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { accountEmail, senderEmails } = req.body;
+  const { accountEmail, senderEmails, senderNames } = req.body;
 
   // Validate input
   if (!accountEmail) {
@@ -66,6 +67,9 @@ export default async function handler(
       code: 'TOO_MANY_SENDERS'
     });
   }
+
+  // senderNames is optional but if provided must match senderEmails length
+  const hasSenderNames = senderNames && Array.isArray(senderNames) && senderNames.length === senderEmails.length;
 
   try {
     // Get email account
@@ -100,21 +104,60 @@ export default async function handler(
     const results = [];
     let totalDeleted = 0;
 
-    for (const senderEmail of senderEmails) {
-      try {
-        // Get sender info from cache
-        const { data: senderData } = await supabase
-          .from('email_senders')
-          .select('sender_name, email_count')
-          .eq('email_account_id', account.id)
-          .eq('sender_email', senderEmail)
-          .single();
+    for (let i = 0; i < senderEmails.length; i++) {
+      const senderEmail = senderEmails[i];
+      const senderName = hasSenderNames ? senderNames[i] : null;
 
-        // Delete emails from Gmail
-        const { deletedCount, messageIds } = await deleteEmailsFromSender(
-          accessToken,
-          senderEmail
-        );
+      try {
+        // Build query to get message IDs from local database
+        let emailQuery = supabase
+          .from('emails')
+          .select('gmail_message_id')
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+
+        // If sender name is provided, filter by it (for name+email grouping)
+        if (senderName) {
+          emailQuery = emailQuery.eq('sender_name', senderName);
+        }
+
+        const { data: localEmails, error: emailError } = await emailQuery;
+
+        if (emailError) {
+          console.error(`Error fetching emails for ${senderEmail}:`, emailError);
+        }
+
+        let deletedCount = 0;
+        let messageIds: string[] = [];
+
+        // If we have local emails, use them for deletion (fast path)
+        if (localEmails && localEmails.length > 0) {
+          messageIds = localEmails.map(e => e.gmail_message_id);
+          console.log(`Deleting ${messageIds.length} emails for ${senderEmail}${senderName ? ` (${senderName})` : ''} from local DB`);
+
+          // Delete from Gmail using stored message IDs
+          const { success } = await batchTrashMessages(accessToken, messageIds);
+          deletedCount = success.length;
+
+          // Delete from local emails table
+          let deleteQuery = supabase
+            .from('emails')
+            .delete()
+            .eq('email_account_id', account.id)
+            .eq('sender_email', senderEmail);
+
+          if (senderName) {
+            deleteQuery = deleteQuery.eq('sender_name', senderName);
+          }
+
+          await deleteQuery;
+        } else {
+          // Fallback: no local emails found, use Gmail API directly
+          console.log(`No local emails found for ${senderEmail}, falling back to Gmail API`);
+          const result = await deleteEmailsFromSender(accessToken, senderEmail);
+          deletedCount = result.deletedCount;
+          messageIds = result.messageIds;
+        }
 
         // Log cleanup action
         await supabase
@@ -124,15 +167,15 @@ export default async function handler(
             email_account_id: account.id,
             action_type: 'delete',
             sender_email: senderEmail,
-            sender_name: senderData?.sender_name || senderEmail,
+            sender_name: senderName || senderEmail,
             emails_affected: deletedCount,
             gmail_message_ids: messageIds,
             status: 'completed',
             completed_at: new Date().toISOString()
           });
 
-        // Update sender cache (set count to 0)
-        await supabase
+        // Update sender cache (set count to 0 or delete the sender entry)
+        let updateQuery = supabase
           .from('email_senders')
           .update({
             email_count: 0,
@@ -142,9 +185,16 @@ export default async function handler(
           .eq('email_account_id', account.id)
           .eq('sender_email', senderEmail);
 
+        if (senderName) {
+          updateQuery = updateQuery.eq('sender_name', senderName);
+        }
+
+        await updateQuery;
+
         totalDeleted += deletedCount;
         results.push({
           senderEmail,
+          senderName,
           deletedCount,
           success: true
         });
@@ -160,6 +210,7 @@ export default async function handler(
             email_account_id: account.id,
             action_type: 'delete',
             sender_email: senderEmail,
+            sender_name: senderName || senderEmail,
             emails_affected: 0,
             status: 'failed',
             error_message: senderError.message
@@ -167,6 +218,7 @@ export default async function handler(
 
         results.push({
           senderEmail,
+          senderName,
           deletedCount: 0,
           success: false,
           error: senderError.message

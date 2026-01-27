@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Sender } from '../../hooks/useEmailSenders';
 
+// Helper to create composite key for sender (name + email)
+const getSenderKey = (sender: Sender): string => `${sender.name}|||${sender.email}`;
+
 interface SenderCardProps {
   sender: Sender;
   isSelected: boolean;
-  onSelect: (email: string, selected: boolean) => void;
+  onSelect: (senderKey: string, selected: boolean) => void;
   onDelete: (sender: Sender) => void;
   onArchive: (sender: Sender) => void;
   onUnsubscribe: (sender: Sender) => void;
@@ -70,7 +73,7 @@ export const SenderCard = ({
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={(e) => onSelect(sender.email, e.target.checked)}
+          onChange={(e) => onSelect(getSenderKey(sender), e.target.checked)}
           disabled={disabled}
           className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
         />

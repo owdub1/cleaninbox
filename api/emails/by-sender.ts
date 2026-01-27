@@ -1,9 +1,10 @@
 /**
  * Emails by Sender Endpoint
  *
- * GET /api/emails/by-sender?senderEmail=xxx&accountEmail=xxx
+ * GET /api/emails/by-sender?senderEmail=xxx&senderName=xxx&accountEmail=xxx
  *
- * Returns individual emails from a specific sender.
+ * Returns individual emails from a specific sender (filtered by name + email).
+ * Queries from local database for fast response (no Gmail API calls).
  * Requires authenticated user with connected Gmail account.
  */
 
@@ -11,8 +12,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
-import { getValidAccessToken } from '../lib/gmail.js';
-import { listMessages, getMessage } from '../lib/gmail-api.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -46,7 +45,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { senderEmail, accountEmail, limit = '20' } = req.query;
+  const { senderEmail, senderName, accountEmail, limit = '50' } = req.query;
 
   if (!senderEmail || typeof senderEmail !== 'string') {
     return res.status(400).json({ error: 'senderEmail is required' });
@@ -57,108 +56,68 @@ export default async function handler(
   }
 
   try {
-    // Get valid access token
-    const { accessToken } = await getValidAccessToken(user.userId, accountEmail);
+    // Get the email account
+    const { data: account, error: accountError } = await supabase
+      .from('email_accounts')
+      .select('id')
+      .eq('user_id', user.userId)
+      .eq('email', accountEmail)
+      .single();
 
-    // Fetch messages from this sender
-    const messageList = await listMessages(accessToken, {
-      q: `from:${senderEmail}`,
-      maxResults: Math.min(parseInt(limit as string), 50)
-    });
-
-    if (!messageList.messages || messageList.messages.length === 0) {
-      return res.status(200).json({ emails: [] });
+    if (accountError || !account) {
+      return res.status(404).json({ error: 'Email account not found' });
     }
 
-    // Fetch details for each message (in batches to avoid rate limits)
-    const emails: EmailMessage[] = [];
-    const BATCH_SIZE = 10;
+    // Query emails from local database (fast, no Gmail API call)
+    let query = supabase
+      .from('emails')
+      .select('gmail_message_id, thread_id, subject, snippet, received_at, is_unread')
+      .eq('email_account_id', account.id)
+      .eq('sender_email', senderEmail);
 
-    for (let i = 0; i < messageList.messages.length; i += BATCH_SIZE) {
-      const batch = messageList.messages.slice(i, i + BATCH_SIZE);
-
-      const batchResults = await Promise.all(
-        batch.map(async (msg) => {
-          try {
-            const fullMessage = await getMessage(accessToken, msg.id, 'metadata');
-
-            // Extract subject from headers
-            const subjectHeader = fullMessage.payload?.headers?.find(
-              h => h.name.toLowerCase() === 'subject'
-            );
-            const subject = subjectHeader?.value || '(No Subject)';
-
-            return {
-              id: fullMessage.id,
-              threadId: fullMessage.threadId,
-              subject,
-              snippet: fullMessage.snippet || '',
-              date: new Date(parseInt(fullMessage.internalDate)).toISOString(),
-              isUnread: fullMessage.labelIds?.includes('UNREAD') || false
-            };
-          } catch (err) {
-            console.warn(`Failed to fetch message ${msg.id}:`, err);
-            return null;
-          }
-        })
-      );
-
-      emails.push(...batchResults.filter(Boolean) as EmailMessage[]);
-
-      // Small delay between batches
-      if (i + BATCH_SIZE < messageList.messages.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+    // Filter by sender name if provided (for name+email grouping)
+    if (senderName && typeof senderName === 'string') {
+      query = query.eq('sender_name', senderName);
     }
 
-    // Sort by date (newest first)
-    emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const { data: emailRecords, error: emailsError } = await query
+      .order('received_at', { ascending: false })
+      .limit(Math.min(parseInt(limit as string), 100));
 
-    // Use actual fetched count - more reliable than Gmail's resultSizeEstimate
-    // If we fetched the max limit, there might be more, so use the estimate
-    const fetchedCount = emails.length;
-    const estimateCount = messageList.resultSizeEstimate || fetchedCount;
-    const actualCount = fetchedCount >= parseInt(limit as string) ? estimateCount : fetchedCount;
-
-    console.log(`by-sender: ${senderEmail} - fetched ${fetchedCount}, estimate ${estimateCount}, using ${actualCount}`);
-
-    // Update the sender's email count in the database if it differs
-    // This corrects the count when we have more accurate data from Gmail
-    if (actualCount > 0) {
-      const { data: account } = await supabase
-        .from('email_accounts')
-        .select('id')
-        .eq('user_id', user.userId)
-        .eq('email', accountEmail)
-        .single();
-
-      if (account) {
-        // Get current count first
-        const { data: currentSender } = await supabase
-          .from('email_senders')
-          .select('email_count')
-          .eq('email_account_id', account.id)
-          .eq('sender_email', senderEmail)
-          .single();
-
-        // Update if the count differs (sync may have missed old emails, or emails were deleted)
-        if (!currentSender || actualCount !== currentSender.email_count) {
-          console.log(`Updating ${senderEmail} count from ${currentSender?.email_count || 0} to ${actualCount}`);
-          await supabase
-            .from('email_senders')
-            .update({
-              email_count: actualCount,
-              updated_at: new Date().toISOString()
-            })
-            .eq('email_account_id', account.id)
-            .eq('sender_email', senderEmail);
-        }
-      }
+    if (emailsError) {
+      console.error('Error fetching emails from DB:', emailsError);
+      return res.status(500).json({ error: 'Failed to fetch emails' });
     }
+
+    // Transform to EmailMessage format
+    const emails: EmailMessage[] = (emailRecords || []).map(email => ({
+      id: email.gmail_message_id,
+      threadId: email.thread_id || '',
+      subject: email.subject || '(No Subject)',
+      snippet: email.snippet || '',
+      date: email.received_at,
+      isUnread: email.is_unread || false
+    }));
+
+    const nameFilter = senderName ? ` (name: ${senderName})` : '';
+    console.log(`by-sender: ${senderEmail}${nameFilter} - returned ${emails.length} emails from local DB`);
+
+    // Get total count for this sender (may be more than returned)
+    let countQuery = supabase
+      .from('emails')
+      .select('*', { count: 'exact', head: true })
+      .eq('email_account_id', account.id)
+      .eq('sender_email', senderEmail);
+
+    if (senderName && typeof senderName === 'string') {
+      countQuery = countQuery.eq('sender_name', senderName);
+    }
+
+    const { count: totalCount } = await countQuery;
 
     return res.status(200).json({
       emails,
-      total: actualCount
+      total: totalCount || emails.length
     });
 
   } catch (error: any) {

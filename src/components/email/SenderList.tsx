@@ -13,6 +13,9 @@ interface SenderListProps {
   disabled?: boolean;
 }
 
+// Helper to create composite key for sender (name + email)
+const getSenderKey = (sender: Sender): string => `${sender.name}|||${sender.email}`;
+
 export const SenderList = ({
   senders,
   loading = false,
@@ -23,7 +26,8 @@ export const SenderList = ({
   onBulkArchive,
   disabled = false,
 }: SenderListProps) => {
-  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  // Use composite keys (name|||email) for selection to differentiate senders with same email but different names
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'count' | 'name' | 'date'>('count');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -87,21 +91,21 @@ export const SenderList = ({
 
   const years = Object.keys(sendersByYear).sort((a, b) => parseInt(b) - parseInt(a));
 
-  const handleSelectSender = (email: string, selected: boolean) => {
-    const newSelected = new Set(selectedEmails);
+  const handleSelectSender = (senderKey: string, selected: boolean) => {
+    const newSelected = new Set(selectedKeys);
     if (selected) {
-      newSelected.add(email);
+      newSelected.add(senderKey);
     } else {
-      newSelected.delete(email);
+      newSelected.delete(senderKey);
     }
-    setSelectedEmails(newSelected);
+    setSelectedKeys(newSelected);
   };
 
   const handleSelectAll = () => {
-    if (selectedEmails.size === filteredSenders.length) {
-      setSelectedEmails(new Set());
+    if (selectedKeys.size === filteredSenders.length) {
+      setSelectedKeys(new Set());
     } else {
-      setSelectedEmails(new Set(filteredSenders.map(s => s.email)));
+      setSelectedKeys(new Set(filteredSenders.map(s => getSenderKey(s))));
     }
   };
 
@@ -115,7 +119,7 @@ export const SenderList = ({
     setExpandedYears(newExpanded);
   };
 
-  const selectedSenders = filteredSenders.filter(s => selectedEmails.has(s.email));
+  const selectedSenders = filteredSenders.filter(s => selectedKeys.has(getSenderKey(s)));
   const totalSelectedEmails = selectedSenders.reduce((sum, s) => sum + s.emailCount, 0);
 
   if (loading) {
@@ -206,17 +210,17 @@ export const SenderList = ({
       </div>
 
       {/* Selection Actions */}
-      {selectedEmails.size > 0 && (
+      {selectedKeys.size > 0 && (
         <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-center gap-4">
             <button
               onClick={handleSelectAll}
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
-              {selectedEmails.size === filteredSenders.length ? 'Deselect all' : 'Select all'}
+              {selectedKeys.size === filteredSenders.length ? 'Deselect all' : 'Select all'}
             </button>
             <span className="text-sm text-gray-600">
-              {selectedEmails.size} sender{selectedEmails.size !== 1 ? 's' : ''} selected
+              {selectedKeys.size} sender{selectedKeys.size !== 1 ? 's' : ''} selected
               ({totalSelectedEmails.toLocaleString()} emails)
             </span>
           </div>
@@ -280,10 +284,10 @@ export const SenderList = ({
               <div className="divide-y divide-gray-100">
                 {sendersByYear[year].map(sender => (
                   <SenderCard
-                    key={sender.id}
+                    key={getSenderKey(sender)}
                     sender={sender}
-                    isSelected={selectedEmails.has(sender.email)}
-                    onSelect={handleSelectSender}
+                    isSelected={selectedKeys.has(getSenderKey(sender))}
+                    onSelect={(senderKey, selected) => handleSelectSender(senderKey, selected)}
                     onDelete={onDelete}
                     onArchive={onArchive}
                     onUnsubscribe={onUnsubscribe}

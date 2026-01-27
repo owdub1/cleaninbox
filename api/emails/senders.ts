@@ -33,6 +33,9 @@ export interface SenderResponse {
   isPromotional: boolean;
   emailAccountId: string;
   accountEmail: string;
+  // New fields for name+email grouping
+  hasMultipleNames?: boolean;
+  relatedSenderNames?: string[];
 }
 
 export default async function handler(
@@ -121,22 +124,48 @@ export default async function handler(
       throw error;
     }
 
-    // Transform response
-    const response: SenderResponse[] = (senders || []).map((sender: any) => ({
-      id: sender.id,
-      email: sender.sender_email,
-      name: sender.sender_name || sender.sender_email,
-      emailCount: sender.email_count,
-      unreadCount: sender.unread_count,
-      firstEmailDate: sender.first_email_date,
-      lastEmailDate: sender.last_email_date,
-      unsubscribeLink: sender.unsubscribe_link,
-      hasUnsubscribe: sender.has_unsubscribe,
-      isNewsletter: sender.is_newsletter,
-      isPromotional: sender.is_promotional,
-      emailAccountId: sender.email_account_id,
-      accountEmail: sender.email_accounts?.email || ''
-    }));
+    // Build a map of email -> list of names to identify senders with multiple names
+    const emailToNames = new Map<string, string[]>();
+    for (const sender of (senders || [])) {
+      const email = sender.sender_email;
+      const name = sender.sender_name || sender.sender_email;
+      if (!emailToNames.has(email)) {
+        emailToNames.set(email, []);
+      }
+      const names = emailToNames.get(email)!;
+      if (!names.includes(name)) {
+        names.push(name);
+      }
+    }
+
+    // Transform response with hasMultipleNames and relatedSenderNames
+    const response: SenderResponse[] = (senders || []).map((sender: any) => {
+      const email = sender.sender_email;
+      const name = sender.sender_name || sender.sender_email;
+      const allNames = emailToNames.get(email) || [name];
+      const hasMultipleNames = allNames.length > 1;
+      const relatedSenderNames = hasMultipleNames
+        ? allNames.filter(n => n !== name)
+        : [];
+
+      return {
+        id: sender.id,
+        email: sender.sender_email,
+        name,
+        emailCount: sender.email_count,
+        unreadCount: sender.unread_count,
+        firstEmailDate: sender.first_email_date,
+        lastEmailDate: sender.last_email_date,
+        unsubscribeLink: sender.unsubscribe_link,
+        hasUnsubscribe: sender.has_unsubscribe,
+        isNewsletter: sender.is_newsletter,
+        isPromotional: sender.is_promotional,
+        emailAccountId: sender.email_account_id,
+        accountEmail: sender.email_accounts?.email || '',
+        hasMultipleNames,
+        relatedSenderNames,
+      };
+    });
 
     // Get total count for pagination
     const { count: totalCount } = await supabase

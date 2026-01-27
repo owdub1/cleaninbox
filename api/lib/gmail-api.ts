@@ -74,6 +74,23 @@ export interface SenderStats {
   messageIds: string[];
 }
 
+export interface EmailRecord {
+  gmail_message_id: string;
+  sender_email: string;
+  sender_name: string;
+  subject: string;
+  snippet: string;
+  received_at: string;
+  is_unread: boolean;
+  thread_id: string;
+  labels: string[];
+}
+
+export interface SyncResult {
+  senders: SenderStats[];
+  emails: EmailRecord[];
+}
+
 /**
  * Make authenticated request to Gmail API with retry logic
  */
@@ -434,12 +451,27 @@ function isNewsletter(message: GmailMessage): boolean {
 }
 
 /**
+ * Get subject from message headers
+ */
+function getSubject(message: GmailMessage): string {
+  return getHeader(message, 'Subject') || '(No Subject)';
+}
+
+/**
+ * Create composite key for sender (name + email)
+ */
+function getSenderKey(email: string, name: string): string {
+  return `${name}|||${email}`;
+}
+
+/**
  * Aggregate messages by sender to get statistics
+ * Uses composite key (name + email) to differentiate senders with same email but different names
  */
 export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderStats> {
   const senderMap = new Map<string, SenderStats>();
 
-  console.log(`Aggregating ${messages.length} messages by sender...`);
+  console.log(`Aggregating ${messages.length} messages by sender (name+email)...`);
 
   // Debug: log first message structure
   if (messages.length > 0) {
@@ -460,14 +492,16 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     }
 
     const { email, name } = parseSender(fromHeader);
+    const senderName = name || email; // Use email as name if no name provided
+    const compositeKey = getSenderKey(email, senderName);
     const messageDate = new Date(parseInt(message.internalDate)).toISOString();
     const unsubscribeLink = extractUnsubscribeLink(message);
     const isUnread = message.labelIds?.includes('UNREAD') || false;
 
-    if (!senderMap.has(email)) {
-      senderMap.set(email, {
+    if (!senderMap.has(compositeKey)) {
+      senderMap.set(compositeKey, {
         email,
-        name: name || email,
+        name: senderName,
         count: 0,
         unreadCount: 0,
         firstDate: messageDate,
@@ -480,7 +514,7 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
       });
     }
 
-    const stats = senderMap.get(email)!;
+    const stats = senderMap.get(compositeKey)!;
     stats.count++;
     if (isUnread) stats.unreadCount++;
     stats.messageIds.push(message.id);
@@ -500,8 +534,37 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     if (isPromotional(message)) stats.isPromotional = true;
   }
 
-  console.log(`Aggregation complete: ${senderMap.size} senders, skipped ${skippedNoFrom} messages without From header`);
+  console.log(`Aggregation complete: ${senderMap.size} senders (by name+email), skipped ${skippedNoFrom} messages without From header`);
   return senderMap;
+}
+
+/**
+ * Extract individual email records from messages for storage
+ */
+export function extractEmailRecords(messages: GmailMessage[]): EmailRecord[] {
+  const records: EmailRecord[] = [];
+
+  for (const message of messages) {
+    const fromHeader = getHeader(message, 'From');
+    if (!fromHeader) continue;
+
+    const { email, name } = parseSender(fromHeader);
+    const senderName = name || email;
+
+    records.push({
+      gmail_message_id: message.id,
+      sender_email: email,
+      sender_name: senderName,
+      subject: getSubject(message),
+      snippet: message.snippet || '',
+      received_at: new Date(parseInt(message.internalDate)).toISOString(),
+      is_unread: message.labelIds?.includes('UNREAD') || false,
+      thread_id: message.threadId,
+      labels: message.labelIds || [],
+    });
+  }
+
+  return records;
 }
 
 /**
@@ -572,12 +635,13 @@ export async function archiveEmailsFromSender(
 /**
  * Fetch and aggregate sender statistics from Gmail
  * @param afterDate - Optional date for incremental sync (only fetch emails after this date)
+ * @returns SyncResult containing both aggregated sender stats and individual email records
  */
 export async function fetchSenderStats(
   accessToken: string,
   maxMessages: number = 1000,
   afterDate?: Date
-): Promise<SenderStats[]> {
+): Promise<SyncResult> {
   // Fetch message list
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
@@ -611,7 +675,7 @@ export async function fetchSenderStats(
 
   if (allMessageRefs.length === 0) {
     console.log('No messages found in Gmail' + (afterDate ? ' since last sync' : ''));
-    return [];
+    return { senders: [], emails: [] };
   }
 
   console.log(`Gmail API listed ${allMessageRefs.length} messages to fetch` + (afterDate ? ' (incremental)' : ' (full)'));
@@ -624,9 +688,14 @@ export async function fetchSenderStats(
 
   console.log(`Successfully fetched ${messages.length} of ${messageIds.length} messages (${messageIds.length - messages.length} failed)`);
 
-  // Aggregate by sender
+  // Aggregate by sender (using composite key: name + email)
   const senderMap = aggregateBySender(messages);
 
-  // Convert to array and sort by count
-  return Array.from(senderMap.values()).sort((a, b) => b.count - a.count);
+  // Extract individual email records for storage
+  const emails = extractEmailRecords(messages);
+
+  // Convert senders to array and sort by count
+  const senders = Array.from(senderMap.values()).sort((a, b) => b.count - a.count);
+
+  return { senders, emails };
 }

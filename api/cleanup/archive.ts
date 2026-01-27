@@ -4,6 +4,7 @@
  * POST /api/cleanup/archive
  *
  * Archives all emails from specified sender(s) by removing the INBOX label.
+ * Uses local database for message IDs (fast) then archives in Gmail.
  * Requires authenticated user with connected Gmail account.
  */
 
@@ -12,7 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { archiveEmailsFromSender } from '../lib/gmail-api.js';
+import { batchArchiveMessages, archiveEmailsFromSender } from '../lib/gmail-api.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -42,7 +43,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { accountEmail, senderEmails } = req.body;
+  const { accountEmail, senderEmails, senderNames } = req.body;
 
   // Validate input
   if (!accountEmail) {
@@ -66,6 +67,9 @@ export default async function handler(
       code: 'TOO_MANY_SENDERS'
     });
   }
+
+  // senderNames is optional but if provided must match senderEmails length
+  const hasSenderNames = senderNames && Array.isArray(senderNames) && senderNames.length === senderEmails.length;
 
   try {
     // Get email account
@@ -100,21 +104,50 @@ export default async function handler(
     const results = [];
     let totalArchived = 0;
 
-    for (const senderEmail of senderEmails) {
-      try {
-        // Get sender info from cache
-        const { data: senderData } = await supabase
-          .from('email_senders')
-          .select('sender_name, email_count')
-          .eq('email_account_id', account.id)
-          .eq('sender_email', senderEmail)
-          .single();
+    for (let i = 0; i < senderEmails.length; i++) {
+      const senderEmail = senderEmails[i];
+      const senderName = hasSenderNames ? senderNames[i] : null;
 
-        // Archive emails
-        const { archivedCount, messageIds } = await archiveEmailsFromSender(
-          accessToken,
-          senderEmail
-        );
+      try {
+        // Build query to get message IDs from local database
+        let emailQuery = supabase
+          .from('emails')
+          .select('gmail_message_id')
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+
+        // If sender name is provided, filter by it (for name+email grouping)
+        if (senderName) {
+          emailQuery = emailQuery.eq('sender_name', senderName);
+        }
+
+        const { data: localEmails, error: emailError } = await emailQuery;
+
+        if (emailError) {
+          console.error(`Error fetching emails for ${senderEmail}:`, emailError);
+        }
+
+        let archivedCount = 0;
+        let messageIds: string[] = [];
+
+        // If we have local emails, use them for archiving (fast path)
+        if (localEmails && localEmails.length > 0) {
+          messageIds = localEmails.map(e => e.gmail_message_id);
+          console.log(`Archiving ${messageIds.length} emails for ${senderEmail}${senderName ? ` (${senderName})` : ''} from local DB`);
+
+          // Archive in Gmail using stored message IDs
+          const { success } = await batchArchiveMessages(accessToken, messageIds);
+          archivedCount = success.length;
+
+          // Note: We don't delete archived emails from local DB - they're still useful for reference
+          // But we could update a flag if needed
+        } else {
+          // Fallback: no local emails found, use Gmail API directly
+          console.log(`No local emails found for ${senderEmail}, falling back to Gmail API`);
+          const result = await archiveEmailsFromSender(accessToken, senderEmail);
+          archivedCount = result.archivedCount;
+          messageIds = result.messageIds;
+        }
 
         // Log cleanup action
         await supabase
@@ -124,7 +157,7 @@ export default async function handler(
             email_account_id: account.id,
             action_type: 'archive',
             sender_email: senderEmail,
-            sender_name: senderData?.sender_name || senderEmail,
+            sender_name: senderName || senderEmail,
             emails_affected: archivedCount,
             gmail_message_ids: messageIds,
             status: 'completed',
@@ -134,6 +167,7 @@ export default async function handler(
         totalArchived += archivedCount;
         results.push({
           senderEmail,
+          senderName,
           archivedCount,
           success: true
         });
@@ -149,6 +183,7 @@ export default async function handler(
             email_account_id: account.id,
             action_type: 'archive',
             sender_email: senderEmail,
+            sender_name: senderName || senderEmail,
             emails_affected: 0,
             status: 'failed',
             error_message: senderError.message
@@ -156,6 +191,7 @@ export default async function handler(
 
         results.push({
           senderEmail,
+          senderName,
           archivedCount: 0,
           success: false,
           error: senderError.message

@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -182,7 +182,7 @@ export default async function handler(
 
     const syncType = isFirstSync ? 'FIRST' : isStaleSync ? 'STALE' : isIncrementalSync ? 'Incremental' : 'FULL';
     console.log(`${syncType} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
-    const allSenderStats = await fetchSenderStats(
+    const syncResult: SyncResult = await fetchSenderStats(
       accessToken,
       messagesToFetch,
       lastSyncDate
@@ -190,28 +190,34 @@ export default async function handler(
 
     // Filter out user's own email address (sent/replied emails show up with user as sender)
     const userEmail = (account.gmail_email || email).toLowerCase();
-    const senderStats = allSenderStats.filter((sender: SenderStats) =>
+    const senderStats = syncResult.senders.filter((sender: SenderStats) =>
       sender.email.toLowerCase() !== userEmail
     );
-    console.log('Fetched senders:', senderStats.length, '(filtered from', allSenderStats.length, ') Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
+    const emailRecords = syncResult.emails.filter((email: EmailRecord) =>
+      email.sender_email.toLowerCase() !== userEmail
+    );
+    console.log('Fetched senders:', senderStats.length, '(filtered from', syncResult.senders.length, ') Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
 
     // For incremental sync, we need to add to existing counts, not replace
     // For full sync, we replace the data
     let sendersToUpsert;
 
+    // Helper to create composite key for sender lookup
+    const getSenderKey = (email: string, name: string) => `${email}|||${name}`;
+
     if (isIncrementalSync && senderStats.length > 0) {
-      // Get existing sender data to merge with
+      // Get existing sender data to merge with (now keyed by email + name)
       const { data: existingSenders } = await supabase
         .from('email_senders')
-        .select('sender_email, email_count, unread_count, first_email_date')
+        .select('sender_email, sender_name, email_count, unread_count, first_email_date')
         .eq('email_account_id', account.id);
 
       const existingMap = new Map(
-        (existingSenders || []).map(s => [s.sender_email, s])
+        (existingSenders || []).map(s => [getSenderKey(s.sender_email, s.sender_name || s.sender_email), s])
       );
 
       sendersToUpsert = senderStats.map((sender: SenderStats) => {
-        const existing = existingMap.get(sender.email);
+        const existing = existingMap.get(getSenderKey(sender.email, sender.name));
         return {
           user_id: user.userId,
           email_account_id: account.id,
@@ -261,7 +267,7 @@ export default async function handler(
       console.warn('Could not delete own email from senders:', deleteOwnError);
     }
 
-    // Upsert senders in batches
+    // Upsert senders in batches (now using composite key: email_account_id, sender_email, sender_name)
     const BATCH_SIZE = 100;
     console.log('Upserting', sendersToUpsert.length, 'senders to database...');
     for (let i = 0; i < sendersToUpsert.length; i += BATCH_SIZE) {
@@ -269,13 +275,57 @@ export default async function handler(
       const { error: upsertError } = await supabase
         .from('email_senders')
         .upsert(batch, {
-          onConflict: 'email_account_id,sender_email'
+          onConflict: 'email_account_id,sender_email,sender_name'
         });
       if (upsertError) {
         console.error('Upsert error:', upsertError);
       }
     }
     console.log('Upsert complete');
+
+    // Store individual emails in the emails table
+    if (emailRecords.length > 0) {
+      console.log('Storing', emailRecords.length, 'individual emails...');
+
+      // For full sync, delete existing emails first to ensure clean state
+      if (isFullSync) {
+        const { error: deleteError } = await supabase
+          .from('emails')
+          .delete()
+          .eq('email_account_id', account.id);
+        if (deleteError) {
+          console.warn('Failed to clear old emails:', deleteError);
+        }
+      }
+
+      // Prepare email records with account ID
+      const emailsToUpsert = emailRecords.map((email: EmailRecord) => ({
+        gmail_message_id: email.gmail_message_id,
+        email_account_id: account.id,
+        sender_email: email.sender_email,
+        sender_name: email.sender_name,
+        subject: email.subject,
+        snippet: email.snippet,
+        received_at: email.received_at,
+        is_unread: email.is_unread,
+        thread_id: email.thread_id,
+        labels: email.labels,
+      }));
+
+      // Upsert emails in batches
+      for (let i = 0; i < emailsToUpsert.length; i += BATCH_SIZE) {
+        const batch = emailsToUpsert.slice(i, i + BATCH_SIZE);
+        const { error: emailUpsertError } = await supabase
+          .from('emails')
+          .upsert(batch, {
+            onConflict: 'email_account_id,gmail_message_id'
+          });
+        if (emailUpsertError) {
+          console.error('Email upsert error:', emailUpsertError);
+        }
+      }
+      console.log('Email storage complete');
+    }
 
     // Update email account stats
     const totalEmails = senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);

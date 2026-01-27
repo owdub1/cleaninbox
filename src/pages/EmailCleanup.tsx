@@ -369,7 +369,8 @@ const EmailCleanup = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('count');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [selectedSenders, setSelectedSenders] = useState<string[]>([]);
+  // Use composite keys (name|||email) for selection to differentiate senders with same email but different names
+  const [selectedSenderKeys, setSelectedSenderKeys] = useState<string[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -421,7 +422,7 @@ const EmailCleanup = () => {
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
   const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
   // State for viewing individual email
-  const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string } | null>(null);
+  const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
 
   // Cleanup actions hook
   const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
@@ -585,19 +586,23 @@ const EmailCleanup = () => {
     });
   };
 
+  // Helper to create composite key for sender (name + email)
+  const getSenderKey = (sender: Sender): string => `${sender.name}|||${sender.email}`;
+
   // Execute cleanup action
   const executeCleanupAction = async () => {
     if (!connectedGmailAccount) return;
 
     const { action, senders: actionSenders } = confirmModal;
     const senderEmails = actionSenders.map(s => s.email);
+    const senderNames = actionSenders.map(s => s.name);
 
     try {
       let result;
       if (action === 'delete') {
-        result = await deleteEmails(connectedGmailAccount.email, senderEmails);
+        result = await deleteEmails(connectedGmailAccount.email, senderEmails, senderNames);
       } else if (action === 'archive') {
-        result = await archiveEmails(connectedGmailAccount.email, senderEmails);
+        result = await archiveEmails(connectedGmailAccount.email, senderEmails, senderNames);
       } else if (action === 'unsubscribe' && actionSenders.length === 1) {
         result = await unsubscribe(
           connectedGmailAccount.email,
@@ -630,7 +635,7 @@ const EmailCleanup = () => {
         // Refresh senders list
         fetchSenders();
         // Clear selection
-        setSelectedSenders([]);
+        setSelectedSenderKeys([]);
       } else if (result?.requiresManualAction) {
         setNotification({
           type: 'success',
@@ -697,12 +702,12 @@ const EmailCleanup = () => {
   // Select all visible senders
   const handleSelectAll = () => {
     const visibleSenders = filterAndSortSenders(senders);
-    if (selectedSenders.length === visibleSenders.length) {
+    if (selectedSenderKeys.length === visibleSenders.length) {
       // Deselect all
-      setSelectedSenders([]);
+      setSelectedSenderKeys([]);
     } else {
-      // Select all
-      setSelectedSenders(visibleSenders.map(s => s.email));
+      // Select all using composite keys
+      setSelectedSenderKeys(visibleSenders.map(s => getSenderKey(s)));
     }
   };
 
@@ -714,17 +719,18 @@ const EmailCleanup = () => {
     }
   };
 
-  const toggleSenderExpand = async (senderEmail: string, accountEmail?: string) => {
-    if (expandedSenders.includes(senderEmail)) {
-      setExpandedSenders(expandedSenders.filter(s => s !== senderEmail));
+  const toggleSenderExpand = async (sender: Sender, accountEmail?: string) => {
+    const key = getSenderKey(sender);
+    if (expandedSenders.includes(key)) {
+      setExpandedSenders(expandedSenders.filter(s => s !== key));
     } else {
-      setExpandedSenders([...expandedSenders, senderEmail]);
+      setExpandedSenders([...expandedSenders, key]);
 
       // Always fetch fresh emails when expanding (to get accurate count and latest emails)
       if (accountEmail) {
-        setLoadingEmails(senderEmail);
-        const emails = await fetchEmailsBySender(senderEmail, accountEmail, 50);
-        setSenderEmails(prev => ({ ...prev, [senderEmail]: emails }));
+        setLoadingEmails(key);
+        const emails = await fetchEmailsBySender(sender.email, accountEmail, 50, sender.name);
+        setSenderEmails(prev => ({ ...prev, [key]: emails }));
         setLoadingEmails(null);
       }
     }
@@ -743,11 +749,12 @@ const EmailCleanup = () => {
     }
   };
 
-  const toggleSenderSelection = (email: string) => {
-    if (selectedSenders.includes(email)) {
-      setSelectedSenders(selectedSenders.filter(s => s !== email));
+  const toggleSenderSelection = (sender: Sender) => {
+    const key = getSenderKey(sender);
+    if (selectedSenderKeys.includes(key)) {
+      setSelectedSenderKeys(selectedSenderKeys.filter(k => k !== key));
     } else {
-      setSelectedSenders([...selectedSenders, email]);
+      setSelectedSenderKeys([...selectedSenderKeys, key]);
     }
   };
 
@@ -786,7 +793,7 @@ const EmailCleanup = () => {
   };
 
   const getSelectedSenders = (): Sender[] => {
-    return senders.filter(s => selectedSenders.includes(s.email));
+    return senders.filter(s => selectedSenderKeys.includes(getSenderKey(s)));
   };
 
   // Get senders grouped by time period (Today, Yesterday, days of week, months, then years)
@@ -1267,7 +1274,8 @@ const EmailCleanup = () => {
         messageId={viewingEmail?.messageId || ''}
         accountEmail={viewingEmail?.accountEmail || ''}
         onDelete={viewingEmail ? () => {
-          const email = senderEmails[viewingEmail.senderEmail]?.find(e => e.id === viewingEmail.messageId);
+          const senderKey = `${viewingEmail.senderName}|||${viewingEmail.senderEmail}`;
+          const email = senderEmails[senderKey]?.find(e => e.id === viewingEmail.messageId);
           if (email) {
             handleDeleteSingleEmail(email, viewingEmail.senderEmail);
           }
@@ -1375,11 +1383,11 @@ const EmailCleanup = () => {
                     <input
                       type="checkbox"
                       className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      checked={selectedSenders.length > 0 && selectedSenders.length === filterAndSortSenders(senders).length}
+                      checked={selectedSenderKeys.length > 0 && selectedSenderKeys.length === filterAndSortSenders(senders).length}
                       onChange={handleSelectAll}
                     />
                     <span className="text-sm text-gray-700">
-                      {selectedSenders.length > 0 ? `${selectedSenders.length} selected` : 'Select All'}
+                      {selectedSenderKeys.length > 0 ? `${selectedSenderKeys.length} selected` : 'Select All'}
                     </span>
                   </label>
                   <div className="relative">
@@ -1421,12 +1429,12 @@ const EmailCleanup = () => {
             </div>
 
             {/* Selected items action bar */}
-            {selectedSenders.length > 0 && (
+            {selectedSenderKeys.length > 0 && (
               <div className="bg-indigo-50 p-3 flex items-center justify-between">
                 <div className="flex items-center">
                   <CheckIcon className="h-4 w-4 text-indigo-600 mr-2" />
                   <span className="text-indigo-800 text-sm font-medium">
-                    {selectedSenders.length} sender{selectedSenders.length !== 1 ? 's' : ''} selected
+                    {selectedSenderKeys.length} sender{selectedSenderKeys.length !== 1 ? 's' : ''} selected
                   </span>
                 </div>
                 <div className="flex space-x-4">
@@ -1542,9 +1550,9 @@ const EmailCleanup = () => {
                             <div className="px-5 py-4 flex items-center justify-between">
                               <button
                                 className="flex items-center flex-1 text-left"
-                                onClick={() => toggleSenderExpand(sender.email, sender.accountEmail)}
+                                onClick={() => toggleSenderExpand(sender, sender.accountEmail)}
                               >
-                                {expandedSenders.includes(sender.email) ? (
+                                {expandedSenders.includes(getSenderKey(sender)) ? (
                                   <ChevronUpIcon className="h-5 w-5 text-gray-400 mr-3" />
                                 ) : (
                                   <ChevronDownIcon className="h-5 w-5 text-gray-400 mr-3" />
@@ -1552,10 +1560,10 @@ const EmailCleanup = () => {
                                 <input
                                   type="checkbox"
                                   className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-4"
-                                  checked={selectedSenders.includes(sender.email)}
+                                  checked={selectedSenderKeys.includes(getSenderKey(sender))}
                                   onChange={(e) => {
                                     e.stopPropagation();
-                                    toggleSenderSelection(sender.email);
+                                    toggleSenderSelection(sender);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                 />
@@ -1584,21 +1592,21 @@ const EmailCleanup = () => {
                               </div>
                             </div>
                             {/* Individual emails dropdown */}
-                            {expandedSenders.includes(sender.email) && (
+                            {expandedSenders.includes(getSenderKey(sender)) && (
                               <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {loadingEmails === sender.email ? (
+                                  {loadingEmails === getSenderKey(sender) ? (
                                     <div className="flex items-center justify-center py-4">
                                       <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
                                       <span className="text-sm text-gray-500">Loading emails...</span>
                                     </div>
-                                  ) : senderEmails[sender.email]?.length > 0 ? (
-                                    senderEmails[sender.email].map(email => (
+                                  ) : senderEmails[getSenderKey(sender)]?.length > 0 ? (
+                                    senderEmails[getSenderKey(sender)].map(email => (
                                       <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
                                         <div className="flex items-start justify-between gap-3">
                                           <div
                                             className="flex-1 min-w-0"
-                                            onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email })}
+                                            onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email, senderName: sender.name })}
                                           >
                                             <div className="flex items-center gap-2">
                                               {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
@@ -1651,9 +1659,9 @@ const EmailCleanup = () => {
                     <div className="px-5 py-4 flex items-center justify-between">
                       <button
                         className="flex items-center flex-1 text-left"
-                        onClick={() => toggleSenderExpand(sender.email, sender.accountEmail)}
+                        onClick={() => toggleSenderExpand(sender, sender.accountEmail)}
                       >
-                        {expandedSenders.includes(sender.email) ? (
+                        {expandedSenders.includes(getSenderKey(sender)) ? (
                           <ChevronUpIcon className="h-5 w-5 text-gray-400 mr-3" />
                         ) : (
                           <ChevronDownIcon className="h-5 w-5 text-gray-400 mr-3" />
@@ -1661,10 +1669,10 @@ const EmailCleanup = () => {
                         <input
                           type="checkbox"
                           className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-4"
-                          checked={selectedSenders.includes(sender.email)}
+                          checked={selectedSenderKeys.includes(getSenderKey(sender))}
                           onChange={(e) => {
                             e.stopPropagation();
-                            toggleSenderSelection(sender.email);
+                            toggleSenderSelection(sender);
                           }}
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -1696,21 +1704,21 @@ const EmailCleanup = () => {
                       </div>
                     </div>
                     {/* Individual emails dropdown */}
-                    {expandedSenders.includes(sender.email) && (
+                    {expandedSenders.includes(getSenderKey(sender)) && (
                       <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
                         <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {loadingEmails === sender.email ? (
+                          {loadingEmails === getSenderKey(sender) ? (
                             <div className="flex items-center justify-center py-4">
                               <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
                               <span className="text-sm text-gray-500">Loading emails...</span>
                             </div>
-                          ) : senderEmails[sender.email]?.length > 0 ? (
-                            senderEmails[sender.email].map(email => (
+                          ) : senderEmails[getSenderKey(sender)]?.length > 0 ? (
+                            senderEmails[getSenderKey(sender)].map(email => (
                               <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
                                 <div className="flex items-start justify-between gap-3">
                                   <div
                                     className="flex-1 min-w-0"
-                                    onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email })}
+                                    onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email, senderName: sender.name })}
                                   >
                                     <div className="flex items-center gap-2">
                                       {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
@@ -1768,9 +1776,9 @@ const EmailCleanup = () => {
                       <div className="px-5 py-4 flex items-center justify-between">
                         <button
                           className="flex items-center flex-1 text-left"
-                          onClick={() => toggleSenderExpand(sender.email, sender.accountEmail)}
+                          onClick={() => toggleSenderExpand(sender, sender.accountEmail)}
                         >
-                          {expandedSenders.includes(sender.email) ? (
+                          {expandedSenders.includes(getSenderKey(sender)) ? (
                             <ChevronUpIcon className="h-5 w-5 text-gray-400 mr-3" />
                           ) : (
                             <ChevronDownIcon className="h-5 w-5 text-gray-400 mr-3" />
@@ -1796,7 +1804,7 @@ const EmailCleanup = () => {
                           Unsubscribe
                         </button>
                       </div>
-                      {expandedSenders.includes(sender.email) && (
+                      {expandedSenders.includes(getSenderKey(sender)) && (
                         <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
                           <div className="flex items-center justify-between mb-2">
                             <div className="text-xs text-gray-500">
@@ -1818,18 +1826,18 @@ const EmailCleanup = () => {
                             </div>
                           </div>
                           <div className="space-y-2 max-h-80 overflow-y-auto">
-                            {loadingEmails === sender.email ? (
+                            {loadingEmails === getSenderKey(sender) ? (
                               <div className="flex items-center justify-center py-4">
                                 <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
                                 <span className="text-sm text-gray-500">Loading emails...</span>
                               </div>
-                            ) : senderEmails[sender.email]?.length > 0 ? (
-                              senderEmails[sender.email].map(email => (
+                            ) : senderEmails[getSenderKey(sender)]?.length > 0 ? (
+                              senderEmails[getSenderKey(sender)].map(email => (
                                 <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
                                   <div className="flex items-start justify-between gap-3">
                                     <div
                                       className="flex-1 min-w-0"
-                                      onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email })}
+                                      onClick={() => setViewingEmail({ messageId: email.id, accountEmail: sender.accountEmail, senderEmail: sender.email, senderName: sender.name })}
                                     >
                                       <div className="flex items-center gap-2">
                                         {email.isUnread && (
@@ -1885,8 +1893,8 @@ const EmailCleanup = () => {
                         <input
                           type="checkbox"
                           className="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-4"
-                          checked={selectedSenders.includes(sender.email)}
-                          onChange={() => toggleSenderSelection(sender.email)}
+                          checked={selectedSenderKeys.includes(getSenderKey(sender))}
+                          onChange={() => toggleSenderSelection(sender)}
                         />
                         <SenderAvatar sender={sender} />
                         <div className="flex-1 ml-4">

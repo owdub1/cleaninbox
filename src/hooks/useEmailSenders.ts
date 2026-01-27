@@ -16,6 +16,9 @@ export interface Sender {
   isPromotional: boolean;
   emailAccountId: string;
   accountEmail: string;
+  // New fields for name+email grouping
+  hasMultipleNames?: boolean;
+  relatedSenderNames?: string[];
 }
 
 export interface EmailMessage {
@@ -277,11 +280,16 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   /**
    * Fetch individual emails from a specific sender
    * Also updates the sender's email count if the API returns a different total
+   * @param senderEmail - The sender's email address
+   * @param accountEmail - The user's Gmail account email
+   * @param limit - Maximum number of emails to fetch
+   * @param senderName - Optional sender name for name+email filtering
    */
   const fetchEmailsBySender = useCallback(async (
     senderEmail: string,
     accountEmail: string,
-    limit: number = 20
+    limit: number = 50,
+    senderName?: string
   ): Promise<EmailMessage[]> => {
     if (!token) {
       console.error('Authentication required to fetch emails');
@@ -294,6 +302,11 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         accountEmail,
         limit: limit.toString()
       });
+
+      // Add sender name for name+email filtering (differentiates "TestFlight" from "Apple")
+      if (senderName) {
+        params.set('senderName', senderName);
+      }
 
       const response = await fetch(
         `${API_URL}/api/emails/by-sender?${params.toString()}`,
@@ -313,11 +326,13 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       }
 
       // Update the sender's email count in local state if it differs
-      // This ensures the UI shows the accurate count from Gmail
+      // Now uses composite key (email + name) for matching
       if (data.total) {
         setSenders(prevSenders =>
           prevSenders.map(sender =>
-            sender.email === senderEmail && sender.emailCount !== data.total
+            sender.email === senderEmail &&
+            (!senderName || sender.name === senderName) &&
+            sender.emailCount !== data.total
               ? { ...sender, emailCount: data.total }
               : sender
           )
