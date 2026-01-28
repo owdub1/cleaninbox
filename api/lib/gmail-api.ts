@@ -649,10 +649,11 @@ export async function fetchSenderStats(
   // Build query - exclude sent/drafts/trash/spam, optionally filter by date
   let query = '-in:sent -in:drafts -in:trash -in:spam';
   if (afterDate) {
-    // Gmail uses YYYY/MM/DD format for after: query
-    const dateStr = `${afterDate.getFullYear()}/${String(afterDate.getMonth() + 1).padStart(2, '0')}/${String(afterDate.getDate()).padStart(2, '0')}`;
-    query += ` after:${dateStr}`;
-    console.log(`Incremental sync: fetching emails after ${dateStr}`);
+    // Use epoch seconds for precise timestamp filtering (avoids date boundary issues)
+    // Gmail's after: operator accepts epoch seconds for exact timestamp matching
+    const epochSeconds = Math.floor(afterDate.getTime() / 1000);
+    query += ` after:${epochSeconds}`;
+    console.log(`Incremental sync: fetching emails after ${afterDate.toISOString()} (epoch: ${epochSeconds})`);
   }
 
   while (allMessageRefs.length < maxMessages) {

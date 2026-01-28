@@ -284,22 +284,46 @@ export default async function handler(
       }
     }
 
+    // For incremental sync, delete existing senders that we're about to update
+    // This avoids upsert constraint issues with composite keys
+    if (isIncrementalSync && sendersToUpsert.length > 0) {
+      // Extract the sender keys we need to delete
+      const senderKeysToDelete = sendersToUpsert.map(s => ({
+        email: s.sender_email,
+        name: s.sender_name
+      }));
+
+      // Delete in batches - filter by email_account_id and sender combinations
+      for (let i = 0; i < senderKeysToDelete.length; i += BATCH_SIZE) {
+        const batch = senderKeysToDelete.slice(i, i + BATCH_SIZE);
+        // Delete each sender that we're about to re-insert
+        for (const sender of batch) {
+          const { error: deleteError } = await supabase
+            .from('email_senders')
+            .delete()
+            .eq('email_account_id', account.id)
+            .eq('sender_email', sender.email)
+            .eq('sender_name', sender.name);
+          if (deleteError) {
+            console.warn('Failed to delete sender for update:', deleteError);
+          }
+        }
+      }
+      console.log('Deleted existing senders for incremental update');
+    }
+
+    // Insert senders in batches (we've cleared the ones we're updating)
     for (let i = 0; i < sendersToUpsert.length; i += BATCH_SIZE) {
       const batch = sendersToUpsert.slice(i, i + BATCH_SIZE);
-      // Use insert for full sync (we deleted above), upsert for incremental
-      const { error: senderError } = isFullSync
-        ? await supabase.from('email_senders').insert(batch)
-        : await supabase.from('email_senders').upsert(batch, {
-            onConflict: 'email_account_id,sender_email,sender_name'
-          });
+      const { error: senderError } = await supabase.from('email_senders').insert(batch);
       if (senderError) {
-        console.error('Sender insert/upsert error:', senderError);
+        console.error('Sender insert error:', senderError);
         if (batch.length > 0) {
           console.error('First item in failed batch:', JSON.stringify(batch[0], null, 2));
         }
       }
     }
-    console.log('Sender upsert complete');
+    console.log('Sender insert complete');
 
     // Store individual emails in the emails table
     if (emailRecords.length > 0) {
@@ -330,26 +354,62 @@ export default async function handler(
         labels: email.labels,
       }));
 
-      // Insert emails in batches (we deleted existing ones above for full sync)
-      // Use insert instead of upsert to avoid constraint matching issues
+      // Insert emails in batches
+      // For full sync: we deleted existing ones above
+      // For incremental sync: duplicates are expected and will be rejected by unique constraint
+      let insertedCount = 0;
+      let duplicateCount = 0;
       for (let i = 0; i < emailsToUpsert.length; i += BATCH_SIZE) {
         const batch = emailsToUpsert.slice(i, i + BATCH_SIZE);
-        const { error: emailInsertError } = await supabase
+        const { error: emailInsertError, data } = await supabase
           .from('emails')
-          .insert(batch);
+          .insert(batch)
+          .select('gmail_message_id');
+
         if (emailInsertError) {
-          console.error('Email insert error:', emailInsertError);
-          // Log first item in batch for debugging
-          if (batch.length > 0) {
-            console.error('First item in failed batch:', JSON.stringify(batch[0], null, 2));
+          // For incremental sync, duplicate key errors are expected - ignore them
+          if (isIncrementalSync && emailInsertError.code === '23505') {
+            // Unique violation - this is expected for incremental sync
+            // Insert emails one by one to handle partial duplicates
+            for (const email of batch) {
+              const { error: singleError } = await supabase
+                .from('emails')
+                .insert(email);
+              if (singleError) {
+                if (singleError.code === '23505') {
+                  duplicateCount++;
+                } else {
+                  console.error('Single email insert error:', singleError);
+                }
+              } else {
+                insertedCount++;
+              }
+            }
+          } else {
+            console.error('Email insert error:', emailInsertError);
+            if (batch.length > 0) {
+              console.error('First item in failed batch:', JSON.stringify(batch[0], null, 2));
+            }
           }
+        } else {
+          insertedCount += batch.length;
         }
       }
-      console.log('Email storage complete');
+      if (isIncrementalSync) {
+        console.log(`Email storage complete: ${insertedCount} new, ${duplicateCount} duplicates skipped`);
+      } else {
+        console.log('Email storage complete');
+      }
     }
 
     // Update email account stats
-    const totalEmails = senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);
+    // For incremental sync, use the merged counts from sendersToUpsert
+    // For full sync, use the raw senderStats counts
+    const totalEmails = isIncrementalSync
+      ? sendersToUpsert.reduce((sum: number, s: any) => sum + s.email_count, 0)
+      : senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);
+    const newEmailsCount = senderStats.reduce((sum: number, s: SenderStats) => sum + s.count, 0);
+
     await supabase
       .from('email_accounts')
       .update({
@@ -360,13 +420,16 @@ export default async function handler(
       .eq('id', account.id);
 
     // Log to activity_log for Recent Activity display
+    const description = isIncrementalSync
+      ? `Incremental sync: ${newEmailsCount.toLocaleString()} new emails from ${senderStats.length} senders`
+      : `Full sync: ${totalEmails.toLocaleString()} emails from ${senderStats.length} senders`;
     await supabase
       .from('activity_log')
       .insert({
         user_id: user.userId,
         action_type: 'email_sync',
-        description: `Synced ${totalEmails.toLocaleString()} emails from ${senderStats.length} senders`,
-        metadata: { totalEmails, totalSenders: senderStats.length, email }
+        description,
+        metadata: { totalEmails, newEmails: newEmailsCount, totalSenders: senderStats.length, email, syncType: isIncrementalSync ? 'incremental' : 'full' }
       });
 
     return res.status(200).json({
