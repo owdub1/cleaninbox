@@ -59,9 +59,10 @@ export default async function handler(
     email, // Filter by specific email account
     sortBy = 'count', // 'count', 'name', 'date'
     sortDirection = 'desc',
-    limit = '500',
+    limit = '2000', // Increased from 500 to ensure all senders are returned
     offset = '0',
-    filter // 'newsletter', 'promotional', 'unsubscribable'
+    filter, // 'newsletter', 'promotional', 'unsubscribable'
+    search // Search term to filter senders by email or name
   } = req.query;
 
   try {
@@ -106,6 +107,12 @@ export default async function handler(
       query = query.eq('is_promotional', true);
     } else if (filter === 'unsubscribable') {
       query = query.eq('has_unsubscribe', true);
+    }
+
+    // Apply search filter - searches both sender_email and sender_name
+    if (search && typeof search === 'string' && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      query = query.or(`sender_email.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%`);
     }
 
     // Apply sorting
