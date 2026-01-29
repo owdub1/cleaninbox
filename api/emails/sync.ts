@@ -326,17 +326,24 @@ export default async function handler(
     }
 
     // Insert senders in batches (we've cleared the ones we're updating)
+    let insertedSenders = 0;
+    let failedSenders = 0;
+    let lastInsertError: any = null;
     for (let i = 0; i < sendersToUpsert.length; i += BATCH_SIZE) {
       const batch = sendersToUpsert.slice(i, i + BATCH_SIZE);
-      const { error: senderError } = await supabase.from('email_senders').insert(batch);
+      const { error: senderError, data: insertedData } = await supabase.from('email_senders').insert(batch).select('id');
       if (senderError) {
         console.error('Sender insert error:', senderError);
         if (batch.length > 0) {
           console.error('First item in failed batch:', JSON.stringify(batch[0], null, 2));
         }
+        failedSenders += batch.length;
+        lastInsertError = senderError;
+      } else {
+        insertedSenders += insertedData?.length || batch.length;
       }
     }
-    console.log('Sender insert complete');
+    console.log(`Sender insert complete: ${insertedSenders} inserted, ${failedSenders} failed`);
 
     // Store individual emails in the emails table
     if (emailRecords.length > 0) {
@@ -445,11 +452,23 @@ export default async function handler(
         metadata: { totalEmails, newEmails: newEmailsCount, totalSenders: senderStats.length, email, syncType: isIncrementalSync ? 'incremental' : 'full' }
       });
 
+    // Check if sender inserts failed
+    if (failedSenders > 0 && insertedSenders === 0) {
+      console.error('All sender inserts failed:', lastInsertError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to save sender data to database',
+        details: lastInsertError?.message || 'Unknown database error',
+        code: 'SENDER_INSERT_FAILED'
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      totalSenders: senderStats.length,
+      totalSenders: insertedSenders,
       totalEmails,
-      message: 'Email sync completed successfully'
+      message: 'Email sync completed successfully',
+      ...(failedSenders > 0 ? { warning: `${failedSenders} senders failed to save` } : {})
     });
 
   } catch (error: any) {
