@@ -198,6 +198,19 @@ export default async function handler(
     );
     console.log('Fetched senders:', senderStats.length, '(filtered from', syncResult.senders.length, ') Total emails:', senderStats.reduce((sum, s) => sum + s.count, 0));
 
+    // Safety check: Don't delete existing data if full sync returned nothing
+    // This prevents data loss when Gmail API returns 0 messages due to auth issues, API errors, or empty response
+    if (isFullSync && senderStats.length === 0) {
+      console.warn('Full sync returned 0 senders - keeping existing data to prevent data loss');
+      return res.status(200).json({
+        success: true,
+        totalSenders: 0,
+        totalEmails: account.total_emails || 0,
+        message: 'No emails found - existing data preserved',
+        warning: 'Gmail returned no emails. Check if account has proper permissions.'
+      });
+    }
+
     // For incremental sync, we need to add to existing counts, not replace
     // For full sync, we replace the data
     let sendersToUpsert;

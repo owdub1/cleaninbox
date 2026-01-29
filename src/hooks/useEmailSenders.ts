@@ -175,8 +175,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         throw new Error(data.error || 'Failed to sync emails');
       }
 
-      // Refresh senders after sync
-      await fetchSenders({ email });
+      // Refresh senders after sync - fetch ALL senders (not just this account)
+      // The frontend filters by selectedAccountEmail, so we need all accounts' data
+      await fetchSenders();
 
       return { success: true };
     } catch (err: any) {
