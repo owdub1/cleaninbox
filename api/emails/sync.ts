@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, listAllMessageIds } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getDeletedMessageIds, getProfile } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -56,7 +56,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status, last_synced, total_emails')
+      .select('id, gmail_email, connection_status, last_synced, total_emails, history_id')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -163,12 +163,6 @@ export default async function handler(
     const STALE_SYNC_DAYS = 30;
     const isStaleSync = account.last_synced &&
       (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
-
-    // Check if we should run orphan detection (catches deleted emails)
-    // Run if last sync was more than 6 hours ago
-    const ORPHAN_CHECK_HOURS = 6;
-    const shouldCheckOrphans = account.last_synced &&
-      (Date.now() - new Date(account.last_synced).getTime()) > (ORPHAN_CHECK_HOURS * 60 * 60 * 1000);
 
     const isFullSync = isFirstSync || isStaleSync || fullSync;
     const isIncrementalSync = !isFullSync;
@@ -444,73 +438,83 @@ export default async function handler(
       }
     }
 
-    // Detect and remove deleted emails (orphan detection)
-    // Runs automatically if last sync was 6+ hours ago, or if explicitly requested
-    // This balances speed (frequent syncs are fast) with accuracy (deletions caught periodically)
+    // Detect and remove deleted emails using Gmail History API (fast!)
+    // This runs on every quick sync if we have a history_id stored
     let orphanedCount = 0;
-    if (isIncrementalSync && (shouldCheckOrphans || checkDeleted)) {
-      console.log('Checking for deleted emails...');
-      const gmailIds = await listAllMessageIds(accessToken);
-      const gmailIdSet = new Set(gmailIds);
+    let newHistoryId: string | undefined;
 
-      // Get all email IDs from our database for this account
-      const { data: dbEmails } = await supabase
-        .from('emails')
-        .select('id, gmail_message_id, sender_email, sender_name')
-        .eq('email_account_id', account.id);
+    if (isIncrementalSync && account.history_id) {
+      console.log('Checking for deleted emails via History API...');
+      const { deletedIds, newHistoryId: historyId } = await getDeletedMessageIds(accessToken, account.history_id);
+      newHistoryId = historyId;
 
-      // Find orphaned records (in DB but not in Gmail)
-      const orphanedEmails = (dbEmails || []).filter(
-        e => !gmailIdSet.has(e.gmail_message_id)
-      );
+      if (deletedIds.length > 0) {
+        console.log(`History API found ${deletedIds.length} deleted messages`);
 
-      if (orphanedEmails.length > 0) {
-        // Delete orphaned emails
-        const orphanedIds = orphanedEmails.map(e => e.id);
-        await supabase.from('emails').delete().in('id', orphanedIds);
+        // Get the emails we have that match these deleted IDs
+        const { data: deletedEmails } = await supabase
+          .from('emails')
+          .select('id, gmail_message_id, sender_email, sender_name')
+          .eq('email_account_id', account.id)
+          .in('gmail_message_id', deletedIds);
 
-        // Update sender counts
-        // Group orphaned by sender to update counts
-        const senderCounts = new Map<string, number>();
-        for (const email of orphanedEmails) {
-          const key = `${email.sender_email}|||${email.sender_name}`;
-          senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
-        }
+        if (deletedEmails && deletedEmails.length > 0) {
+          // Delete the emails from our database
+          const dbIds = deletedEmails.map(e => e.id);
+          await supabase.from('emails').delete().in('id', dbIds);
 
-        // Decrement each sender's email_count and update last_email_date
-        for (const [key, count] of senderCounts) {
-          const [senderEmail, senderName] = key.split('|||');
-          await supabase.rpc('decrement_sender_count', {
-            p_account_id: account.id,
-            p_sender_email: senderEmail,
-            p_sender_name: senderName,
-            p_count: count
-          });
+          // Group by sender to update counts
+          const senderCounts = new Map<string, number>();
+          for (const email of deletedEmails) {
+            const key = `${email.sender_email}|||${email.sender_name}`;
+            senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
+          }
 
-          // Recalculate last_email_date from remaining emails
-          const { data: remainingEmails } = await supabase
-            .from('emails')
-            .select('received_at')
-            .eq('email_account_id', account.id)
-            .eq('sender_email', senderEmail)
-            .eq('sender_name', senderName)
-            .order('received_at', { ascending: false })
-            .limit(1);
+          // Decrement each sender's email_count and update last_email_date
+          for (const [key, count] of senderCounts) {
+            const [senderEmail, senderName] = key.split('|||');
+            await supabase.rpc('decrement_sender_count', {
+              p_account_id: account.id,
+              p_sender_email: senderEmail,
+              p_sender_name: senderName,
+              p_count: count
+            });
 
-          if (remainingEmails && remainingEmails.length > 0) {
-            await supabase
-              .from('email_senders')
-              .update({ last_email_date: remainingEmails[0].received_at, updated_at: new Date().toISOString() })
+            // Recalculate last_email_date from remaining emails
+            const { data: remainingEmails } = await supabase
+              .from('emails')
+              .select('received_at')
               .eq('email_account_id', account.id)
               .eq('sender_email', senderEmail)
-              .eq('sender_name', senderName);
-          }
-        }
+              .eq('sender_name', senderName)
+              .order('received_at', { ascending: false })
+              .limit(1);
 
-        orphanedCount = orphanedEmails.length;
-        console.log(`Removed ${orphanedEmails.length} deleted emails from ${senderCounts.size} senders`);
+            if (remainingEmails && remainingEmails.length > 0) {
+              await supabase
+                .from('email_senders')
+                .update({ last_email_date: remainingEmails[0].received_at, updated_at: new Date().toISOString() })
+                .eq('email_account_id', account.id)
+                .eq('sender_email', senderEmail)
+                .eq('sender_name', senderName);
+            }
+          }
+
+          orphanedCount = deletedEmails.length;
+          console.log(`Removed ${deletedEmails.length} deleted emails from ${senderCounts.size} senders`);
+        }
       } else {
         console.log('No deleted emails detected');
+      }
+    }
+
+    // Get current historyId to store for next sync (for both full and incremental)
+    if (!newHistoryId) {
+      try {
+        const profile = await getProfile(accessToken);
+        newHistoryId = profile.historyId;
+      } catch (e) {
+        console.warn('Could not get historyId:', e);
       }
     }
 
@@ -527,7 +531,8 @@ export default async function handler(
       .update({
         total_emails: totalEmails,
         last_synced: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        ...(newHistoryId && { history_id: newHistoryId })
       })
       .eq('id', account.id);
 

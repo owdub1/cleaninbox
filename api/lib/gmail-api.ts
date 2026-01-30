@@ -60,6 +60,27 @@ export interface GmailMessageList {
   resultSizeEstimate: number;
 }
 
+export interface GmailProfile {
+  emailAddress: string;
+  messagesTotal: number;
+  threadsTotal: number;
+  historyId: string;
+}
+
+export interface GmailHistoryRecord {
+  id: string;
+  messagesAdded?: Array<{ message: { id: string; threadId: string } }>;
+  messagesDeleted?: Array<{ message: { id: string; threadId: string } }>;
+  labelsAdded?: Array<{ message: { id: string }; labelIds: string[] }>;
+  labelsRemoved?: Array<{ message: { id: string }; labelIds: string[] }>;
+}
+
+export interface GmailHistoryList {
+  history?: GmailHistoryRecord[];
+  nextPageToken?: string;
+  historyId: string;
+}
+
 export interface SenderStats {
   email: string;
   name: string;
@@ -157,6 +178,75 @@ export async function listMessages(
   const messageCount = result?.messages?.length || 0;
   console.log(`Gmail API: listed ${messageCount} messages`);
   return result;
+}
+
+/**
+ * Get Gmail user profile (includes current historyId)
+ */
+export async function getProfile(accessToken: string): Promise<GmailProfile> {
+  return gmailRequest(accessToken, '/profile');
+}
+
+/**
+ * List history of changes since a given historyId
+ * Returns deleted message IDs and other changes
+ */
+export async function listHistory(
+  accessToken: string,
+  startHistoryId: string,
+  options: { maxResults?: number; pageToken?: string } = {}
+): Promise<GmailHistoryList> {
+  const params = new URLSearchParams();
+  params.set('startHistoryId', startHistoryId);
+  if (options.maxResults) params.set('maxResults', options.maxResults.toString());
+  if (options.pageToken) params.set('pageToken', options.pageToken);
+
+  return gmailRequest(accessToken, `/history?${params.toString()}`);
+}
+
+/**
+ * Get all deleted message IDs since a given historyId
+ * Uses Gmail History API for fast detection of deletions
+ */
+export async function getDeletedMessageIds(
+  accessToken: string,
+  startHistoryId: string
+): Promise<{ deletedIds: string[]; newHistoryId: string }> {
+  const deletedIds: string[] = [];
+  let pageToken: string | undefined;
+  let newHistoryId = startHistoryId;
+
+  try {
+    while (true) {
+      const response = await listHistory(accessToken, startHistoryId, {
+        maxResults: 100,
+        pageToken,
+      });
+
+      newHistoryId = response.historyId;
+
+      if (response.history) {
+        for (const record of response.history) {
+          if (record.messagesDeleted) {
+            deletedIds.push(...record.messagesDeleted.map(m => m.message.id));
+          }
+        }
+      }
+
+      if (!response.nextPageToken) break;
+      pageToken = response.nextPageToken;
+    }
+  } catch (error: any) {
+    // History may be expired (Gmail only keeps ~30 days)
+    // In this case, return empty and let full sync handle it
+    if (error.message?.includes('404') || error.message?.includes('historyId')) {
+      console.log('History expired, will need full sync to detect deletions');
+      return { deletedIds: [], newHistoryId: startHistoryId };
+    }
+    throw error;
+  }
+
+  return { deletedIds, newHistoryId };
 }
 
 /**
