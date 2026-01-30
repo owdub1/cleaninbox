@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats, EmailRecord, SyncResult } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, listAllMessageIds } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -438,6 +438,56 @@ export default async function handler(
       }
     }
 
+    // Detect and remove deleted emails (orphan detection)
+    // Only run during quick sync - full sync already replaces all data
+    let orphanedCount = 0;
+    if (isIncrementalSync) {
+      console.log('Checking for deleted emails...');
+      const gmailIds = await listAllMessageIds(accessToken);
+      const gmailIdSet = new Set(gmailIds);
+
+      // Get all email IDs from our database for this account
+      const { data: dbEmails } = await supabase
+        .from('emails')
+        .select('id, gmail_message_id, sender_email, sender_name')
+        .eq('email_account_id', account.id);
+
+      // Find orphaned records (in DB but not in Gmail)
+      const orphanedEmails = (dbEmails || []).filter(
+        e => !gmailIdSet.has(e.gmail_message_id)
+      );
+
+      if (orphanedEmails.length > 0) {
+        // Delete orphaned emails
+        const orphanedIds = orphanedEmails.map(e => e.id);
+        await supabase.from('emails').delete().in('id', orphanedIds);
+
+        // Update sender counts
+        // Group orphaned by sender to update counts
+        const senderCounts = new Map<string, number>();
+        for (const email of orphanedEmails) {
+          const key = `${email.sender_email}|||${email.sender_name}`;
+          senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
+        }
+
+        // Decrement each sender's email_count
+        for (const [key, count] of senderCounts) {
+          const [senderEmail, senderName] = key.split('|||');
+          await supabase.rpc('decrement_sender_count', {
+            p_account_id: account.id,
+            p_sender_email: senderEmail,
+            p_sender_name: senderName,
+            p_count: count
+          });
+        }
+
+        orphanedCount = orphanedEmails.length;
+        console.log(`Removed ${orphanedEmails.length} deleted emails from ${senderCounts.size} senders`);
+      } else {
+        console.log('No deleted emails detected');
+      }
+    }
+
     // Update email account stats
     // For incremental sync, use the merged counts from sendersToUpsert
     // For full sync, use the raw senderStats counts
@@ -457,8 +507,9 @@ export default async function handler(
 
     // Log to activity_log for Recent Activity display
     const updatedSendersCount = sendersToUpdate?.length || 0;
+    const orphanedPart = orphanedCount > 0 ? `, ${orphanedCount} deleted` : '';
     const description = isIncrementalSync
-      ? `Quick sync: ${insertedSenders} new senders, ${updatedSendersCount} updated`
+      ? `Quick sync: ${insertedSenders} new senders, ${updatedSendersCount} updated${orphanedPart}`
       : `Full sync: ${totalEmails.toLocaleString()} emails from ${senderStats.length} senders`;
     await supabase
       .from('activity_log')
@@ -466,7 +517,7 @@ export default async function handler(
         user_id: user.userId,
         action_type: 'email_sync',
         description,
-        metadata: { totalEmails, newEmails: newEmailsCount, totalSenders: senderStats.length, email, syncType: isIncrementalSync ? 'quick' : 'full' }
+        metadata: { totalEmails, newEmails: newEmailsCount, totalSenders: senderStats.length, email, syncType: isIncrementalSync ? 'quick' : 'full', deletedEmails: orphanedCount }
       });
 
     // Check if sender inserts failed
@@ -485,6 +536,7 @@ export default async function handler(
       totalSenders: insertedSenders,
       updatedSenders: updatedSendersCount,
       totalEmails,
+      deletedEmails: orphanedCount,
       message: 'Email sync completed successfully',
       syncType: isIncrementalSync ? 'quick' : 'full',
       ...(failedSenders > 0 ? { warning: `${failedSenders} senders failed to save` } : {})

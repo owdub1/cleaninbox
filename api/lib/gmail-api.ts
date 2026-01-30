@@ -160,6 +160,35 @@ export async function listMessages(
 }
 
 /**
+ * List all message IDs from Gmail (lightweight, no content)
+ * Used for orphan detection during sync
+ */
+export async function listAllMessageIds(
+  accessToken: string,
+  query: string = '-in:sent -in:drafts -in:trash -in:spam'
+): Promise<string[]> {
+  const allIds: string[] = [];
+  let pageToken: string | undefined;
+
+  while (true) {
+    const response = await listMessages(accessToken, {
+      maxResults: 100,
+      pageToken,
+      q: query,
+    });
+
+    if (!response.messages || response.messages.length === 0) break;
+    allIds.push(...response.messages.map(m => m.id));
+
+    if (!response.nextPageToken) break;
+    pageToken = response.nextPageToken;
+    await sleep(100); // Rate limiting
+  }
+
+  return allIds;
+}
+
+/**
  * Get message details with specific headers
  */
 export async function getMessage(
