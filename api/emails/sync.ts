@@ -156,7 +156,7 @@ export default async function handler(
     // Determine sync mode:
     // - First sync (no last_synced): Full sync to get all historical emails
     // - Stale sync (>30 days): Full sync to refresh data
-    // - Subsequent syncs: Quick incremental sync (only new emails)
+    // - Subsequent syncs: Quick sync fetching most recent emails (no date filter to catch stragglers)
     const isFirstSync = !account.last_synced;
 
     // Check if last sync was more than 30 days ago
@@ -166,7 +166,12 @@ export default async function handler(
 
     const isFullSync = isFirstSync || isStaleSync || fullSync;
     const isIncrementalSync = !isFullSync;
-    const lastSyncDate = isIncrementalSync ? new Date(account.last_synced) : undefined;
+
+    // IMPORTANT: Don't use date filter for incremental sync anymore
+    // Gmail API can miss recently arrived emails due to caching/delays
+    // Instead, always fetch the most recent emails and merge them
+    // This ensures we never miss emails that arrived but weren't returned in a previous sync
+    const lastSyncDate = undefined; // Always fetch most recent, no date filter
 
     if (isStaleSync) {
       console.log(`Last sync was over ${STALE_SYNC_DAYS} days ago - forcing full sync to refresh`);
@@ -175,17 +180,17 @@ export default async function handler(
     // Fetch sender statistics from Gmail
     const emailLimit = planLimits.emailProcessingLimit;
     // Full sync (first time or recovery): fetch up to plan limit for accurate counts
-    // Incremental: just recent changes (500 max for speed)
+    // Quick sync: fetch recent 200 emails to catch any new/missed emails
     const messagesToFetch = isFullSync
       ? Math.min(10000, emailLimit)  // Full sync: up to 10k or plan limit
-      : 500;  // Incremental: just recent changes
+      : 200;  // Quick sync: fetch 200 most recent emails (no date filter)
 
-    const syncType = isFirstSync ? 'FIRST' : isStaleSync ? 'STALE' : isIncrementalSync ? 'Incremental' : 'FULL';
+    const syncType = isFirstSync ? 'FIRST' : isStaleSync ? 'STALE' : isIncrementalSync ? 'Quick' : 'FULL';
     console.log(`${syncType} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
     const syncResult: SyncResult = await fetchSenderStats(
       accessToken,
       messagesToFetch,
-      lastSyncDate
+      lastSyncDate  // undefined - no date filter, always fetch most recent
     );
 
     // Filter out user's own email address (sent/replied emails show up with user as sender)
@@ -211,9 +216,10 @@ export default async function handler(
       });
     }
 
-    // For incremental sync, we need to add to existing counts, not replace
-    // For full sync, we replace the data
+    // For quick sync: update dates and add new senders, but don't modify counts (to avoid double-counting)
+    // For full sync: replace all data with accurate counts
     let sendersToUpsert;
+    let sendersToUpdate: any[] = []; // Existing senders that just need date updates
 
     // Helper to create composite key for sender lookup
     const getSenderKey = (email: string, name: string) => `${email}|||${name}`;
@@ -222,35 +228,53 @@ export default async function handler(
       // Get existing sender data to merge with (now keyed by email + name)
       const { data: existingSenders } = await supabase
         .from('email_senders')
-        .select('sender_email, sender_name, email_count, unread_count, first_email_date')
+        .select('id, sender_email, sender_name, email_count, unread_count, first_email_date, last_email_date')
         .eq('email_account_id', account.id);
 
       const existingMap = new Map(
         (existingSenders || []).map(s => [getSenderKey(s.sender_email, s.sender_name || s.sender_email), s])
       );
 
-      sendersToUpsert = senderStats.map((sender: SenderStats) => {
+      // Separate new senders from existing ones
+      const newSenders: typeof senderStats = [];
+
+      for (const sender of senderStats) {
         const existing = existingMap.get(getSenderKey(sender.email, sender.name));
-        return {
-          user_id: user.userId,
-          email_account_id: account.id,
-          sender_email: sender.email,
-          sender_name: sender.name,
-          // Add new counts to existing counts for incremental sync
-          email_count: (existing?.email_count || 0) + sender.count,
-          unread_count: (existing?.unread_count || 0) + sender.unreadCount,
-          // Keep earliest first_email_date
-          first_email_date: existing?.first_email_date && existing.first_email_date < sender.firstDate
-            ? existing.first_email_date
-            : sender.firstDate,
-          last_email_date: sender.lastDate, // Always update to latest
-          unsubscribe_link: sender.unsubscribeLink || null,
-          has_unsubscribe: sender.hasUnsubscribe,
-          is_newsletter: sender.isNewsletter,
-          is_promotional: sender.isPromotional,
-          updated_at: new Date().toISOString()
-        };
-      });
+        if (existing) {
+          // Existing sender - only update last_email_date if newer
+          if (sender.lastDate > existing.last_email_date) {
+            sendersToUpdate.push({
+              id: existing.id,
+              last_email_date: sender.lastDate,
+              // Update unsubscribe info if we found it
+              ...(sender.unsubscribeLink && { unsubscribe_link: sender.unsubscribeLink, has_unsubscribe: true }),
+              updated_at: new Date().toISOString()
+            });
+          }
+        } else {
+          // New sender - add it
+          newSenders.push(sender);
+        }
+      }
+
+      // Only insert new senders
+      sendersToUpsert = newSenders.map((sender: SenderStats) => ({
+        user_id: user.userId,
+        email_account_id: account.id,
+        sender_email: sender.email,
+        sender_name: sender.name,
+        email_count: sender.count,
+        unread_count: sender.unreadCount,
+        first_email_date: sender.firstDate,
+        last_email_date: sender.lastDate,
+        unsubscribe_link: sender.unsubscribeLink || null,
+        has_unsubscribe: sender.hasUnsubscribe,
+        is_newsletter: sender.isNewsletter,
+        is_promotional: sender.isPromotional,
+        updated_at: new Date().toISOString()
+      }));
+
+      console.log(`Quick sync: ${newSenders.length} new senders, ${sendersToUpdate.length} existing senders to update`);
     } else {
       // Full sync - replace all data
       sendersToUpsert = senderStats.map((sender: SenderStats) => ({
@@ -282,10 +306,10 @@ export default async function handler(
 
     // Upsert senders in batches (now using composite key: email_account_id, sender_email, sender_name)
     const BATCH_SIZE = 100;
-    console.log('Upserting', sendersToUpsert.length, 'senders to database...');
 
     // For full sync, delete existing senders first to avoid constraint issues
     if (isFullSync) {
+      console.log('Inserting', sendersToUpsert.length, 'senders to database (full sync)...');
       const { error: deleteSendersError } = await supabase
         .from('email_senders')
         .delete()
@@ -295,37 +319,29 @@ export default async function handler(
       } else {
         console.log('Cleared existing senders for full sync');
       }
+    } else {
+      console.log('Quick sync: inserting', sendersToUpsert.length, 'new senders, updating', sendersToUpdate.length, 'existing...');
     }
 
-    // For incremental sync, delete existing senders that we're about to update
-    // This avoids upsert constraint issues with composite keys
-    if (isIncrementalSync && sendersToUpsert.length > 0) {
-      // Extract the sender keys we need to delete
-      const senderKeysToDelete = sendersToUpsert.map(s => ({
-        email: s.sender_email,
-        name: s.sender_name
-      }));
-
-      // Delete in batches - filter by email_account_id and sender combinations
-      for (let i = 0; i < senderKeysToDelete.length; i += BATCH_SIZE) {
-        const batch = senderKeysToDelete.slice(i, i + BATCH_SIZE);
-        // Delete each sender that we're about to re-insert
-        for (const sender of batch) {
-          const { error: deleteError } = await supabase
-            .from('email_senders')
-            .delete()
-            .eq('email_account_id', account.id)
-            .eq('sender_email', sender.email)
-            .eq('sender_name', sender.name);
-          if (deleteError) {
-            console.warn('Failed to delete sender for update:', deleteError);
-          }
+    // For quick sync, update existing senders' dates (no delete/re-insert needed)
+    if (isIncrementalSync && sendersToUpdate.length > 0) {
+      let updatedCount = 0;
+      for (const update of sendersToUpdate) {
+        const { id, ...updateData } = update;
+        const { error: updateError } = await supabase
+          .from('email_senders')
+          .update(updateData)
+          .eq('id', id);
+        if (updateError) {
+          console.warn('Failed to update sender date:', updateError);
+        } else {
+          updatedCount++;
         }
       }
-      console.log('Deleted existing senders for incremental update');
+      console.log(`Updated ${updatedCount} existing senders with new dates`);
     }
 
-    // Insert senders in batches (we've cleared the ones we're updating)
+    // Insert new senders in batches
     let insertedSenders = 0;
     let failedSenders = 0;
     let lastInsertError: any = null;
@@ -440,8 +456,9 @@ export default async function handler(
       .eq('id', account.id);
 
     // Log to activity_log for Recent Activity display
+    const updatedSendersCount = sendersToUpdate?.length || 0;
     const description = isIncrementalSync
-      ? `Incremental sync: ${newEmailsCount.toLocaleString()} new emails from ${senderStats.length} senders`
+      ? `Quick sync: ${insertedSenders} new senders, ${updatedSendersCount} updated`
       : `Full sync: ${totalEmails.toLocaleString()} emails from ${senderStats.length} senders`;
     await supabase
       .from('activity_log')
@@ -449,11 +466,11 @@ export default async function handler(
         user_id: user.userId,
         action_type: 'email_sync',
         description,
-        metadata: { totalEmails, newEmails: newEmailsCount, totalSenders: senderStats.length, email, syncType: isIncrementalSync ? 'incremental' : 'full' }
+        metadata: { totalEmails, newEmails: newEmailsCount, totalSenders: senderStats.length, email, syncType: isIncrementalSync ? 'quick' : 'full' }
       });
 
     // Check if sender inserts failed
-    if (failedSenders > 0 && insertedSenders === 0) {
+    if (failedSenders > 0 && insertedSenders === 0 && !isIncrementalSync) {
       console.error('All sender inserts failed:', lastInsertError);
       return res.status(500).json({
         success: false,
@@ -466,8 +483,10 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       totalSenders: insertedSenders,
+      updatedSenders: updatedSendersCount,
       totalEmails,
       message: 'Email sync completed successfully',
+      syncType: isIncrementalSync ? 'quick' : 'full',
       ...(failedSenders > 0 ? { warning: `${failedSenders} senders failed to save` } : {})
     });
 
