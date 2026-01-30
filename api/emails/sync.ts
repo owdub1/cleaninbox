@@ -43,7 +43,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { email, maxMessages = 1000, fullSync = false } = req.body;
+  const { email, maxMessages = 1000, fullSync = false, checkDeleted = false } = req.body;
 
   if (!email) {
     return res.status(400).json({
@@ -439,10 +439,11 @@ export default async function handler(
     }
 
     // Detect and remove deleted emails (orphan detection)
-    // Only run during quick sync - full sync already replaces all data
+    // Only run when explicitly requested via checkDeleted parameter
+    // This keeps quick syncs fast - users can trigger deep sync when needed
     let orphanedCount = 0;
-    if (isIncrementalSync) {
-      console.log('Checking for deleted emails...');
+    if (isIncrementalSync && checkDeleted) {
+      console.log('Checking for deleted emails (deep sync)...');
       const gmailIds = await listAllMessageIds(accessToken);
       const gmailIdSet = new Set(gmailIds);
 
