@@ -470,7 +470,7 @@ export default async function handler(
           senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
         }
 
-        // Decrement each sender's email_count
+        // Decrement each sender's email_count and update last_email_date
         for (const [key, count] of senderCounts) {
           const [senderEmail, senderName] = key.split('|||');
           await supabase.rpc('decrement_sender_count', {
@@ -479,6 +479,25 @@ export default async function handler(
             p_sender_name: senderName,
             p_count: count
           });
+
+          // Recalculate last_email_date from remaining emails
+          const { data: remainingEmails } = await supabase
+            .from('emails')
+            .select('received_at')
+            .eq('email_account_id', account.id)
+            .eq('sender_email', senderEmail)
+            .eq('sender_name', senderName)
+            .order('received_at', { ascending: false })
+            .limit(1);
+
+          if (remainingEmails && remainingEmails.length > 0) {
+            await supabase
+              .from('email_senders')
+              .update({ last_email_date: remainingEmails[0].received_at, updated_at: new Date().toISOString() })
+              .eq('email_account_id', account.id)
+              .eq('sender_email', senderEmail)
+              .eq('sender_name', senderName);
+          }
         }
 
         orphanedCount = orphanedEmails.length;
