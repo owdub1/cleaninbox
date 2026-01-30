@@ -164,6 +164,12 @@ export default async function handler(
     const isStaleSync = account.last_synced &&
       (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
 
+    // Check if we should run orphan detection (catches deleted emails)
+    // Run if last sync was more than 6 hours ago
+    const ORPHAN_CHECK_HOURS = 6;
+    const shouldCheckOrphans = account.last_synced &&
+      (Date.now() - new Date(account.last_synced).getTime()) > (ORPHAN_CHECK_HOURS * 60 * 60 * 1000);
+
     const isFullSync = isFirstSync || isStaleSync || fullSync;
     const isIncrementalSync = !isFullSync;
 
@@ -439,11 +445,11 @@ export default async function handler(
     }
 
     // Detect and remove deleted emails (orphan detection)
-    // Only run when explicitly requested via checkDeleted parameter
-    // This keeps quick syncs fast - users can trigger deep sync when needed
+    // Runs automatically if last sync was 6+ hours ago, or if explicitly requested
+    // This balances speed (frequent syncs are fast) with accuracy (deletions caught periodically)
     let orphanedCount = 0;
-    if (isIncrementalSync && checkDeleted) {
-      console.log('Checking for deleted emails (deep sync)...');
+    if (isIncrementalSync && (shouldCheckOrphans || checkDeleted)) {
+      console.log('Checking for deleted emails...');
       const gmailIds = await listAllMessageIds(accessToken);
       const gmailIdSet = new Set(gmailIds);
 
