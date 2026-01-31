@@ -205,14 +205,20 @@ export async function listHistory(
 }
 
 /**
- * Get all deleted message IDs since a given historyId
- * Uses Gmail History API for fast detection of deletions
+ * Get all changes since a given historyId (additions, deletions, trash moves)
+ * Uses Gmail History API for fast incremental sync
  */
-export async function getDeletedMessageIds(
+export async function getHistoryChanges(
   accessToken: string,
   startHistoryId: string
-): Promise<{ deletedIds: string[]; newHistoryId: string }> {
-  const deletedIds: string[] = [];
+): Promise<{
+  addedMessageIds: string[];
+  deletedMessageIds: string[];
+  newHistoryId: string;
+  historyExpired: boolean;
+}> {
+  const addedMessageIds: string[] = [];
+  const deletedMessageIds: string[] = [];
   let pageToken: string | undefined;
   let newHistoryId = startHistoryId;
 
@@ -227,15 +233,19 @@ export async function getDeletedMessageIds(
 
       if (response.history) {
         for (const record of response.history) {
+          // Catch new messages added to inbox
+          if (record.messagesAdded) {
+            addedMessageIds.push(...record.messagesAdded.map(m => m.message.id));
+          }
           // Catch permanently deleted messages
           if (record.messagesDeleted) {
-            deletedIds.push(...record.messagesDeleted.map(m => m.message.id));
+            deletedMessageIds.push(...record.messagesDeleted.map(m => m.message.id));
           }
           // Catch messages moved to trash (labelsAdded with TRASH label)
           if (record.labelsAdded) {
             for (const labelChange of record.labelsAdded) {
               if (labelChange.labelIds?.includes('TRASH')) {
-                deletedIds.push(labelChange.message.id);
+                deletedMessageIds.push(labelChange.message.id);
               }
             }
           }
@@ -247,15 +257,27 @@ export async function getDeletedMessageIds(
     }
   } catch (error: any) {
     // History may be expired (Gmail only keeps ~30 days)
-    // In this case, return empty and let full sync handle it
     if (error.message?.includes('404') || error.message?.includes('historyId')) {
-      console.log('History expired, will need full sync to detect deletions');
-      return { deletedIds: [], newHistoryId: startHistoryId };
+      console.log('History expired, will need full sync');
+      return { addedMessageIds: [], deletedMessageIds: [], newHistoryId: startHistoryId, historyExpired: true };
     }
     throw error;
   }
 
-  return { deletedIds, newHistoryId };
+  return { addedMessageIds, deletedMessageIds, newHistoryId, historyExpired: false };
+}
+
+/**
+ * Get all deleted message IDs since a given historyId
+ * Uses Gmail History API for fast detection of deletions
+ * @deprecated Use getHistoryChanges instead
+ */
+export async function getDeletedMessageIds(
+  accessToken: string,
+  startHistoryId: string
+): Promise<{ deletedIds: string[]; newHistoryId: string }> {
+  const { deletedMessageIds, newHistoryId } = await getHistoryChanges(accessToken, startHistoryId);
+  return { deletedIds: deletedMessageIds, newHistoryId };
 }
 
 /**
