@@ -557,6 +557,9 @@ const EmailCleanup = () => {
       console.log('Syncing emails for:', accountToSync.email);
       const result = await syncEmails(accountToSync.email);
       if (result.success) {
+        // Clear cached email lists and collapse dropdowns so UI reflects fresh data
+        setSenderEmails({});
+        setExpandedSenders([]);
         setNotification({ type: 'success', message: 'Emails synced successfully!' });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
