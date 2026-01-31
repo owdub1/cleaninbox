@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getDeletedMessageIds, getProfile } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getDeletedMessageIds, getProfile, listAllMessageIds } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -443,29 +443,99 @@ export default async function handler(
     let orphanedCount = 0;
     let newHistoryId: string | undefined;
 
-    if (isIncrementalSync && account.history_id) {
-      console.log('Checking for deleted emails via History API...');
-      const { deletedIds, newHistoryId: historyId } = await getDeletedMessageIds(accessToken, account.history_id);
-      newHistoryId = historyId;
+    if (isIncrementalSync) {
+      if (account.history_id) {
+        // Fast path: Use History API (only shows changes since last sync)
+        console.log('Checking for deleted emails via History API...');
+        const { deletedIds, newHistoryId: historyId } = await getDeletedMessageIds(accessToken, account.history_id);
+        newHistoryId = historyId;
 
-      if (deletedIds.length > 0) {
-        console.log(`History API found ${deletedIds.length} deleted messages`);
+        if (deletedIds.length > 0) {
+          console.log(`History API found ${deletedIds.length} deleted messages`);
 
-        // Get the emails we have that match these deleted IDs
-        const { data: deletedEmails } = await supabase
+          // Get the emails we have that match these deleted IDs
+          const { data: deletedEmails } = await supabase
+            .from('emails')
+            .select('id, gmail_message_id, sender_email, sender_name')
+            .eq('email_account_id', account.id)
+            .in('gmail_message_id', deletedIds);
+
+          if (deletedEmails && deletedEmails.length > 0) {
+            // Delete the emails from our database
+            const dbIds = deletedEmails.map(e => e.id);
+            await supabase.from('emails').delete().in('id', dbIds);
+
+            // Group by sender to update counts
+            const senderCounts = new Map<string, number>();
+            for (const email of deletedEmails) {
+              const key = `${email.sender_email}|||${email.sender_name}`;
+              senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
+            }
+
+            // Decrement each sender's email_count and update last_email_date
+            for (const [key, count] of senderCounts) {
+              const [senderEmail, senderName] = key.split('|||');
+              await supabase.rpc('decrement_sender_count', {
+                p_account_id: account.id,
+                p_sender_email: senderEmail,
+                p_sender_name: senderName,
+                p_count: count
+              });
+
+              // Recalculate last_email_date from remaining emails
+              const { data: remainingEmails } = await supabase
+                .from('emails')
+                .select('received_at')
+                .eq('email_account_id', account.id)
+                .eq('sender_email', senderEmail)
+                .eq('sender_name', senderName)
+                .order('received_at', { ascending: false })
+                .limit(1);
+
+              if (remainingEmails && remainingEmails.length > 0) {
+                await supabase
+                  .from('email_senders')
+                  .update({ last_email_date: remainingEmails[0].received_at, updated_at: new Date().toISOString() })
+                  .eq('email_account_id', account.id)
+                  .eq('sender_email', senderEmail)
+                  .eq('sender_name', senderName);
+              }
+            }
+
+            orphanedCount = deletedEmails.length;
+            console.log(`Removed ${deletedEmails.length} deleted emails from ${senderCounts.size} senders`);
+          }
+        } else {
+          console.log('No deleted emails detected');
+        }
+      } else {
+        // Bootstrap: No history_id yet, do full comparison once
+        console.log('No history_id found, running full orphan detection (one-time)...');
+        const gmailIds = await listAllMessageIds(accessToken);
+        const gmailIdSet = new Set(gmailIds);
+        console.log(`Fetched ${gmailIds.length} message IDs from Gmail for comparison`);
+
+        // Get all email IDs from our database for this account
+        const { data: dbEmails } = await supabase
           .from('emails')
           .select('id, gmail_message_id, sender_email, sender_name')
-          .eq('email_account_id', account.id)
-          .in('gmail_message_id', deletedIds);
+          .eq('email_account_id', account.id);
 
-        if (deletedEmails && deletedEmails.length > 0) {
-          // Delete the emails from our database
-          const dbIds = deletedEmails.map(e => e.id);
+        // Find orphaned records (in DB but not in Gmail)
+        const orphanedEmails = (dbEmails || []).filter(
+          e => !gmailIdSet.has(e.gmail_message_id)
+        );
+
+        if (orphanedEmails.length > 0) {
+          console.log(`Found ${orphanedEmails.length} orphaned emails to remove`);
+
+          // Delete the orphaned emails from our database
+          const dbIds = orphanedEmails.map(e => e.id);
           await supabase.from('emails').delete().in('id', dbIds);
 
           // Group by sender to update counts
           const senderCounts = new Map<string, number>();
-          for (const email of deletedEmails) {
+          for (const email of orphanedEmails) {
             const key = `${email.sender_email}|||${email.sender_name}`;
             senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
           }
@@ -500,11 +570,11 @@ export default async function handler(
             }
           }
 
-          orphanedCount = deletedEmails.length;
-          console.log(`Removed ${deletedEmails.length} deleted emails from ${senderCounts.size} senders`);
+          orphanedCount = orphanedEmails.length;
+          console.log(`Removed ${orphanedEmails.length} orphaned emails from ${senderCounts.size} senders`);
+        } else {
+          console.log('No orphaned emails found');
         }
-      } else {
-        console.log('No deleted emails detected');
       }
     }
 
