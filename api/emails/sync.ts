@@ -214,9 +214,9 @@ export default async function handler(
 
         let removedCount = 0;
         if (recentDbEmails && recentDbEmails.length > 0) {
-          // Check each email's current labels in Gmail
+          // Check each email's current labels in Gmail (need 'metadata' to get labelIds)
           const idsToCheck = recentDbEmails.map(e => e.gmail_message_id);
-          const messages = await batchGetMessages(accessToken, idsToCheck, 'minimal');
+          const messages = await batchGetMessages(accessToken, idsToCheck, 'metadata', ['From']);
 
           // Find emails no longer in inbox (moved to spam/trash/archive)
           const notInInbox: string[] = [];
