@@ -241,10 +241,18 @@ export async function getHistoryChanges(
           if (record.messagesDeleted) {
             deletedMessageIds.push(...record.messagesDeleted.map(m => m.message.id));
           }
-          // Catch messages moved to trash (labelsAdded with TRASH label)
+          // Catch messages moved to trash or spam (labelsAdded with TRASH or SPAM label)
           if (record.labelsAdded) {
             for (const labelChange of record.labelsAdded) {
-              if (labelChange.labelIds?.includes('TRASH')) {
+              if (labelChange.labelIds?.includes('TRASH') || labelChange.labelIds?.includes('SPAM')) {
+                deletedMessageIds.push(labelChange.message.id);
+              }
+            }
+          }
+          // Catch messages removed from inbox (archived)
+          if (record.labelsRemoved) {
+            for (const labelChange of record.labelsRemoved) {
+              if (labelChange.labelIds?.includes('INBOX')) {
                 deletedMessageIds.push(labelChange.message.id);
               }
             }
@@ -286,7 +294,7 @@ export async function getDeletedMessageIds(
  */
 export async function listAllMessageIds(
   accessToken: string,
-  query: string = '-in:sent -in:drafts -in:trash -in:spam'
+  query: string = 'in:inbox -in:sent -in:drafts -in:trash -in:spam'
 ): Promise<string[]> {
   const allIds: string[] = [];
   let pageToken: string | undefined;
@@ -330,6 +338,10 @@ export async function getMessage(
   return gmailRequest(accessToken, endpoint);
 }
 
+export interface ProgressCallback {
+  (progress: { phase: 'listing' | 'fetching' | 'processing'; current: number; total: number }): void;
+}
+
 /**
  * Batch get multiple messages with rate limiting
  * Uses conservative settings to avoid Gmail API rate limits
@@ -338,7 +350,8 @@ export async function batchGetMessages(
   accessToken: string,
   messageIds: string[],
   format: 'full' | 'metadata' | 'minimal' = 'metadata',
-  metadataHeaders?: string[]
+  metadataHeaders?: string[],
+  onProgress?: ProgressCallback
 ): Promise<GmailMessage[]> {
   // Conservative rate limiting to stay well under Gmail's limits
   // - 10 concurrent requests (Gmail allows ~25)
@@ -372,6 +385,11 @@ export async function batchGetMessages(
     const processed = Math.min(i + BATCH_SIZE, messageIds.length);
     if (processed % 100 === 0 || processed >= messageIds.length) {
       console.log(`Processed ${processed}/${messageIds.length} messages`);
+    }
+
+    // Report progress via callback
+    if (onProgress) {
+      onProgress({ phase: 'fetching', current: processed, total: messageIds.length });
     }
   }
 
@@ -785,19 +803,21 @@ export async function archiveEmailsFromSender(
 /**
  * Fetch and aggregate sender statistics from Gmail
  * @param afterDate - Optional date for incremental sync (only fetch emails after this date)
+ * @param onProgress - Optional callback to report progress during sync
  * @returns SyncResult containing both aggregated sender stats and individual email records
  */
 export async function fetchSenderStats(
   accessToken: string,
   maxMessages: number = 1000,
-  afterDate?: Date
+  afterDate?: Date,
+  onProgress?: ProgressCallback
 ): Promise<SyncResult> {
   // Fetch message list
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
 
-  // Build query - exclude sent/drafts/trash/spam, optionally filter by date
-  let query = '-in:sent -in:drafts -in:trash -in:spam';
+  // Build query - only include inbox emails, exclude sent/drafts/trash/spam
+  let query = 'in:inbox -in:sent -in:drafts -in:trash -in:spam';
   if (afterDate) {
     // Use epoch seconds for precise timestamp filtering (avoids date boundary issues)
     // Gmail's after: operator accepts epoch seconds for exact timestamp matching
@@ -817,6 +837,12 @@ export async function fetchSenderStats(
 
     allMessageRefs.push(...response.messages);
 
+    // Report listing progress (estimate total based on resultSizeEstimate or maxMessages)
+    if (onProgress) {
+      const estimatedTotal = Math.min(response.resultSizeEstimate || maxMessages, maxMessages);
+      onProgress({ phase: 'listing', current: allMessageRefs.length, total: estimatedTotal });
+    }
+
     if (!response.nextPageToken) break;
     pageToken = response.nextPageToken;
 
@@ -835,15 +861,31 @@ export async function fetchSenderStats(
   // This is much faster than 'full' format and avoids rate limiting issues
   const messageIds = allMessageRefs.map(m => m.id);
   const requiredHeaders = ['From', 'List-Unsubscribe', 'List-Unsubscribe-Post', 'Date', 'Subject'];
-  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
+  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders, onProgress);
 
   console.log(`Successfully fetched ${messages.length} of ${messageIds.length} messages (${messageIds.length - messages.length} failed)`);
 
-  // Aggregate by sender (using composite key: name + email)
-  const senderMap = aggregateBySender(messages);
+  // Filter out any messages that are in spam, trash, or not in inbox (safety check)
+  const inboxMessages = messages.filter(msg => {
+    const labels = msg.labelIds || [];
+    // Must be in inbox and not in spam/trash
+    return labels.includes('INBOX') && !labels.includes('SPAM') && !labels.includes('TRASH');
+  });
 
-  // Extract individual email records for storage
-  const emails = extractEmailRecords(messages);
+  if (inboxMessages.length < messages.length) {
+    console.log(`Filtered out ${messages.length - inboxMessages.length} non-inbox messages (spam/trash/archived)`);
+  }
+
+  // Report processing phase
+  if (onProgress) {
+    onProgress({ phase: 'processing', current: 0, total: inboxMessages.length });
+  }
+
+  // Aggregate by sender (using composite key: name + email)
+  const senderMap = aggregateBySender(inboxMessages);
+
+  // Extract individual email records for storage (only inbox messages)
+  const emails = extractEmailRecords(inboxMessages);
 
   // Convert senders to array and sort by count
   const senders = Array.from(senderMap.values()).sort((a, b) => b.count - a.count);

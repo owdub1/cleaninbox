@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getHistoryChanges, getDeletedMessageIds, getProfile, listAllMessageIds, batchGetMessages, getMessage } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getHistoryChanges, getDeletedMessageIds, getProfile, listAllMessageIds, batchGetMessages, getMessage, ProgressCallback } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -26,6 +26,25 @@ const limiter = rateLimit({
   maxRequests: 10, // 10 syncs per minute (allows multiple accounts)
   message: 'Too many sync requests. Please wait before syncing again.'
 });
+
+// SSE helper functions
+function sendSSE(res: VercelResponse, event: string, data: any) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+function sendProgress(res: VercelResponse, phase: string, current: number, total: number) {
+  sendSSE(res, 'progress', { phase, current, total });
+}
+
+function sendComplete(res: VercelResponse, data: any) {
+  sendSSE(res, 'complete', data);
+  res.end();
+}
+
+function sendError(res: VercelResponse, error: string, code?: string) {
+  sendSSE(res, 'error', { error, code });
+  res.end();
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -181,8 +200,63 @@ export default async function handler(
         console.log('History expired, falling back to standard sync');
         // Fall through to standard sync below
       } else if (addedMessageIds.length === 0 && deletedMessageIds.length === 0) {
-        // No changes - instant return!
-        console.log('Fast sync: No changes detected, sync complete');
+        // No history changes, but verify recent emails are still in inbox
+        // This catches emails moved to spam/trash/archive outside of history window
+        console.log('Fast sync: No history changes, verifying inbox status...');
+
+        // Get recent emails from our database (last 50)
+        const { data: recentDbEmails } = await supabase
+          .from('emails')
+          .select('id, gmail_message_id, sender_email, sender_name')
+          .eq('email_account_id', account.id)
+          .order('received_at', { ascending: false })
+          .limit(50);
+
+        let removedCount = 0;
+        if (recentDbEmails && recentDbEmails.length > 0) {
+          // Check each email's current labels in Gmail
+          const idsToCheck = recentDbEmails.map(e => e.gmail_message_id);
+          const messages = await batchGetMessages(accessToken, idsToCheck, 'minimal');
+
+          // Find emails no longer in inbox (moved to spam/trash/archive)
+          const notInInbox: string[] = [];
+          for (const msg of messages) {
+            const labels = msg.labelIds || [];
+            if (!labels.includes('INBOX') || labels.includes('SPAM') || labels.includes('TRASH')) {
+              notInInbox.push(msg.id);
+            }
+          }
+
+          if (notInInbox.length > 0) {
+            console.log(`Found ${notInInbox.length} emails no longer in inbox, removing...`);
+            const emailsToRemove = recentDbEmails.filter(e => notInInbox.includes(e.gmail_message_id));
+
+            // Delete from database
+            await supabase.from('emails').delete()
+              .in('gmail_message_id', notInInbox)
+              .eq('email_account_id', account.id);
+
+            // Update sender counts
+            const senderCounts = new Map<string, number>();
+            for (const email of emailsToRemove) {
+              const key = `${email.sender_email}|||${email.sender_name}`;
+              senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
+            }
+
+            for (const [key, count] of senderCounts) {
+              const [senderEmail, senderName] = key.split('|||');
+              await supabase.rpc('decrement_sender_count', {
+                p_account_id: account.id,
+                p_sender_email: senderEmail,
+                p_sender_name: senderName,
+                p_count: count
+              });
+            }
+
+            removedCount = notInInbox.length;
+          }
+        }
+
         await supabase
           .from('email_accounts')
           .update({
@@ -195,8 +269,8 @@ export default async function handler(
         await supabase.from('activity_log').insert({
           user_id: user.userId,
           action_type: 'email_sync',
-          description: 'Fast sync: No changes',
-          metadata: { email, syncType: 'fast', changes: 0 }
+          description: removedCount > 0 ? `Fast sync: Removed ${removedCount} non-inbox emails` : 'Fast sync: No changes',
+          metadata: { email, syncType: 'fast', changes: removedCount }
         });
 
         return res.status(200).json({
@@ -204,8 +278,8 @@ export default async function handler(
           totalSenders: 0,
           updatedSenders: 0,
           totalEmails: account.total_emails || 0,
-          deletedEmails: 0,
-          message: 'No new changes',
+          deletedEmails: removedCount,
+          message: removedCount > 0 ? `Removed ${removedCount} emails no longer in inbox` : 'No new changes',
           syncType: 'fast'
         });
       } else {
@@ -385,6 +459,13 @@ export default async function handler(
 
     // ========== STANDARD SYNC PATH ==========
     // Used for first sync, stale sync, or when history is expired
+    // This path uses SSE to stream progress updates to the client
+
+    // Set SSE headers for streaming response
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
 
     if (isStaleSync) {
       console.log(`Last sync was over ${STALE_SYNC_DAYS} days ago - forcing full sync to refresh`);
@@ -400,10 +481,17 @@ export default async function handler(
 
     const syncType = isFirstSync ? 'FIRST' : isStaleSync ? 'STALE' : isIncrementalSync ? 'Quick' : 'FULL';
     console.log(`${syncType} sync starting... (plan: ${planKey}, fetching: ${messagesToFetch})`);
+
+    // Progress callback for SSE streaming
+    const onProgress: ProgressCallback = (progress) => {
+      sendProgress(res, progress.phase, progress.current, progress.total);
+    };
+
     const syncResult: SyncResult = await fetchSenderStats(
       accessToken,
       messagesToFetch,
-      undefined  // no date filter, always fetch most recent
+      undefined,  // no date filter, always fetch most recent
+      onProgress
     );
 
     // Filter out user's own email address (sent/replied emails show up with user as sender)
@@ -419,7 +507,7 @@ export default async function handler(
     // This prevents data loss when Gmail API returns 0 messages due to auth issues, API errors, or empty response
     if (isFullSync && senderStats.length === 0) {
       console.warn('Full sync returned 0 senders - keeping existing data to prevent data loss');
-      return res.status(200).json({
+      return sendComplete(res, {
         success: true,
         totalSenders: 0,
         totalEmails: account.total_emails || 0,
@@ -996,15 +1084,10 @@ export default async function handler(
     // Check if sender inserts failed
     if (failedSenders > 0 && insertedSenders === 0 && !isIncrementalSync) {
       console.error('All sender inserts failed:', lastInsertError);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to save sender data to database',
-        details: lastInsertError?.message || 'Unknown database error',
-        code: 'SENDER_INSERT_FAILED'
-      });
+      return sendError(res, 'Failed to save sender data to database', 'SENDER_INSERT_FAILED');
     }
 
-    return res.status(200).json({
+    return sendComplete(res, {
       success: true,
       totalSenders: insertedSenders,
       updatedSenders: updatedSendersCount,
@@ -1030,12 +1113,20 @@ export default async function handler(
         .eq('user_id', user.userId)
         .eq('email', email);
 
+      // Check if SSE headers were already set (standard sync path)
+      if (res.headersSent) {
+        return sendError(res, 'Gmail connection expired. Please reconnect.', 'TOKEN_EXPIRED');
+      }
       return res.status(401).json({
         error: 'Gmail connection expired. Please reconnect.',
         code: 'TOKEN_EXPIRED'
       });
     }
 
+    // Check if SSE headers were already set (standard sync path)
+    if (res.headersSent) {
+      return sendError(res, 'Failed to sync emails', 'SYNC_ERROR');
+    }
     return res.status(500).json({
       error: 'Failed to sync emails',
       code: 'SYNC_ERROR'

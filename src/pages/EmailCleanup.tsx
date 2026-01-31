@@ -33,7 +33,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useGmailConnection } from '../hooks/useGmailConnection';
-import { useEmailSenders, Sender, EmailMessage } from '../hooks/useEmailSenders';
+import { useEmailSenders, Sender, EmailMessage, SyncProgress } from '../hooks/useEmailSenders';
 import { useCleanupActions } from '../hooks/useCleanupActions';
 import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
@@ -275,6 +275,42 @@ interface UndoAction {
   timestamp: number;
 }
 
+// Sync progress bar component
+const SyncProgressBar = ({ progress }: { progress: SyncProgress }) => {
+  const percentage = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+
+  const phaseLabels: Record<string, string> = {
+    listing: 'Discovering emails...',
+    fetching: 'Fetching email details...',
+    processing: 'Processing data...'
+  };
+
+  return (
+    <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center">
+          <RefreshCw className="w-4 h-4 animate-spin text-indigo-600 mr-2" />
+          <span className="text-sm font-medium text-indigo-900">
+            {phaseLabels[progress.phase] || 'Syncing...'}
+          </span>
+        </div>
+        <span className="text-sm text-indigo-700">
+          {progress.current.toLocaleString()} / {progress.total.toLocaleString()}
+        </span>
+      </div>
+      <div className="h-2 bg-indigo-100 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-indigo-600 rounded-full transition-all duration-300 ease-out"
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="text-right mt-1">
+        <span className="text-xs text-indigo-600">{percentage}%</span>
+      </div>
+    </div>
+  );
+};
+
 const UndoToast = ({
   action,
   onUndo,
@@ -409,6 +445,7 @@ const EmailCleanup = () => {
     senders,
     loading: sendersLoading,
     syncing,
+    syncProgress,
     error: sendersError,
     fetchSenders,
     syncEmails,
@@ -1465,10 +1502,14 @@ const EmailCleanup = () => {
             {(sendersLoading || syncing) && (
               <div className="px-4 py-3 space-y-3">
                 {syncing && (
-                  <div className="flex items-center justify-center py-4 mb-2">
-                    <RefreshCw className="w-5 h-5 animate-spin text-indigo-600 mr-2" />
-                    <span className="text-sm text-gray-600">Syncing your emails...</span>
-                  </div>
+                  syncProgress ? (
+                    <SyncProgressBar progress={syncProgress} />
+                  ) : (
+                    <div className="flex items-center justify-center py-4 mb-2">
+                      <RefreshCw className="w-5 h-5 animate-spin text-indigo-600 mr-2" />
+                      <span className="text-sm text-gray-600">Syncing your emails...</span>
+                    </div>
+                  )
                 )}
                 {/* Skeleton rows */}
                 {[...Array(6)].map((_, i) => (
