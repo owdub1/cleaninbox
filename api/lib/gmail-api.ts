@@ -227,8 +227,17 @@ export async function getDeletedMessageIds(
 
       if (response.history) {
         for (const record of response.history) {
+          // Catch permanently deleted messages
           if (record.messagesDeleted) {
             deletedIds.push(...record.messagesDeleted.map(m => m.message.id));
+          }
+          // Catch messages moved to trash (labelsAdded with TRASH label)
+          if (record.labelsAdded) {
+            for (const labelChange of record.labelsAdded) {
+              if (labelChange.labelIds?.includes('TRASH')) {
+                deletedIds.push(labelChange.message.id);
+              }
+            }
           }
         }
       }
