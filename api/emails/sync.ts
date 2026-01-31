@@ -200,11 +200,108 @@ export default async function handler(
         console.log('History expired, falling back to standard sync');
         // Fall through to standard sync below
       } else if (addedMessageIds.length === 0 && deletedMessageIds.length === 0) {
-        // No history changes, but verify recent emails are still in inbox
-        // This catches emails moved to spam/trash/archive outside of history window
-        console.log('Fast sync: No history changes, verifying inbox status...');
+        // History API says no changes, but let's verify by fetching recent emails from Gmail
+        // This catches emails that History API might have missed
+        console.log('Fast sync: No history changes detected, checking Gmail for new emails...');
 
-        // Get recent emails from our database (last 50)
+        // Fetch 50 most recent emails from Gmail to compare
+        const { listMessages } = await import('../lib/gmail-api.js');
+        const recentGmailResponse = await listMessages(accessToken, {
+          maxResults: 50,
+          q: '-in:sent -in:drafts -in:trash -in:spam'
+        });
+
+        const recentGmailIds = (recentGmailResponse.messages || []).map((m: any) => m.id);
+
+        // Get IDs we already have in database
+        const { data: existingEmails } = await supabase
+          .from('emails')
+          .select('gmail_message_id')
+          .eq('email_account_id', account.id)
+          .in('gmail_message_id', recentGmailIds);
+
+        const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
+        const newMessageIds = recentGmailIds.filter((id: string) => !existingIds.has(id));
+
+        let addedCount = 0;
+        let removedCount = 0;
+
+        // Add any new emails that we don't have
+        if (newMessageIds.length > 0) {
+          console.log(`Found ${newMessageIds.length} new emails not in database, adding...`);
+          const messages = await batchGetMessages(
+            accessToken,
+            newMessageIds,
+            'metadata',
+            ['From', 'Date', 'Subject', 'List-Unsubscribe']
+          );
+
+          for (const msg of messages) {
+            // Skip spam/trash
+            const labels = msg.labelIds || [];
+            if (labels.includes('SPAM') || labels.includes('TRASH')) continue;
+
+            const fromHeader = msg.payload?.headers?.find((h: any) => h.name === 'From')?.value || '';
+            const dateHeader = msg.payload?.headers?.find((h: any) => h.name === 'Date')?.value || '';
+            const subjectHeader = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || '';
+
+            const emailMatch = fromHeader.match(/<([^>]+)>/) || fromHeader.match(/([^\s<]+@[^\s>]+)/);
+            const senderEmail = emailMatch ? emailMatch[1].toLowerCase() : fromHeader.toLowerCase();
+            const nameMatch = fromHeader.match(/^"?([^"<]+)"?\s*</) || fromHeader.match(/^([^<@]+)(?=@)/);
+            const senderName = nameMatch ? nameMatch[1].trim() : senderEmail;
+
+            if (senderEmail === userEmail) continue;
+
+            const { error } = await supabase.from('emails').insert({
+              gmail_message_id: msg.id,
+              email_account_id: account.id,
+              sender_email: senderEmail,
+              sender_name: senderName,
+              subject: subjectHeader || '(No Subject)',
+              snippet: msg.snippet || '',
+              received_at: dateHeader ? new Date(dateHeader).toISOString() : new Date(parseInt(msg.internalDate)).toISOString(),
+              is_unread: msg.labelIds?.includes('UNREAD') || false,
+              thread_id: msg.threadId,
+              labels: msg.labelIds || [],
+            });
+
+            if (!error) {
+              addedCount++;
+
+              // Ensure sender exists and update count
+              const { data: existingSender } = await supabase
+                .from('email_senders')
+                .select('id, email_count')
+                .eq('email_account_id', account.id)
+                .eq('sender_email', senderEmail)
+                .eq('sender_name', senderName)
+                .single();
+
+              if (existingSender) {
+                await supabase.from('email_senders')
+                  .update({
+                    email_count: existingSender.email_count + 1,
+                    last_email_date: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', existingSender.id);
+              } else {
+                await supabase.from('email_senders').insert({
+                  user_id: user.userId,
+                  email_account_id: account.id,
+                  sender_email: senderEmail,
+                  sender_name: senderName,
+                  email_count: 1,
+                  unread_count: msg.labelIds?.includes('UNREAD') ? 1 : 0,
+                  first_email_date: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
+                  last_email_date: dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString(),
+                });
+              }
+            }
+          }
+        }
+
+        // Also check for spam/trash removal
         const { data: recentDbEmails } = await supabase
           .from('emails')
           .select('id, gmail_message_id, sender_email, sender_name')
@@ -212,15 +309,12 @@ export default async function handler(
           .order('received_at', { ascending: false })
           .limit(50);
 
-        let removedCount = 0;
         if (recentDbEmails && recentDbEmails.length > 0) {
-          // Check each email's current labels in Gmail (need 'metadata' to get labelIds)
           const idsToCheck = recentDbEmails.map(e => e.gmail_message_id);
-          const messages = await batchGetMessages(accessToken, idsToCheck, 'metadata', ['From']);
+          const checkMessages = await batchGetMessages(accessToken, idsToCheck, 'metadata', ['From']);
 
-          // Find emails that have been moved to spam or trash
           const notInInbox: string[] = [];
-          for (const msg of messages) {
+          for (const msg of checkMessages) {
             const labels = msg.labelIds || [];
             if (labels.includes('SPAM') || labels.includes('TRASH')) {
               notInInbox.push(msg.id);
@@ -228,15 +322,11 @@ export default async function handler(
           }
 
           if (notInInbox.length > 0) {
-            console.log(`Found ${notInInbox.length} emails no longer in inbox, removing...`);
             const emailsToRemove = recentDbEmails.filter(e => notInInbox.includes(e.gmail_message_id));
-
-            // Delete from database
             await supabase.from('emails').delete()
               .in('gmail_message_id', notInInbox)
               .eq('email_account_id', account.id);
 
-            // Update sender counts
             const senderCounts = new Map<string, number>();
             for (const email of emailsToRemove) {
               const key = `${email.sender_email}|||${email.sender_name}`;
@@ -266,20 +356,24 @@ export default async function handler(
           })
           .eq('id', account.id);
 
+        const changeMsg = addedCount > 0 || removedCount > 0
+          ? `Fast sync: ${addedCount} added, ${removedCount} removed`
+          : 'Fast sync: No changes';
         await supabase.from('activity_log').insert({
           user_id: user.userId,
           action_type: 'email_sync',
-          description: removedCount > 0 ? `Fast sync: Removed ${removedCount} non-inbox emails` : 'Fast sync: No changes',
-          metadata: { email, syncType: 'fast', changes: removedCount }
+          description: changeMsg,
+          metadata: { email, syncType: 'fast', addedEmails: addedCount, removedEmails: removedCount }
         });
 
         return res.status(200).json({
           success: true,
           totalSenders: 0,
           updatedSenders: 0,
+          addedEmails: addedCount,
           totalEmails: account.total_emails || 0,
           deletedEmails: removedCount,
-          message: removedCount > 0 ? `Removed ${removedCount} emails no longer in inbox` : 'No new changes',
+          message: addedCount > 0 || removedCount > 0 ? `Added ${addedCount}, removed ${removedCount}` : 'No new changes',
           syncType: 'fast'
         });
       } else {
