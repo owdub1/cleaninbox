@@ -434,35 +434,49 @@ export default async function handler(
       if (isIncrementalSync) {
         console.log(`Email storage complete: ${insertedCount} new, ${duplicateCount} duplicates skipped`);
 
-        // Always update sender dates from actual email data during incremental sync
-        // This ensures senders show in correct date groups even if emails were duplicates
-        console.log('Updating sender dates from fetched emails...');
+        // Always update sender dates AND counts from actual email data during incremental sync
+        // This ensures senders show correct date groups and email counts
+        console.log('Updating sender dates and counts from fetched emails...');
         const senderEmails = [...new Set(emailRecords.map(e => e.sender_email))];
         for (const senderEmail of senderEmails) {
-          // Get the latest email date for this sender from DB
-          const { data: latestEmail } = await supabase
-            .from('emails')
-            .select('received_at')
+          // Get all sender records for this email address
+          const { data: senderRecords } = await supabase
+            .from('email_senders')
+            .select('id, sender_name')
             .eq('email_account_id', account.id)
-            .eq('sender_email', senderEmail)
-            .order('received_at', { ascending: false })
-            .limit(1);
+            .eq('sender_email', senderEmail);
 
-          if (latestEmail && latestEmail.length > 0) {
-            // Update all sender records with this email (regardless of name)
-            const { error: updateError } = await supabase
-              .from('email_senders')
-              .update({ last_email_date: latestEmail[0].received_at, updated_at: new Date().toISOString() })
+          for (const sender of senderRecords || []) {
+            // Count actual emails and get latest date for this specific sender (email + name)
+            const { data: emailStats } = await supabase
+              .from('emails')
+              .select('received_at')
               .eq('email_account_id', account.id)
               .eq('sender_email', senderEmail)
-              .lt('last_email_date', latestEmail[0].received_at);
+              .eq('sender_name', sender.sender_name)
+              .order('received_at', { ascending: false });
 
-            if (updateError) {
-              console.warn(`Failed to update date for ${senderEmail}:`, updateError);
+            if (emailStats && emailStats.length > 0) {
+              const actualCount = emailStats.length;
+              const latestDate = emailStats[0].received_at;
+
+              // Update sender with correct count and date
+              const { error: updateError } = await supabase
+                .from('email_senders')
+                .update({
+                  email_count: actualCount,
+                  last_email_date: latestDate,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', sender.id);
+
+              if (updateError) {
+                console.warn(`Failed to update sender ${senderEmail}:`, updateError);
+              }
             }
           }
         }
-        console.log(`Updated dates for ${senderEmails.length} sender emails`);
+        console.log(`Updated dates and counts for ${senderEmails.length} sender emails`);
       } else {
         console.log('Email storage complete');
       }
