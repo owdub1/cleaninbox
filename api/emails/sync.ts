@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getHistoryChanges, getDeletedMessageIds, getProfile, listAllMessageIds, batchGetMessages, getMessage, ProgressCallback } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getHistoryChanges, getDeletedMessageIds, getProfile, listAllMessageIds, listMessages, batchGetMessages, getMessage, ProgressCallback } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -205,7 +205,6 @@ export default async function handler(
         console.log('Fast sync: No history changes detected, checking Gmail for new emails...');
 
         // Fetch 50 most recent emails from Gmail to compare
-        const { listMessages } = await import('../lib/gmail-api.js');
         const recentGmailResponse = await listMessages(accessToken, {
           maxResults: 50,
           q: '-in:sent -in:drafts -in:trash -in:spam'
