@@ -712,6 +712,49 @@ export default async function handler(
       })
       .eq('id', account.id);
 
+    // Sanity check: Validate sender dates match actual emails in DB
+    // This catches edge cases where sender dates become stale (e.g., email deleted before orphan detection)
+    if (isIncrementalSync && emailRecords.length > 0) {
+      const processedSenderEmails = [...new Set(emailRecords.map(e => e.sender_email))];
+      console.log(`Validating sender dates for ${processedSenderEmails.length} processed senders...`);
+
+      let fixedDates = 0;
+      for (const senderEmail of processedSenderEmails) {
+        // Get all sender records for this email address
+        const { data: senderRecords } = await supabase
+          .from('email_senders')
+          .select('id, sender_name, last_email_date')
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+
+        for (const sender of senderRecords || []) {
+          // Get the actual latest email date from the emails table
+          const { data: actualLatest } = await supabase
+            .from('emails')
+            .select('received_at')
+            .eq('email_account_id', account.id)
+            .eq('sender_email', senderEmail)
+            .eq('sender_name', sender.sender_name)
+            .order('received_at', { ascending: false })
+            .limit(1);
+
+          if (actualLatest && actualLatest.length > 0) {
+            const actualDate = actualLatest[0].received_at;
+            if (sender.last_email_date !== actualDate) {
+              await supabase
+                .from('email_senders')
+                .update({ last_email_date: actualDate, updated_at: new Date().toISOString() })
+                .eq('id', sender.id);
+              fixedDates++;
+            }
+          }
+        }
+      }
+      if (fixedDates > 0) {
+        console.log(`Fixed ${fixedDates} stale sender dates`);
+      }
+    }
+
     // Log to activity_log for Recent Activity display
     const updatedSendersCount = sendersToUpdate?.length || 0;
     const orphanedPart = orphanedCount > 0 ? `, ${orphanedCount} deleted` : '';
