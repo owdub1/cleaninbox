@@ -56,7 +56,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status, last_synced, total_emails, history_id')
+      .select('id, gmail_email, connection_status, last_synced, total_emails, history_id, full_orphan_check_done')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -433,6 +433,39 @@ export default async function handler(
       }
       if (isIncrementalSync) {
         console.log(`Email storage complete: ${insertedCount} new, ${duplicateCount} duplicates skipped`);
+
+        // After inserting new emails, update sender dates from actual email data
+        // This is more reliable than senderStats comparison which can fail due to name mismatches
+        if (insertedCount > 0) {
+          console.log('Updating sender dates from newly inserted emails...');
+          // Get the max received_at for each sender from the emails we just processed
+          const senderEmails = [...new Set(emailRecords.map(e => e.sender_email))];
+          for (const senderEmail of senderEmails) {
+            // Get the latest email date for this sender from DB
+            const { data: latestEmail } = await supabase
+              .from('emails')
+              .select('received_at')
+              .eq('email_account_id', account.id)
+              .eq('sender_email', senderEmail)
+              .order('received_at', { ascending: false })
+              .limit(1);
+
+            if (latestEmail && latestEmail.length > 0) {
+              // Update all sender records with this email (regardless of name)
+              const { error: updateError } = await supabase
+                .from('email_senders')
+                .update({ last_email_date: latestEmail[0].received_at, updated_at: new Date().toISOString() })
+                .eq('email_account_id', account.id)
+                .eq('sender_email', senderEmail)
+                .lt('last_email_date', latestEmail[0].received_at);
+
+              if (updateError) {
+                console.warn(`Failed to update date for ${senderEmail}:`, updateError);
+              }
+            }
+          }
+          console.log(`Updated dates for ${senderEmails.length} sender emails`);
+        }
       } else {
         console.log('Email storage complete');
       }
@@ -506,7 +539,74 @@ export default async function handler(
             console.log(`Removed ${deletedEmails.length} deleted emails from ${senderCounts.size} senders`);
           }
         } else {
-          console.log('No deleted emails detected');
+          console.log('No deleted emails detected via History API');
+          // If full orphan check was never done, run it now to catch old deletions
+          if (!account.full_orphan_check_done) {
+            console.log('Running one-time full orphan check (history_id exists but orphan check never done)...');
+            const gmailIds = await listAllMessageIds(accessToken);
+            const gmailIdSet = new Set(gmailIds);
+            console.log(`Fetched ${gmailIds.length} message IDs from Gmail for comparison`);
+
+            const { data: dbEmails } = await supabase
+              .from('emails')
+              .select('id, gmail_message_id, sender_email, sender_name')
+              .eq('email_account_id', account.id);
+
+            const orphanedEmails = (dbEmails || []).filter(
+              e => !gmailIdSet.has(e.gmail_message_id)
+            );
+
+            if (orphanedEmails.length > 0) {
+              console.log(`Found ${orphanedEmails.length} orphaned emails to remove`);
+              const dbIds = orphanedEmails.map(e => e.id);
+              await supabase.from('emails').delete().in('id', dbIds);
+
+              const senderCounts = new Map<string, number>();
+              for (const email of orphanedEmails) {
+                const key = `${email.sender_email}|||${email.sender_name}`;
+                senderCounts.set(key, (senderCounts.get(key) || 0) + 1);
+              }
+
+              for (const [key, count] of senderCounts) {
+                const [senderEmail, senderName] = key.split('|||');
+                await supabase.rpc('decrement_sender_count', {
+                  p_account_id: account.id,
+                  p_sender_email: senderEmail,
+                  p_sender_name: senderName,
+                  p_count: count
+                });
+
+                const { data: remainingEmails } = await supabase
+                  .from('emails')
+                  .select('received_at')
+                  .eq('email_account_id', account.id)
+                  .eq('sender_email', senderEmail)
+                  .eq('sender_name', senderName)
+                  .order('received_at', { ascending: false })
+                  .limit(1);
+
+                if (remainingEmails && remainingEmails.length > 0) {
+                  await supabase
+                    .from('email_senders')
+                    .update({ last_email_date: remainingEmails[0].received_at, updated_at: new Date().toISOString() })
+                    .eq('email_account_id', account.id)
+                    .eq('sender_email', senderEmail)
+                    .eq('sender_name', senderName);
+                }
+              }
+
+              orphanedCount = orphanedEmails.length;
+              console.log(`Removed ${orphanedEmails.length} orphaned emails from ${senderCounts.size} senders`);
+            } else {
+              console.log('No orphaned emails found');
+            }
+
+            // Mark full orphan check as done
+            await supabase
+              .from('email_accounts')
+              .update({ full_orphan_check_done: true })
+              .eq('id', account.id);
+          }
         }
       } else {
         // Bootstrap: No history_id yet, do full comparison once
@@ -575,6 +675,12 @@ export default async function handler(
         } else {
           console.log('No orphaned emails found');
         }
+
+        // Mark full orphan check as done
+        await supabase
+          .from('email_accounts')
+          .update({ full_orphan_check_done: true })
+          .eq('id', account.id);
       }
     }
 
