@@ -88,8 +88,19 @@ export default async function handler(
       account.gmail_email || accountEmail
     );
 
-    // Trash the message
+    // Trash the message in Gmail
     await trashMessage(accessToken, messageId);
+
+    // Delete from local emails table
+    const { error: deleteError } = await supabase
+      .from('emails')
+      .delete()
+      .eq('email_account_id', account.id)
+      .eq('gmail_message_id', messageId);
+
+    if (deleteError) {
+      console.warn('Failed to delete email from local DB:', deleteError);
+    }
 
     // Update sender cache (decrement count)
     if (senderEmail) {
@@ -125,6 +136,22 @@ export default async function handler(
         status: 'completed',
         completed_at: new Date().toISOString()
       });
+
+    // Update user stats (increment emails_processed)
+    const { data: currentStats } = await supabase
+      .from('user_stats')
+      .select('emails_processed, unsubscribed')
+      .eq('user_id', user.userId)
+      .single();
+
+    await supabase
+      .from('user_stats')
+      .upsert({
+        user_id: user.userId,
+        emails_processed: (currentStats?.emails_processed || 0) + 1,
+        unsubscribed: currentStats?.unsubscribed || 0,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
 
     return res.status(200).json({
       success: true,
