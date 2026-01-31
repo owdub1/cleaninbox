@@ -413,7 +413,8 @@ const EmailCleanup = () => {
     fetchSenders,
     syncEmails,
     getSendersByYear,
-    fetchEmailsBySender
+    fetchEmailsBySender,
+    updateSenderCount
   } = useEmailSenders({ autoFetch: true });
 
   // State for storing loaded emails by sender
@@ -656,9 +657,10 @@ const EmailCleanup = () => {
   };
 
   // Handle deleting a single email
-  const handleDeleteSingleEmail = async (email: EmailMessage, senderEmail: string) => {
+  const handleDeleteSingleEmail = async (email: EmailMessage, senderEmail: string, senderName: string) => {
     if (!connectedGmailAccount || deletingEmailId) return;
 
+    const senderKey = `${senderName}|||${senderEmail}`;
     setDeletingEmailId(email.id);
     try {
       const result = await deleteSingleEmail(
@@ -668,11 +670,13 @@ const EmailCleanup = () => {
       );
 
       if (result?.success) {
-        // Remove email from local state
+        // Remove email from local state (use composite key)
         setSenderEmails(prev => ({
           ...prev,
-          [senderEmail]: prev[senderEmail]?.filter(e => e.id !== email.id) || []
+          [senderKey]: prev[senderKey]?.filter(e => e.id !== email.id) || []
         }));
+        // Update sender count immediately for instant UI feedback
+        updateSenderCount(senderEmail, senderName, -1);
         // Show undo toast
         setUndoAction({
           type: 'delete',
@@ -681,8 +685,6 @@ const EmailCleanup = () => {
           messageIds: [email.id],
           timestamp: Date.now()
         });
-        // Refresh senders to update count
-        fetchSenders();
       }
     } catch (error) {
       setNotification({ type: 'error', message: 'Failed to delete email' });
@@ -1280,7 +1282,7 @@ const EmailCleanup = () => {
           const senderKey = `${viewingEmail.senderName}|||${viewingEmail.senderEmail}`;
           const email = senderEmails[senderKey]?.find(e => e.id === viewingEmail.messageId);
           if (email) {
-            handleDeleteSingleEmail(email, viewingEmail.senderEmail);
+            handleDeleteSingleEmail(email, viewingEmail.senderEmail, viewingEmail.senderName);
           }
         } : undefined}
       />
@@ -1623,7 +1625,7 @@ const EmailCleanup = () => {
                                             </div>
                                           </div>
                                           <button
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email); }}
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email, sender.name); }}
                                             disabled={deletingEmailId === email.id}
                                             className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                                             title="Delete email"
@@ -1735,7 +1737,7 @@ const EmailCleanup = () => {
                                     </div>
                                   </div>
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email); }}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email, sender.name); }}
                                     disabled={deletingEmailId === email.id}
                                     className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                                     title="Delete email"
@@ -1858,7 +1860,7 @@ const EmailCleanup = () => {
                                       </div>
                                     </div>
                                     <button
-                                      onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email); }}
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteSingleEmail(email, sender.email, sender.name); }}
                                       disabled={deletingEmailId === email.id}
                                       className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
                                       title="Delete email"

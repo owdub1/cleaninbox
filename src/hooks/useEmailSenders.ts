@@ -355,6 +355,26 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     }
   }, [options.autoFetch, token, hasFetched, fetchSenders]);
 
+  /**
+   * Update a sender's email count locally (for immediate UI feedback)
+   * @param senderEmail - The sender's email address
+   * @param senderName - The sender's display name
+   * @param delta - Amount to change count by (negative to decrement)
+   */
+  const updateSenderCount = useCallback((
+    senderEmail: string,
+    senderName: string,
+    delta: number
+  ) => {
+    setSenders(prevSenders =>
+      prevSenders.map(sender =>
+        sender.email === senderEmail && sender.name === senderName
+          ? { ...sender, emailCount: Math.max(0, sender.emailCount + delta) }
+          : sender
+      ).filter(sender => sender.emailCount > 0) // Remove senders with 0 emails
+    );
+  }, []);
+
   return {
     senders,
     loading,
@@ -370,5 +390,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     getSendersByEmailCount,
     getSendersOlderThan,
     fetchEmailsBySender,
+    updateSenderCount,
   };
 };
