@@ -226,22 +226,21 @@ export default async function handler(
       }
     }
 
-    // Update user stats (increment emails_processed)
+    // Update user stats (increment emails_processed) - use upsert to create if not exists
     const { data: currentStats } = await supabase
       .from('user_stats')
-      .select('emails_processed')
+      .select('emails_processed, unsubscribed')
       .eq('user_id', user.userId)
       .single();
 
-    if (currentStats) {
-      await supabase
-        .from('user_stats')
-        .update({
-          emails_processed: (currentStats.emails_processed || 0) + totalDeleted,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.userId);
-    }
+    await supabase
+      .from('user_stats')
+      .upsert({
+        user_id: user.userId,
+        emails_processed: (currentStats?.emails_processed || 0) + totalDeleted,
+        unsubscribed: currentStats?.unsubscribed || 0,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
 
     // Update email account processed count (increment)
     const { data: currentAccount } = await supabase
