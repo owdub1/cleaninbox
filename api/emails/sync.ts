@@ -218,11 +218,11 @@ export default async function handler(
           const idsToCheck = recentDbEmails.map(e => e.gmail_message_id);
           const messages = await batchGetMessages(accessToken, idsToCheck, 'metadata', ['From']);
 
-          // Find emails no longer in inbox (moved to spam/trash/archive)
+          // Find emails that have been moved to spam or trash
           const notInInbox: string[] = [];
           for (const msg of messages) {
             const labels = msg.labelIds || [];
-            if (!labels.includes('INBOX') || labels.includes('SPAM') || labels.includes('TRASH')) {
+            if (labels.includes('SPAM') || labels.includes('TRASH')) {
               notInInbox.push(msg.id);
             }
           }

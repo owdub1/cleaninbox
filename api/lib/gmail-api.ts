@@ -294,7 +294,7 @@ export async function getDeletedMessageIds(
  */
 export async function listAllMessageIds(
   accessToken: string,
-  query: string = 'in:inbox -in:sent -in:drafts -in:trash -in:spam'
+  query: string = '-in:sent -in:drafts -in:trash -in:spam'
 ): Promise<string[]> {
   const allIds: string[] = [];
   let pageToken: string | undefined;
@@ -816,8 +816,8 @@ export async function fetchSenderStats(
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
 
-  // Build query - only include inbox emails, exclude sent/drafts/trash/spam
-  let query = 'in:inbox -in:sent -in:drafts -in:trash -in:spam';
+  // Build query - exclude sent/drafts/trash/spam
+  let query = '-in:sent -in:drafts -in:trash -in:spam';
   if (afterDate) {
     // Use epoch seconds for precise timestamp filtering (avoids date boundary issues)
     // Gmail's after: operator accepts epoch seconds for exact timestamp matching
@@ -865,27 +865,27 @@ export async function fetchSenderStats(
 
   console.log(`Successfully fetched ${messages.length} of ${messageIds.length} messages (${messageIds.length - messages.length} failed)`);
 
-  // Filter out any messages that are in spam, trash, or not in inbox (safety check)
-  const inboxMessages = messages.filter(msg => {
+  // Filter out any messages that are in spam or trash (safety check)
+  const filteredMessages = messages.filter(msg => {
     const labels = msg.labelIds || [];
-    // Must be in inbox and not in spam/trash
-    return labels.includes('INBOX') && !labels.includes('SPAM') && !labels.includes('TRASH');
+    // Exclude spam and trash
+    return !labels.includes('SPAM') && !labels.includes('TRASH');
   });
 
-  if (inboxMessages.length < messages.length) {
-    console.log(`Filtered out ${messages.length - inboxMessages.length} non-inbox messages (spam/trash/archived)`);
+  if (filteredMessages.length < messages.length) {
+    console.log(`Filtered out ${messages.length - filteredMessages.length} spam/trash messages`);
   }
 
   // Report processing phase
   if (onProgress) {
-    onProgress({ phase: 'processing', current: 0, total: inboxMessages.length });
+    onProgress({ phase: 'processing', current: 0, total: filteredMessages.length });
   }
 
   // Aggregate by sender (using composite key: name + email)
-  const senderMap = aggregateBySender(inboxMessages);
+  const senderMap = aggregateBySender(filteredMessages);
 
-  // Extract individual email records for storage (only inbox messages)
-  const emails = extractEmailRecords(inboxMessages);
+  // Extract individual email records for storage
+  const emails = extractEmailRecords(filteredMessages);
 
   // Convert senders to array and sort by count
   const senders = Array.from(senderMap.values()).sort((a, b) => b.count - a.count);
