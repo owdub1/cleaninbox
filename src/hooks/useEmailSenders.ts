@@ -30,12 +30,6 @@ export interface EmailMessage {
   isUnread: boolean;
 }
 
-export interface SyncProgress {
-  phase: 'listing' | 'fetching' | 'processing';
-  current: number;
-  total: number;
-}
-
 interface SendersResponse {
   senders: Sender[];
   pagination: {
@@ -59,7 +53,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const [senders, setSenders] = useState<Sender[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -155,7 +148,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
     try {
       setSyncing(true);
-      setSyncProgress(null);
       setError(null);
 
       const response = await fetch(`${API_URL}/api/emails/sync`, {
@@ -167,98 +159,33 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         body: JSON.stringify({ email, maxMessages, fullSync }),
       });
 
-      // Check if this is an SSE response (standard sync) or JSON (fast sync/error)
-      const contentType = response.headers.get('content-type') || '';
+      const data = await response.json();
 
-      if (contentType.includes('text/event-stream')) {
-        // Handle SSE streaming response
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('Failed to read response stream');
+      if (!response.ok) {
+        // Handle sync limit reached (429)
+        if (response.status === 429 && data.code === 'SYNC_LIMIT_REACHED') {
+          setError(data.error);
+          return {
+            success: false,
+            limitReached: true,
+            nextSyncAvailable: data.nextSyncAvailable,
+            upgradeMessage: data.upgradeMessage
+          };
         }
-
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let result: any = null;
-        let errorResult: any = null;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          // Parse SSE events from buffer
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-          let eventType = '';
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7);
-            } else if (line.startsWith('data: ')) {
-              const data = JSON.parse(line.slice(6));
-
-              if (eventType === 'progress') {
-                setSyncProgress({
-                  phase: data.phase,
-                  current: data.current,
-                  total: data.total
-                });
-              } else if (eventType === 'complete') {
-                result = data;
-              } else if (eventType === 'error') {
-                errorResult = data;
-              }
-            }
-          }
-        }
-
-        // Reset progress when done
-        setSyncProgress(null);
-
-        if (errorResult) {
-          throw new Error(errorResult.error || 'Sync failed');
-        }
-
-        if (result?.success) {
-          // Refresh senders after sync
-          await fetchSenders();
-          return { success: true };
-        }
-
-        throw new Error('Sync completed without success status');
-      } else {
-        // Handle JSON response (fast sync path or early errors)
-        const data = await response.json();
-
-        if (!response.ok) {
-          // Handle sync limit reached (429)
-          if (response.status === 429 && data.code === 'SYNC_LIMIT_REACHED') {
-            setError(data.error);
-            return {
-              success: false,
-              limitReached: true,
-              nextSyncAvailable: data.nextSyncAvailable,
-              upgradeMessage: data.upgradeMessage
-            };
-          }
-          throw new Error(data.error || 'Failed to sync emails');
-        }
-
-        // Refresh senders after sync - fetch ALL senders (not just this account)
-        // The frontend filters by selectedAccountEmail, so we need all accounts' data
-        await fetchSenders();
-
-        return { success: true };
+        throw new Error(data.error || 'Failed to sync emails');
       }
+
+      // Refresh senders after sync - fetch ALL senders (not just this account)
+      // The frontend filters by selectedAccountEmail, so we need all accounts' data
+      await fetchSenders();
+
+      return { success: true };
     } catch (err: any) {
       console.error('Sync emails error:', err);
       setError(err.message);
       return { success: false };
     } finally {
       setSyncing(false);
-      setSyncProgress(null);
     }
   }, [token, fetchSenders]);
 
@@ -452,7 +379,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     senders,
     loading,
     syncing,
-    syncProgress,
     error,
     pagination,
     fetchSenders,
