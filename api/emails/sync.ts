@@ -191,6 +191,7 @@ export default async function handler(
         });
 
         const recentGmailIds = (recentGmail.messages || []).map((m: any) => m.id);
+        console.log(`Gmail returned ${recentGmailIds.length} recent message IDs`);
 
         if (recentGmailIds.length > 0) {
           // Check which of these we already have
@@ -202,9 +203,11 @@ export default async function handler(
 
           const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
           const missingIds = recentGmailIds.filter((id: string) => !existingIds.has(id));
+          console.log(`Found in DB: ${existingIds.size}, Missing from DB: ${missingIds.length}`);
 
           if (missingIds.length > 0) {
             console.log(`Found ${missingIds.length} emails missing from DB, adding them...`);
+            console.log('Missing IDs:', missingIds.slice(0, 5)); // Log first 5 for debugging
 
             // Fetch and add missing emails
             const messages = await batchGetMessages(
@@ -330,6 +333,8 @@ export default async function handler(
           .select('id, sender_email, sender_name, last_email_date, email_count')
           .eq('email_account_id', account.id);
 
+        console.log(`Checking ${allSenders?.length || 0} senders for stale dates...`);
+
         let fixedCount = 0;
         for (const sender of allSenders || []) {
           // Get actual latest email date from emails table
@@ -346,6 +351,7 @@ export default async function handler(
             const actualDate = actualLatest[0].received_at;
             // If the stored date doesn't match actual, fix it
             if (sender.last_email_date !== actualDate) {
+              console.log(`Fixing stale date for ${sender.sender_name} <${sender.sender_email}>: ${sender.last_email_date} -> ${actualDate}`);
               // Also get correct count
               const { count: actualCount } = await supabase
                 .from('emails')
