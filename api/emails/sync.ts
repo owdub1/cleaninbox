@@ -228,6 +228,14 @@ export default async function handler(
             .limit(3);
           console.log('GOG emails in DB:', gogCheck?.length || 0, gogCheck?.map(e => e.subject?.substring(0, 30)) || []);
 
+          // Debug: Check if GOG sender exists
+          const { data: gogSender } = await supabase
+            .from('email_senders')
+            .select('id, sender_email, sender_name, last_email_date, email_count')
+            .eq('email_account_id', account.id)
+            .ilike('sender_email', '%gog%');
+          console.log('GOG sender records:', gogSender?.length || 0, gogSender || []);
+
           // Fix any stale sender dates for emails we just verified
           // This is faster than checking ALL 1000 senders
           const senderEmailsToCheck = new Set<string>();
@@ -238,10 +246,14 @@ export default async function handler(
             const senderEmail = emailMatch ? emailMatch[1].toLowerCase() : fromHeader.toLowerCase();
             if (senderEmail && senderEmail !== userEmail) {
               senderEmailsToCheck.add(senderEmail);
+              if (senderEmail.includes('gog')) {
+                console.log('GOG sender email extracted:', senderEmail);
+              }
             }
           }
 
           console.log(`Checking/fixing ${senderEmailsToCheck.size} sender records from recent emails...`);
+          console.log('Sender emails to check:', Array.from(senderEmailsToCheck).slice(0, 10));
           for (const senderEmail of senderEmailsToCheck) {
             // Get actual email stats
             const { data: emailStats } = await supabase
@@ -250,6 +262,10 @@ export default async function handler(
               .eq('email_account_id', account.id)
               .eq('sender_email', senderEmail)
               .order('received_at', { ascending: false });
+
+            if (senderEmail.includes('gog')) {
+              console.log(`GOG emailStats query result:`, emailStats?.length || 0, emailStats?.[0] || 'no emails');
+            }
 
             if (emailStats && emailStats.length > 0) {
               const latestDate = emailStats[0].received_at;
