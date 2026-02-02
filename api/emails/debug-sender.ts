@@ -84,11 +84,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('email_account_id', account.id)
       .ilike('sender_email', `%${sender}%`);
 
+    // Get emails from database for this sender
+    const { data: dbEmails } = await supabase
+      .from('emails')
+      .select('gmail_message_id, subject, received_at, sender_email, sender_name')
+      .eq('email_account_id', account.id)
+      .ilike('sender_email', `%${sender}%`)
+      .order('received_at', { ascending: false })
+      .limit(10);
+
     return res.status(200).json({
       query: searchQuery,
       gmailMessageCount: messages.length,
       gmailMessages: details,
-      databaseRecords: dbSender || [],
+      databaseSenders: dbSender || [],
+      databaseEmails: dbEmails || [],
     });
 
   } catch (error: any) {
