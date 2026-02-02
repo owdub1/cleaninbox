@@ -321,8 +321,60 @@ export default async function handler(
           }
         }
 
-        // Truly no changes
-        console.log('Fast sync: Verified, no new emails');
+        // Truly no new emails - but validate and fix any stale sender dates
+        console.log('Fast sync: Verified, no new emails. Checking for stale sender dates...');
+
+        // Get all senders and validate their last_email_date matches actual emails
+        const { data: allSenders } = await supabase
+          .from('email_senders')
+          .select('id, sender_email, sender_name, last_email_date, email_count')
+          .eq('email_account_id', account.id);
+
+        let fixedCount = 0;
+        for (const sender of allSenders || []) {
+          // Get actual latest email date from emails table
+          const { data: actualLatest } = await supabase
+            .from('emails')
+            .select('received_at')
+            .eq('email_account_id', account.id)
+            .eq('sender_email', sender.sender_email)
+            .eq('sender_name', sender.sender_name)
+            .order('received_at', { ascending: false })
+            .limit(1);
+
+          if (actualLatest && actualLatest.length > 0) {
+            const actualDate = actualLatest[0].received_at;
+            // If the stored date doesn't match actual, fix it
+            if (sender.last_email_date !== actualDate) {
+              // Also get correct count
+              const { count: actualCount } = await supabase
+                .from('emails')
+                .select('*', { count: 'exact', head: true })
+                .eq('email_account_id', account.id)
+                .eq('sender_email', sender.sender_email)
+                .eq('sender_name', sender.sender_name);
+
+              await supabase
+                .from('email_senders')
+                .update({
+                  last_email_date: actualDate,
+                  email_count: actualCount || 0,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', sender.id);
+              fixedCount++;
+            }
+          } else if (sender.email_count > 0) {
+            // No emails exist but sender has count > 0 - delete the sender
+            await supabase.from('email_senders').delete().eq('id', sender.id);
+            fixedCount++;
+          }
+        }
+
+        if (fixedCount > 0) {
+          console.log(`Fixed ${fixedCount} stale sender records`);
+        }
+
         await supabase
           .from('email_accounts')
           .update({
@@ -335,17 +387,17 @@ export default async function handler(
         await supabase.from('activity_log').insert({
           user_id: user.userId,
           action_type: 'email_sync',
-          description: 'Fast sync: No changes',
-          metadata: { email, syncType: 'fast', changes: 0 }
+          description: fixedCount > 0 ? `Fast sync: Fixed ${fixedCount} stale senders` : 'Fast sync: No changes',
+          metadata: { email, syncType: 'fast', changes: 0, fixedSenders: fixedCount }
         });
 
         return res.status(200).json({
           success: true,
           totalSenders: 0,
-          updatedSenders: 0,
+          updatedSenders: fixedCount,
           totalEmails: account.total_emails || 0,
           deletedEmails: 0,
-          message: 'No new changes',
+          message: fixedCount > 0 ? `Fixed ${fixedCount} stale senders` : 'No new changes',
           syncType: 'fast'
         });
       } else {
