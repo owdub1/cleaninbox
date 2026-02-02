@@ -193,6 +193,17 @@ export default async function handler(
         const recentGmailIds = (recentGmail.messages || []).map((m: any) => m.id);
         console.log(`Gmail returned ${recentGmailIds.length} recent message IDs`);
 
+        // Fetch details of first 3 messages to see what we're getting
+        if (recentGmailIds.length > 0) {
+          const sampleMessages = await batchGetMessages(accessToken, recentGmailIds.slice(0, 3), 'metadata', ['From', 'Subject', 'Date']);
+          console.log('First 3 Gmail messages:');
+          for (const msg of sampleMessages) {
+            const from = msg.payload?.headers?.find((h: any) => h.name === 'From')?.value || 'unknown';
+            const subject = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || 'no subject';
+            console.log(`  - ${from.substring(0, 40)}: ${subject.substring(0, 50)}`);
+          }
+        }
+
         if (recentGmailIds.length > 0) {
           // Check which of these we already have
           const { data: existingEmails } = await supabase
@@ -204,6 +215,33 @@ export default async function handler(
           const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
           const missingIds = recentGmailIds.filter((id: string) => !existingIds.has(id));
           console.log(`Found in DB: ${existingIds.size}, Missing from DB: ${missingIds.length}`);
+
+          // Debug: Check if GOG is in the database
+          const { data: gogCheck } = await supabase
+            .from('emails')
+            .select('gmail_message_id, subject, received_at')
+            .eq('email_account_id', account.id)
+            .ilike('sender_email', '%gog%')
+            .order('received_at', { ascending: false })
+            .limit(3);
+          console.log('GOG emails in DB:', gogCheck?.length || 0, gogCheck?.map(e => e.subject?.substring(0, 30)) || []);
+
+          // Debug: Check Costco sender and emails
+          const { data: costcoSender } = await supabase
+            .from('email_senders')
+            .select('last_email_date, email_count')
+            .eq('email_account_id', account.id)
+            .ilike('sender_email', '%costco%')
+            .limit(1);
+          const { data: costcoEmails } = await supabase
+            .from('emails')
+            .select('received_at')
+            .eq('email_account_id', account.id)
+            .ilike('sender_email', '%costco%')
+            .order('received_at', { ascending: false })
+            .limit(1);
+          console.log('Costco sender last_email_date:', costcoSender?.[0]?.last_email_date);
+          console.log('Costco actual latest email:', costcoEmails?.[0]?.received_at);
 
           if (missingIds.length > 0) {
             console.log(`Found ${missingIds.length} emails missing from DB, adding them...`);
