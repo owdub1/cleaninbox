@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
-import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getHistoryChanges, getDeletedMessageIds, getProfile, listAllMessageIds, batchGetMessages, getMessage } from '../lib/gmail-api.js';
+import { fetchSenderStats, SenderStats, EmailRecord, SyncResult, getHistoryChanges, getDeletedMessageIds, getProfile, listAllMessageIds, listMessages, batchGetMessages, getMessage } from '../lib/gmail-api.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -181,8 +181,148 @@ export default async function handler(
         console.log('History expired, falling back to standard sync');
         // Fall through to standard sync below
       } else if (addedMessageIds.length === 0 && deletedMessageIds.length === 0) {
-        // No changes - instant return!
-        console.log('Fast sync: No changes detected, sync complete');
+        // History API says no changes - but verify by checking recent Gmail emails
+        // This catches emails that History API may have missed
+        console.log('Fast sync: No history changes, verifying recent emails...');
+
+        const recentGmail = await listMessages(accessToken, {
+          maxResults: 50,
+          q: '-in:sent -in:drafts -in:trash -in:spam'
+        });
+
+        const recentGmailIds = (recentGmail.messages || []).map((m: any) => m.id);
+
+        if (recentGmailIds.length > 0) {
+          // Check which of these we already have
+          const { data: existingEmails } = await supabase
+            .from('emails')
+            .select('gmail_message_id')
+            .eq('email_account_id', account.id)
+            .in('gmail_message_id', recentGmailIds);
+
+          const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
+          const missingIds = recentGmailIds.filter((id: string) => !existingIds.has(id));
+
+          if (missingIds.length > 0) {
+            console.log(`Found ${missingIds.length} emails missing from DB, adding them...`);
+
+            // Fetch and add missing emails
+            const messages = await batchGetMessages(
+              accessToken,
+              missingIds,
+              'metadata',
+              ['From', 'Date', 'Subject', 'List-Unsubscribe']
+            );
+
+            let addedCount = 0;
+            const affectedSenders = new Set<string>();
+
+            for (const msg of messages) {
+              const labels = msg.labelIds || [];
+              if (labels.includes('SPAM') || labels.includes('TRASH')) continue;
+
+              const fromHeader = msg.payload?.headers?.find((h: any) => h.name === 'From')?.value || '';
+              const dateHeader = msg.payload?.headers?.find((h: any) => h.name === 'Date')?.value || '';
+              const subjectHeader = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || '';
+
+              const emailMatch = fromHeader.match(/<([^>]+)>/) || fromHeader.match(/([^\s<]+@[^\s>]+)/);
+              const senderEmail = emailMatch ? emailMatch[1].toLowerCase() : fromHeader.toLowerCase();
+              const nameMatch = fromHeader.match(/^"?([^"<]+)"?\s*</) || fromHeader.match(/^([^<@]+)(?=@)/);
+              const senderName = nameMatch ? nameMatch[1].trim() : senderEmail;
+
+              if (senderEmail === userEmail) continue;
+
+              const { error } = await supabase.from('emails').insert({
+                gmail_message_id: msg.id,
+                email_account_id: account.id,
+                sender_email: senderEmail,
+                sender_name: senderName,
+                subject: subjectHeader || '(No Subject)',
+                snippet: msg.snippet || '',
+                received_at: dateHeader ? new Date(dateHeader).toISOString() : new Date(parseInt(msg.internalDate)).toISOString(),
+                is_unread: labels.includes('UNREAD'),
+                thread_id: msg.threadId,
+                labels,
+              });
+
+              if (!error) {
+                addedCount++;
+                affectedSenders.add(`${senderEmail}|||${senderName}`);
+              }
+            }
+
+            // Update sender stats for affected senders
+            for (const key of affectedSenders) {
+              const [senderEmail, senderName] = key.split('|||');
+
+              const { data: emailStats } = await supabase
+                .from('emails')
+                .select('received_at')
+                .eq('email_account_id', account.id)
+                .eq('sender_email', senderEmail)
+                .eq('sender_name', senderName)
+                .order('received_at', { ascending: false });
+
+              const { data: existingSender } = await supabase
+                .from('email_senders')
+                .select('id')
+                .eq('email_account_id', account.id)
+                .eq('sender_email', senderEmail)
+                .eq('sender_name', senderName)
+                .single();
+
+              if (existingSender) {
+                await supabase.from('email_senders')
+                  .update({
+                    email_count: emailStats?.length || 0,
+                    last_email_date: emailStats?.[0]?.received_at || new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', existingSender.id);
+              } else {
+                await supabase.from('email_senders').insert({
+                  user_id: user.userId,
+                  email_account_id: account.id,
+                  sender_email: senderEmail,
+                  sender_name: senderName,
+                  email_count: emailStats?.length || 1,
+                  unread_count: 0,
+                  first_email_date: emailStats?.[emailStats.length - 1]?.received_at || new Date().toISOString(),
+                  last_email_date: emailStats?.[0]?.received_at || new Date().toISOString(),
+                });
+              }
+            }
+
+            await supabase
+              .from('email_accounts')
+              .update({
+                last_synced: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                history_id: newHistoryId
+              })
+              .eq('id', account.id);
+
+            await supabase.from('activity_log').insert({
+              user_id: user.userId,
+              action_type: 'email_sync',
+              description: `Fast sync: Added ${addedCount} missed emails`,
+              metadata: { email, syncType: 'fast', addedEmails: addedCount }
+            });
+
+            return res.status(200).json({
+              success: true,
+              totalSenders: affectedSenders.size,
+              addedEmails: addedCount,
+              totalEmails: account.total_emails || 0,
+              deletedEmails: 0,
+              message: `Added ${addedCount} emails`,
+              syncType: 'fast'
+            });
+          }
+        }
+
+        // Truly no changes
+        console.log('Fast sync: Verified, no new emails');
         await supabase
           .from('email_accounts')
           .update({

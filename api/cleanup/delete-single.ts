@@ -102,22 +102,39 @@ export default async function handler(
       console.warn('Failed to delete email from local DB:', deleteError);
     }
 
-    // Update sender cache (decrement count)
+    // Update sender cache (decrement count and recalculate last_email_date)
     if (senderEmail) {
-      const { data: senderData } = await supabase
-        .from('email_senders')
-        .select('email_count')
+      // Get the latest remaining email date for this sender from the database
+      const { data: remainingEmails } = await supabase
+        .from('emails')
+        .select('received_at')
         .eq('email_account_id', account.id)
         .eq('sender_email', senderEmail)
-        .single();
+        .order('received_at', { ascending: false })
+        .limit(1);
 
-      if (senderData && senderData.email_count > 0) {
+      if (remainingEmails && remainingEmails.length > 0) {
+        // Update count and last_email_date from actual remaining emails
+        const { count } = await supabase
+          .from('emails')
+          .select('*', { count: 'exact', head: true })
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+
         await supabase
           .from('email_senders')
           .update({
-            email_count: senderData.email_count - 1,
+            email_count: count || 0,
+            last_email_date: remainingEmails[0].received_at,
             updated_at: new Date().toISOString()
           })
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+      } else {
+        // No remaining emails - delete the sender record
+        await supabase
+          .from('email_senders')
+          .delete()
           .eq('email_account_id', account.id)
           .eq('sender_email', senderEmail);
       }
