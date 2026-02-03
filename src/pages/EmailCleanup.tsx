@@ -673,10 +673,6 @@ const EmailCleanup = () => {
       if (result?.success) {
         // Remove email from local state (use composite key)
         const remainingEmails = (senderEmails[senderKey] || []).filter(e => e.id !== email.id);
-        console.log('[DEBUG] Delete email - senderKey:', senderKey);
-        console.log('[DEBUG] Delete email - remainingEmails count:', remainingEmails.length);
-        console.log('[DEBUG] Delete email - senderEmails keys:', Object.keys(senderEmails));
-
         setSenderEmails(prev => ({
           ...prev,
           [senderKey]: remainingEmails
@@ -688,10 +684,7 @@ const EmailCleanup = () => {
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
           );
           const newLastEmailDate = sortedByDate[0].date;
-          console.log('[DEBUG] Delete email - newLastEmailDate:', newLastEmailDate);
           updateSenderLastEmailDate(senderEmail, senderName, newLastEmailDate);
-        } else {
-          console.log('[DEBUG] Delete email - no remaining emails, skipping lastEmailDate update');
         }
 
         // Update sender count immediately for instant UI feedback
