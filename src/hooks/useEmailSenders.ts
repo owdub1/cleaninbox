@@ -375,6 +375,32 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     );
   }, []);
 
+  /**
+   * Update a sender's lastEmailDate locally (for immediate UI feedback after email deletion)
+   * @param senderEmail - The sender's email address
+   * @param senderName - The sender's display name
+   * @param newLastEmailDate - The new lastEmailDate, or null to remove the sender
+   */
+  const updateSenderLastEmailDate = useCallback((
+    senderEmail: string,
+    senderName: string,
+    newLastEmailDate: string | null
+  ) => {
+    setSenders(prevSenders => {
+      if (newLastEmailDate === null) {
+        // No emails left - remove sender
+        return prevSenders.filter(s =>
+          !(s.email === senderEmail && s.name === senderName)
+        );
+      }
+      return prevSenders.map(sender =>
+        sender.email === senderEmail && sender.name === senderName
+          ? { ...sender, lastEmailDate: newLastEmailDate }
+          : sender
+      );
+    });
+  }, []);
+
   return {
     senders,
     loading,
@@ -391,5 +417,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     getSendersOlderThan,
     fetchEmailsBySender,
     updateSenderCount,
+    updateSenderLastEmailDate,
   };
 };

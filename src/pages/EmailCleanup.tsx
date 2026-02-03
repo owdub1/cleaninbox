@@ -414,7 +414,8 @@ const EmailCleanup = () => {
     syncEmails,
     getSendersByYear,
     fetchEmailsBySender,
-    updateSenderCount
+    updateSenderCount,
+    updateSenderLastEmailDate
   } = useEmailSenders({ autoFetch: true });
 
   // State for storing loaded emails by sender
@@ -671,10 +672,21 @@ const EmailCleanup = () => {
 
       if (result?.success) {
         // Remove email from local state (use composite key)
+        const remainingEmails = (senderEmails[senderKey] || []).filter(e => e.id !== email.id);
         setSenderEmails(prev => ({
           ...prev,
-          [senderKey]: prev[senderKey]?.filter(e => e.id !== email.id) || []
+          [senderKey]: remainingEmails
         }));
+
+        // Calculate new lastEmailDate from remaining emails for immediate group placement update
+        if (remainingEmails.length > 0) {
+          const sortedByDate = [...remainingEmails].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          const newLastEmailDate = sortedByDate[0].date;
+          updateSenderLastEmailDate(senderEmail, senderName, newLastEmailDate);
+        }
+
         // Update sender count immediately for instant UI feedback
         updateSenderCount(senderEmail, senderName, -1);
         // Show undo toast
