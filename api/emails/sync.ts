@@ -194,6 +194,7 @@ export default async function handler(
         console.log(`Gmail returned ${recentGmailIds.length} recent message IDs`);
 
         let fixedInVerify = 0;
+        let shouldFallThroughToStandardSync = false;
 
         // Fetch details of first 3 messages to see what we're getting
         if (recentGmailIds.length > 0) {
@@ -217,6 +218,20 @@ export default async function handler(
           const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
           const missingIds = recentGmailIds.filter((id: string) => !existingIds.has(id));
           console.log(`Found in DB: ${existingIds.size}, Missing from DB: ${missingIds.length}`);
+
+          // IMPORTANT: If the first few (newest) emails are missing, fall through to standard sync
+          const newestMissing = recentGmailIds.slice(0, 10).filter((id: string) => !existingIds.has(id));
+          // If many newest emails are missing, historyId is stale - fall through to standard sync
+          if (newestMissing.length >= 2) {
+            console.log(`Found ${newestMissing.length} of the 10 newest emails missing - historyId is stale, falling through to standard sync`);
+            // Clear the stale historyId and set flag to fall through to standard sync below
+            await supabase
+              .from('email_accounts')
+              .update({ history_id: null })
+              .eq('id', account.id);
+            shouldFallThroughToStandardSync = true;
+          } else {
+          // Continue with fast sync verification
 
           // Debug: Check if GOG is in the database
           const { data: gogCheck } = await supabase
@@ -426,36 +441,43 @@ export default async function handler(
               syncType: 'fast'
             });
           }
+          } // end else for newestMissing check
         }
 
-        // Already fixed sender records above when verifying recent emails
-        console.log('Fast sync: Verified, no new emails.');
+        // If we detected stale historyId, fall through to standard sync
+        if (shouldFallThroughToStandardSync) {
+          console.log('Falling through to standard sync due to stale historyId...');
+          // Don't return - let execution continue to standard sync path below
+        } else {
+          // Already fixed sender records above when verifying recent emails
+          console.log('Fast sync: Verified, no new emails.');
 
-        await supabase
-          .from('email_accounts')
-          .update({
-            last_synced: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            history_id: newHistoryId
-          })
-          .eq('id', account.id);
+          await supabase
+            .from('email_accounts')
+            .update({
+              last_synced: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              history_id: newHistoryId
+            })
+            .eq('id', account.id);
 
-        await supabase.from('activity_log').insert({
-          user_id: user.userId,
-          action_type: 'email_sync',
-          description: fixedInVerify > 0 ? `Fast sync: Fixed ${fixedInVerify} senders` : 'Fast sync: No changes',
-          metadata: { email, syncType: 'fast', changes: 0, fixedSenders: fixedInVerify }
-        });
+          await supabase.from('activity_log').insert({
+            user_id: user.userId,
+            action_type: 'email_sync',
+            description: fixedInVerify > 0 ? `Fast sync: Fixed ${fixedInVerify} senders` : 'Fast sync: No changes',
+            metadata: { email, syncType: 'fast', changes: 0, fixedSenders: fixedInVerify }
+          });
 
-        return res.status(200).json({
-          success: true,
-          totalSenders: 0,
-          updatedSenders: fixedInVerify,
-          totalEmails: account.total_emails || 0,
-          deletedEmails: 0,
-          message: fixedInVerify > 0 ? `Fixed ${fixedInVerify} senders` : 'No new changes',
-          syncType: 'fast'
-        });
+          return res.status(200).json({
+            success: true,
+            totalSenders: 0,
+            updatedSenders: fixedInVerify,
+            totalEmails: account.total_emails || 0,
+            deletedEmails: 0,
+            message: fixedInVerify > 0 ? `Fixed ${fixedInVerify} senders` : 'No new changes',
+            syncType: 'fast'
+          });
+        }
       } else {
         // Process only the changes
         console.log(`Fast sync: ${addedMessageIds.length} new, ${deletedMessageIds.length} deleted`);
