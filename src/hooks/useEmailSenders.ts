@@ -386,6 +386,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     senderName: string,
     newLastEmailDate: string | null
   ) => {
+    console.log('[DEBUG] updateSenderLastEmailDate called:', { senderEmail, senderName, newLastEmailDate });
     setSenders(prevSenders => {
       if (newLastEmailDate === null) {
         // No emails left - remove sender
@@ -393,11 +394,14 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
           !(s.email === senderEmail && s.name === senderName)
         );
       }
-      return prevSenders.map(sender =>
+      const updated = prevSenders.map(sender =>
         sender.email === senderEmail && sender.name === senderName
           ? { ...sender, lastEmailDate: newLastEmailDate }
           : sender
       );
+      const found = updated.find(s => s.email === senderEmail && s.name === senderName);
+      console.log('[DEBUG] updateSenderLastEmailDate - found sender:', found?.name, 'new date:', found?.lastEmailDate);
+      return updated;
     });
   }, []);
 
