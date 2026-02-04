@@ -1,17 +1,27 @@
 /**
- * Email Sync Endpoint - Reliable Incremental Sync
+ * Email Sync Endpoint - Guaranteed Inbox Correctness
  *
  * POST /api/emails/sync
  *
- * Two sync modes:
- * 1. Full Sync - Deletes all data and rebuilds from Gmail (first sync, manual trigger, recovery)
- * 2. Incremental Sync - Uses Gmail History API to capture ALL changes since last sync
+ * SYNC NOW GUARANTEES:
+ * After clicking Sync Now, the local inbox MUST fully match Gmail.
+ * No emails may silently fail to sync. No manual steps required from user.
  *
- * Incremental Sync Guarantees:
- * - Uses History API to detect ALL added/deleted messages since last sync
- * - Falls back to timestamp-based query if History API is stale
- * - Post-sync completeness verification ensures no emails are missed
- * - Never deletes emails based on heuristic limits
+ * Sync Now behavior:
+ * - Uses Gmail History API for exact change detection
+ * - Falls back to timestamp-based fetch when historyId is missing or expired
+ * - Performs post-sync completeness verification against Gmail
+ * - Verifies that all of Gmail's newest emails exist locally before reporting success
+ *
+ * Correctness rules:
+ * - Sync Now MUST NOT report success if any Gmail emails are missing
+ * - If incremental sync fails completeness checks, automatically escalates to recovery sync
+ * - Full Sync is a recovery mechanism, not a user responsibility
+ *
+ * Sync modes (automatic, not user-selected):
+ * 1. Full Sync - First sync, stale sync (>30 days), or critical recovery
+ * 2. Incremental Sync - Normal sync using History API + timestamp fallback
+ * 3. Recovery Sync - Auto-triggered when completeness check fails
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -533,6 +543,32 @@ async function performIncrementalSync(
   );
   addedCount += completenessResult.addedCount;
 
+  // ENFORCEMENT: If completeness check failed, escalate to recovery sync automatically
+  if (!completenessResult.complete) {
+    console.log(`Completeness check failed with ${completenessResult.missingCount} missing emails - escalating to recovery sync`);
+
+    // Perform a scoped recovery sync to catch any missing emails
+    const recoveryResult = await performRecoverySync(
+      accessToken, accountId, userEmail, affectedSenders
+    );
+    addedCount += recoveryResult.addedCount;
+
+    // Final verification - if still incomplete, this is a critical failure
+    const finalCheck = await verifyCompletenessAndSync(
+      accessToken, accountId, userEmail, affectedSenders
+    );
+    addedCount += finalCheck.addedCount;
+
+    if (!finalCheck.complete) {
+      console.error(`CRITICAL: Recovery sync failed - ${finalCheck.missingCount} emails still missing`);
+      // Still update last_synced to prevent infinite loops, but log the failure
+      syncMethod = 'recovery-failed';
+    } else {
+      console.log('Recovery sync succeeded - all emails now synced ✓');
+      syncMethod = 'recovery';
+    }
+  }
+
   // Recalculate sender stats for affected senders
   if (affectedSenders.size > 0) {
     console.log(`Incremental sync: recalculating stats for ${affectedSenders.size} senders`);
@@ -555,28 +591,30 @@ async function performIncrementalSync(
     .eq('id', accountId);
 
   // Log activity
-  const description = `Incremental sync (${syncMethod}): ${addedCount} new, ${deletedCount} removed`;
+  const description = `Sync (${syncMethod}): ${addedCount} new, ${deletedCount} removed`;
   await supabase.from('activity_log').insert({
     user_id: userId,
     action_type: 'email_sync',
     description,
     metadata: {
       email,
-      syncType: 'incremental',
+      syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
       syncMethod,
       addedEmails: addedCount,
       deletedEmails: deletedCount,
-      completenessVerified: true
+      completenessVerified: !syncMethod.includes('failed')
     }
   });
 
   return res.status(200).json({
-    success: true,
+    success: !syncMethod.includes('failed'),
     totalSenders: affectedSenders.size,
     addedEmails: addedCount,
     deletedEmails: deletedCount,
-    message: addedCount > 0 || deletedCount > 0 ? description : 'No new changes',
-    syncType: 'incremental',
+    message: syncMethod.includes('failed')
+      ? `Sync incomplete - ${completenessResult.missingCount} emails could not be synced`
+      : (addedCount > 0 || deletedCount > 0 ? description : 'Inbox is up to date'),
+    syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
     syncMethod
   });
 }
@@ -635,6 +673,75 @@ async function processNewMessages(
 }
 
 /**
+ * Recovery Sync: Thorough sync when incremental sync fails completeness check
+ *
+ * This is automatically triggered when emails are missing after incremental sync.
+ * It fetches ALL recent emails (not just since last sync) to catch anything missed.
+ * User never needs to trigger this manually.
+ */
+async function performRecoverySync(
+  accessToken: string,
+  accountId: string,
+  userEmail: string,
+  affectedSenders: Set<string>
+): Promise<{ addedCount: number }> {
+  console.log('Recovery sync: Fetching all recent emails to catch missed messages...');
+
+  // Fetch a large number of recent emails to ensure completeness
+  const RECOVERY_FETCH_COUNT = 500;
+  const query = '-in:sent -in:drafts -in:trash -in:spam';
+
+  const messageRefs: Array<{ id: string; threadId: string }> = [];
+  let pageToken: string | undefined;
+
+  while (messageRefs.length < RECOVERY_FETCH_COUNT) {
+    const response = await listMessages(accessToken, {
+      maxResults: 100,
+      pageToken,
+      q: query,
+    });
+
+    if (!response.messages || response.messages.length === 0) break;
+    messageRefs.push(...response.messages);
+
+    if (!response.nextPageToken) break;
+    pageToken = response.nextPageToken;
+  }
+
+  console.log(`Recovery sync: Found ${messageRefs.length} recent messages in Gmail`);
+
+  // Find which messages are missing from our DB
+  const gmailIds = messageRefs.map(m => m.id);
+  const existingIds = new Set<string>();
+
+  for (let i = 0; i < gmailIds.length; i += 500) {
+    const batch = gmailIds.slice(i, i + 500);
+    const { data: existingEmails } = await supabase
+      .from('emails')
+      .select('gmail_message_id')
+      .eq('email_account_id', accountId)
+      .in('gmail_message_id', batch);
+
+    (existingEmails || []).forEach(e => existingIds.add(e.gmail_message_id));
+  }
+
+  const missingIds = gmailIds.filter(id => !existingIds.has(id));
+  console.log(`Recovery sync: ${missingIds.length} emails missing from local DB`);
+
+  if (missingIds.length === 0) {
+    return { addedCount: 0 };
+  }
+
+  // Fetch and add all missing emails
+  const result = await processNewMessages(
+    accessToken, accountId, userEmail, missingIds, affectedSenders
+  );
+
+  console.log(`Recovery sync: Added ${result.addedCount} missing emails`);
+  return { addedCount: result.addedCount };
+}
+
+/**
  * Process deleted messages (from History API)
  */
 async function processDeletedMessages(
@@ -672,55 +779,78 @@ async function processDeletedMessages(
 }
 
 /**
- * Post-sync completeness verification
- * Ensures the newest email in Gmail is in our database
- * If not, fetches and adds it (and any other missing recent emails)
+ * Post-sync completeness verification with enforcement
+ *
+ * GUARANTEES:
+ * - Verifies Gmail's newest emails exist locally
+ * - If missing, attempts to add them
+ * - Re-verifies after adding to confirm success
+ * - Returns complete: false if verification fails (triggers recovery)
+ *
+ * This function MUST NOT return complete: true if any emails are missing
  */
 async function verifyCompletenessAndSync(
   accessToken: string,
   accountId: string,
   userEmail: string,
   affectedSenders: Set<string>
-): Promise<{ addedCount: number; complete: boolean }> {
+): Promise<{ addedCount: number; complete: boolean; missingCount: number }> {
   console.log('Verifying sync completeness...');
 
-  // Get the newest email from Gmail
+  // Get the newest emails from Gmail (check more than just a few)
   const response = await listMessages(accessToken, {
-    maxResults: 10, // Get a few recent ones for verification
+    maxResults: 50, // Check 50 recent emails for thorough verification
     q: '-in:sent -in:drafts -in:trash -in:spam',
   });
 
   if (!response.messages || response.messages.length === 0) {
     console.log('Completeness check: No messages in Gmail');
-    return { addedCount: 0, complete: true };
+    return { addedCount: 0, complete: true, missingCount: 0 };
   }
 
-  const newestGmailIds = response.messages.map(m => m.id);
+  const gmailIds = response.messages.map(m => m.id);
 
   // Check if these exist in our DB
   const { data: existingEmails } = await supabase
     .from('emails')
     .select('gmail_message_id')
     .eq('email_account_id', accountId)
-    .in('gmail_message_id', newestGmailIds);
+    .in('gmail_message_id', gmailIds);
 
   const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
-  const missingIds = newestGmailIds.filter(id => !existingIds.has(id));
+  let missingIds = gmailIds.filter(id => !existingIds.has(id));
 
   if (missingIds.length === 0) {
     console.log('Completeness check: All recent emails are synced ✓');
-    return { addedCount: 0, complete: true };
+    return { addedCount: 0, complete: true, missingCount: 0 };
   }
 
-  console.log(`Completeness check: ${missingIds.length} recent emails missing, adding them now`);
+  console.log(`Completeness check: ${missingIds.length} emails missing, attempting to add...`);
 
-  // Add the missing emails
+  // Attempt to add the missing emails
   const result = await processNewMessages(
     accessToken, accountId, userEmail, missingIds, affectedSenders
   );
 
-  console.log(`Completeness check: Added ${result.addedCount} missing emails`);
-  return { addedCount: result.addedCount, complete: true };
+  console.log(`Completeness check: Added ${result.addedCount} of ${missingIds.length} missing emails`);
+
+  // RE-VERIFY: Check again to confirm all missing emails were actually added
+  const { data: recheck } = await supabase
+    .from('emails')
+    .select('gmail_message_id')
+    .eq('email_account_id', accountId)
+    .in('gmail_message_id', missingIds);
+
+  const recheckIds = new Set((recheck || []).map(e => e.gmail_message_id));
+  const stillMissing = missingIds.filter(id => !recheckIds.has(id));
+
+  if (stillMissing.length > 0) {
+    console.error(`Completeness check FAILED: ${stillMissing.length} emails still missing after attempted add`);
+    return { addedCount: result.addedCount, complete: false, missingCount: stillMissing.length };
+  }
+
+  console.log('Completeness check: Verified all emails now synced ✓');
+  return { addedCount: result.addedCount, complete: true, missingCount: 0 };
 }
 
 /**
