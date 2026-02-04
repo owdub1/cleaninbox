@@ -307,6 +307,10 @@ const UndoToast = ({
   const [progress, setProgress] = useState(100);
   const UNDO_TIMEOUT = 4000; // 4 seconds to undo
 
+  // Use ref to avoid restarting timer when onDismiss reference changes
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
   useEffect(() => {
     const startTime = Date.now();
     const interval = setInterval(() => {
@@ -316,12 +320,12 @@ const UndoToast = ({
 
       if (remaining <= 0) {
         clearInterval(interval);
-        onDismiss();
+        onDismissRef.current();
       }
     }, 50);
 
     return () => clearInterval(interval);
-  }, [onDismiss]);
+  }, []);
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
