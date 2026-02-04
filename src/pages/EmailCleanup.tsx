@@ -275,6 +275,26 @@ interface UndoAction {
   timestamp: number;
 }
 
+// Pending deletion state for true undo (deferred API calls)
+interface PendingDeletion {
+  type: 'single' | 'bulk';
+  action: 'delete' | 'archive';
+  // For single delete:
+  email?: EmailMessage;
+  senderEmail?: string;
+  senderName?: string;
+  senderKey?: string;
+  originalEmails?: EmailMessage[];
+  originalSenderCount?: number;
+  originalLastEmailDate?: string;
+  // For bulk delete:
+  senders?: Sender[];
+  senderEmails?: string[];
+  senderNames?: string[];
+  // Common:
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
 const UndoToast = ({
   action,
   onUndo,
@@ -285,7 +305,7 @@ const UndoToast = ({
   onDismiss: () => void;
 }) => {
   const [progress, setProgress] = useState(100);
-  const UNDO_TIMEOUT = 8000; // 8 seconds to undo
+  const UNDO_TIMEOUT = 4000; // 4 seconds to undo
 
   useEffect(() => {
     const startTime = Date.now();
@@ -422,6 +442,8 @@ const EmailCleanup = () => {
   const [senderEmails, setSenderEmails] = useState<Record<string, EmailMessage[]>>({});
   const [deletingEmailId, setDeletingEmailId] = useState<string | null>(null);
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
+  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
+  const pendingDeletionRef = useRef<PendingDeletion | null>(null);
   const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
   // State for viewing individual email
   const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
@@ -522,6 +544,39 @@ const EmailCleanup = () => {
     }
   }, [sendersError, isAuthenticated]);
 
+  // Keep pendingDeletionRef in sync with state for async callbacks
+  useEffect(() => {
+    pendingDeletionRef.current = pendingDeletion;
+  }, [pendingDeletion]);
+
+  // Cleanup: execute pending deletion if component unmounts
+  useEffect(() => {
+    return () => {
+      if (pendingDeletionRef.current) {
+        clearTimeout(pendingDeletionRef.current.timeoutId);
+        // Execute the pending deletion before unmount
+        // Note: This runs synchronously, but the API call is async
+        // The deletion will proceed even after unmount
+        const pending = pendingDeletionRef.current;
+        if (connectedGmailAccount) {
+          if (pending.type === 'single' && pending.email && pending.senderEmail) {
+            deleteSingleEmail(
+              connectedGmailAccount.email,
+              pending.email.id,
+              pending.senderEmail
+            );
+          } else if (pending.type === 'bulk' && pending.senderEmails && pending.senderNames) {
+            if (pending.action === 'delete') {
+              deleteEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
+            } else if (pending.action === 'archive') {
+              archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
+            }
+          }
+        }
+      }
+    };
+  }, [connectedGmailAccount, deleteSingleEmail, deleteEmails, archiveEmails]);
+
   const getCurrentStep = () => {
     if (!isAuthenticated) return 1;
     if (!hasEmailConnected) return 2;
@@ -552,17 +607,17 @@ const EmailCleanup = () => {
     setCurrentView('tools');
   };
 
-  const handleSync = async () => {
+  const handleSync = async (fullSync: boolean = false) => {
     // Use connected account, or fall back to any Gmail account
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
-      console.log('Syncing emails for:', accountToSync.email);
-      const result = await syncEmails(accountToSync.email);
+      console.log(`${fullSync ? 'Full' : 'Incremental'} sync for:`, accountToSync.email);
+      const result = await syncEmails(accountToSync.email, { fullSync });
       if (result.success) {
         // Clear cached email lists and collapse dropdowns so UI reflects fresh data
         setSenderEmails({});
         setExpandedSenders([]);
-        setNotification({ type: 'success', message: 'Emails synced successfully!' });
+        setNotification({ type: 'success', message: fullSync ? 'Full sync completed!' : 'Emails synced successfully!' });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
         const message = result.upgradeMessage
@@ -594,126 +649,219 @@ const EmailCleanup = () => {
   // Helper to create composite key for sender (name + email)
   const getSenderKey = (sender: Sender): string => `${sender.name}|||${sender.email}`;
 
-  // Execute cleanup action
+  // Execute cleanup action (deferred for delete/archive, immediate for unsubscribe)
   const executeCleanupAction = async () => {
-    if (!connectedGmailAccount) return;
+    if (!connectedGmailAccount || pendingDeletion) return;
 
     const { action, senders: actionSenders } = confirmModal;
-    const senderEmails = actionSenders.map(s => s.email);
-    const senderNames = actionSenders.map(s => s.name);
+    const senderEmailsList = actionSenders.map(s => s.email);
+    const senderNamesList = actionSenders.map(s => s.name);
 
-    try {
-      let result;
-      if (action === 'delete') {
-        result = await deleteEmails(connectedGmailAccount.email, senderEmails, senderNames);
-      } else if (action === 'archive') {
-        result = await archiveEmails(connectedGmailAccount.email, senderEmails, senderNames);
-      } else if (action === 'unsubscribe' && actionSenders.length === 1) {
-        result = await unsubscribe(
-          connectedGmailAccount.email,
-          actionSenders[0].email,
-          actionSenders[0].unsubscribeLink || undefined
-        );
-      }
+    // Unsubscribe still executes immediately (no undo needed)
+    if (action === 'unsubscribe') {
+      try {
+        if (actionSenders.length === 1) {
+          const result = await unsubscribe(
+            connectedGmailAccount.email,
+            actionSenders[0].email,
+            actionSenders[0].unsubscribeLink || undefined
+          );
 
-      if (result?.success) {
-        if (!hasPaidPlan) {
-          setFreeActionsUsed(prev => prev + actionSenders.length);
+          if (result?.success) {
+            if (!hasPaidPlan) {
+              setFreeActionsUsed(prev => prev + actionSenders.length);
+            }
+            setNotification({
+              type: 'success',
+              message: `Successfully unsubscribed from ${actionSenders.length} sender(s)`
+            });
+            fetchSenders();
+            setSelectedSenderKeys([]);
+          } else if (result?.requiresManualAction) {
+            setNotification({
+              type: 'success',
+              message: result.message || 'Please complete the unsubscribe manually'
+            });
+            if (result.unsubscribeLink) {
+              window.open(result.unsubscribeLink, '_blank');
+            }
+          }
         }
-        // Show undo toast for delete/archive actions
-        if (action === 'delete' || action === 'archive') {
-          const totalCount = action === 'delete'
-            ? (result as any).totalDeleted || actionSenders.reduce((sum, s) => sum + s.emailCount, 0)
-            : (result as any).totalArchived || actionSenders.reduce((sum, s) => sum + s.emailCount, 0);
-          setUndoAction({
-            type: action,
-            count: totalCount,
-            senderEmails: senderEmails,
-            timestamp: Date.now()
-          });
-        } else {
-          setNotification({
-            type: 'success',
-            message: `Successfully unsubscribed from ${actionSenders.length} sender(s)`
-          });
-        }
-        // Refresh senders list
-        fetchSenders();
-        // Clear selection
-        setSelectedSenderKeys([]);
-      } else if (result?.requiresManualAction) {
-        setNotification({
-          type: 'success',
-          message: result.message || 'Please complete the unsubscribe manually'
-        });
-        if (result.unsubscribeLink) {
-          window.open(result.unsubscribeLink, '_blank');
-        }
+      } catch (error: any) {
+        setNotification({ type: 'error', message: error.message || 'Action failed' });
       }
-    } catch (error: any) {
-      setNotification({ type: 'error', message: error.message || 'Action failed' });
+      setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
+      return;
     }
 
+    // For delete/archive, use deferred execution with true undo
+    // Store original senders for potential restoration
+    const originalSenders = [...actionSenders];
+
+    // Calculate total count for undo toast
+    const totalCount = actionSenders.reduce((sum, s) => sum + s.emailCount, 0);
+
+    // Set up deferred deletion (API call after 4 seconds)
+    const timeoutId = setTimeout(() => {
+      executePendingDeletion();
+    }, 4000);
+
+    setPendingDeletion({
+      type: 'bulk',
+      action,
+      senders: originalSenders,
+      senderEmails: senderEmailsList,
+      senderNames: senderNamesList,
+      timeoutId
+    });
+
+    setUndoAction({
+      type: action,
+      count: totalCount,
+      senderEmails: senderEmailsList,
+      timestamp: Date.now()
+    });
+
+    // Increment free actions used (will be decremented on undo if needed)
+    if (!hasPaidPlan) {
+      setFreeActionsUsed(prev => prev + actionSenders.length);
+    }
+
+    // Clear selection and close modal
+    setSelectedSenderKeys([]);
     setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
   };
 
-  // Handle deleting a single email
-  const handleDeleteSingleEmail = async (email: EmailMessage, senderEmail: string, senderName: string) => {
-    if (!connectedGmailAccount || deletingEmailId) return;
+  // Execute pending deletion when undo timeout expires
+  const executePendingDeletion = async () => {
+    const pending = pendingDeletionRef.current;
+    if (!pending || !connectedGmailAccount) {
+      setPendingDeletion(null);
+      return;
+    }
 
-    const senderKey = `${senderName}|||${senderEmail}`;
-    setDeletingEmailId(email.id);
     try {
-      const result = await deleteSingleEmail(
-        connectedGmailAccount.email,
-        email.id,
-        senderEmail
-      );
-
-      if (result?.success) {
-        // Remove email from local state (use composite key)
-        const remainingEmails = (senderEmails[senderKey] || []).filter(e => e.id !== email.id);
-        setSenderEmails(prev => ({
-          ...prev,
-          [senderKey]: remainingEmails
-        }));
-
-        // Calculate new lastEmailDate from remaining emails for immediate group placement update
-        if (remainingEmails.length > 0) {
-          const sortedByDate = [...remainingEmails].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          const newLastEmailDate = sortedByDate[0].date;
-          updateSenderLastEmailDate(senderEmail, senderName, newLastEmailDate);
+      if (pending.type === 'single' && pending.email && pending.senderEmail) {
+        await deleteSingleEmail(
+          connectedGmailAccount.email,
+          pending.email.id,
+          pending.senderEmail
+        );
+      } else if (pending.type === 'bulk' && pending.senderEmails && pending.senderNames) {
+        if (pending.action === 'delete') {
+          await deleteEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
+        } else if (pending.action === 'archive') {
+          await archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
         }
-
-        // Update sender count immediately for instant UI feedback
-        updateSenderCount(senderEmail, senderName, -1);
-        // Show undo toast
-        setUndoAction({
-          type: 'delete',
-          count: 1,
-          senderEmails: [senderEmail],
-          messageIds: [email.id],
-          timestamp: Date.now()
-        });
+        // Refresh senders list after bulk action completes
+        fetchSenders();
       }
     } catch (error) {
-      setNotification({ type: 'error', message: 'Failed to delete email' });
-    } finally {
-      setDeletingEmailId(null);
+      console.error('Failed to execute pending deletion:', error);
+      setNotification({ type: 'error', message: 'Failed to complete action' });
+      // On failure, refresh to restore correct state
+      fetchSenders();
     }
+
+    setPendingDeletion(null);
   };
 
-  // Handle undo action (placeholder - Gmail doesn't support true undo)
-  const handleUndo = () => {
-    // Note: Gmail API moves to trash, which is reversible by opening Gmail
-    // A true undo would require restoring from trash, which is complex
-    setNotification({
-      type: 'success',
-      message: 'To restore, check your Gmail Trash folder'
+  // Handle deleting a single email (deferred API call for true undo)
+  const handleDeleteSingleEmail = (email: EmailMessage, senderEmail: string, senderName: string) => {
+    if (!connectedGmailAccount || pendingDeletion) return;
+
+    const senderKey = `${senderName}|||${senderEmail}`;
+
+    // Save current state for potential undo
+    const originalEmails = senderEmails[senderKey] || [];
+    const currentSender = senders.find(s => s.email === senderEmail && s.name === senderName);
+
+    // Optimistic UI update (remove email visually)
+    const remainingEmails = originalEmails.filter(e => e.id !== email.id);
+    setSenderEmails(prev => ({ ...prev, [senderKey]: remainingEmails }));
+
+    // Update sender count and lastEmailDate
+    if (remainingEmails.length > 0) {
+      const sortedByDate = [...remainingEmails].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      updateSenderLastEmailDate(senderEmail, senderName, sortedByDate[0].date);
+    }
+    updateSenderCount(senderEmail, senderName, -1);
+
+    // Set up deferred deletion (API call after 4 seconds)
+    const timeoutId = setTimeout(() => {
+      executePendingDeletion();
+    }, 4000);
+
+    // Store pending deletion for undo capability
+    setPendingDeletion({
+      type: 'single',
+      action: 'delete',
+      email,
+      senderEmail,
+      senderName,
+      senderKey,
+      originalEmails,
+      originalSenderCount: currentSender?.emailCount,
+      originalLastEmailDate: currentSender?.lastEmailDate,
+      timeoutId
     });
+
+    // Show undo toast
+    setUndoAction({
+      type: 'delete',
+      count: 1,
+      senderEmails: [senderEmail],
+      messageIds: [email.id],
+      timestamp: Date.now()
+    });
+  };
+
+  // Handle undo action - true restoration (cancels pending API call)
+  const handleUndo = () => {
+    if (!pendingDeletion) {
+      setUndoAction(null);
+      return;
+    }
+
+    // Cancel the pending API call
+    clearTimeout(pendingDeletion.timeoutId);
+
+    // Restore UI state based on deletion type
+    if (pendingDeletion.type === 'single' && pendingDeletion.senderKey) {
+      // Restore email to local state
+      setSenderEmails(prev => ({
+        ...prev,
+        [pendingDeletion.senderKey!]: pendingDeletion.originalEmails || []
+      }));
+
+      // Restore sender count and date
+      if (pendingDeletion.senderEmail && pendingDeletion.senderName) {
+        updateSenderCount(pendingDeletion.senderEmail, pendingDeletion.senderName, 1);
+        if (pendingDeletion.originalLastEmailDate) {
+          updateSenderLastEmailDate(
+            pendingDeletion.senderEmail,
+            pendingDeletion.senderName,
+            pendingDeletion.originalLastEmailDate
+          );
+        }
+      }
+    } else if (pendingDeletion.type === 'bulk') {
+      // For bulk undo, senders are still in state (just filtered out by filterPendingBulkDeletions)
+      // Clearing pendingDeletion will make them reappear instantly
+      // Decrement free actions if they were incremented for this bulk action
+      if (!hasPaidPlan && pendingDeletion.senders) {
+        setFreeActionsUsed(prev => Math.max(0, prev - pendingDeletion.senders!.length));
+      }
+    }
+
+    // Clear pending deletion and undo toast
+    setPendingDeletion(null);
     setUndoAction(null);
+
+    const actionWord = pendingDeletion.action === 'archive' ? 'Archive' : 'Deletion';
+    setNotification({ type: 'success', message: `${actionWord} cancelled` });
   };
 
   // Select all visible senders
@@ -899,6 +1047,17 @@ const EmailCleanup = () => {
 
   // Get senders grouped by year (keeping for backward compatibility)
   const sendersByYear = getSendersByYear();
+
+  // Filter out senders that are pending bulk deletion
+  const filterPendingBulkDeletions = (senderList: Sender[]): Sender[] => {
+    if (!pendingDeletion || pendingDeletion.type !== 'bulk') return senderList;
+    return senderList.filter(sender => {
+      const emailIndex = pendingDeletion.senderEmails?.indexOf(sender.email) ?? -1;
+      if (emailIndex === -1) return true;
+      // Also check name matches (in case same email has different display names)
+      return pendingDeletion.senderNames?.[emailIndex] !== sender.name;
+    });
+  };
 
   // Get senders that can be unsubscribed (for Unsubscribe tool) - exclude 0 email senders
   const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
@@ -1375,9 +1534,9 @@ const EmailCleanup = () => {
                   </div>
                 )}
                 {connectedGmailAccount && (
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleSync()}
+                      onClick={() => handleSync(false)}
                       disabled={syncing}
                       className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                     >
@@ -1527,7 +1686,7 @@ const EmailCleanup = () => {
             {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && sortBy === 'date' && (
               <div>
                 {sendersByTimePeriod.map(({ period, senders: periodSenders }) => {
-                  const filteredSenders = filterAndSortSenders(periodSenders);
+                  const filteredSenders = filterPendingBulkDeletions(filterAndSortSenders(periodSenders));
                   const totalEmails = filteredSenders.reduce((sum, s) => sum + s.emailCount, 0);
 
                   if (filteredSenders.length === 0) return null;
@@ -1671,7 +1830,7 @@ const EmailCleanup = () => {
             {/* Delete & Clean Inbox View - Flat list with expandable senders when sorting by name or count */}
             {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
               <div className="px-4 py-3 space-y-3">
-                {filterAndSortSenders(senders).map(sender => (
+                {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
                   <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <div className="px-5 py-4 flex items-center justify-between">
                       <button
@@ -1788,7 +1947,7 @@ const EmailCleanup = () => {
                     </p>
                   </div>
                 ) : (
-                  filterAndSortSenders(unsubscribableSenders).map(sender => (
+                  filterPendingBulkDeletions(filterAndSortSenders(unsubscribableSenders)).map(sender => (
                     <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                       <div className="px-5 py-4 flex items-center justify-between">
                         <button
@@ -1903,7 +2062,7 @@ const EmailCleanup = () => {
             {/* Archive Old Emails View */}
             {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'archive' && (
               <div className="px-4 py-3 space-y-3">
-                {filterAndSortSenders(senders).map(sender => (
+                {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
                   <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <div className="px-5 py-4 flex items-center justify-between">
                       <div className="flex items-center flex-1">
@@ -1939,7 +2098,7 @@ const EmailCleanup = () => {
 
             {/* Top Senders View */}
             {!sendersLoading && !syncing && senders.length > 0 && selectedTool === 'top-senders' && (() => {
-              const topSenders = [...senders].sort((a, b) => b.emailCount - a.emailCount).slice(0, 20);
+              const topSenders = filterPendingBulkDeletions([...senders].sort((a, b) => b.emailCount - a.emailCount)).slice(0, 20);
               const maxEmailCount = topSenders[0]?.emailCount || 1;
               return (
                 <div className="px-4 py-3 space-y-3">
@@ -1985,7 +2144,11 @@ const EmailCleanup = () => {
         <UndoToast
           action={undoAction}
           onUndo={handleUndo}
-          onDismiss={() => setUndoAction(null)}
+          onDismiss={() => {
+            // Toast dismissed = timeout expired = execute the deletion
+            executePendingDeletion();
+            setUndoAction(null);
+          }}
         />
       )}
 
