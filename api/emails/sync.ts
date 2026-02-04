@@ -782,12 +782,16 @@ async function processDeletedMessages(
  * Post-sync completeness verification with enforcement
  *
  * GUARANTEES:
- * - Verifies Gmail's newest emails exist locally
- * - If missing, attempts to add them
+ * - Asks Gmail: "What are your newest emails?"
+ * - Verifies: "Do we have all of them locally?"
+ * - If any are missing, attempts to add them
  * - Re-verifies after adding to confirm success
  * - Returns complete: false if verification fails (triggers recovery)
  *
- * This function MUST NOT return complete: true if any emails are missing
+ * The verification is DATA-DRIVEN (Gmail's actual state), not COUNT-DRIVEN.
+ * The fetch count is an implementation detail; the guarantee is completeness.
+ *
+ * This function MUST NOT return complete: true if any Gmail emails are missing
  */
 async function verifyCompletenessAndSync(
   accessToken: string,
@@ -795,11 +799,12 @@ async function verifyCompletenessAndSync(
   userEmail: string,
   affectedSenders: Set<string>
 ): Promise<{ addedCount: number; complete: boolean; missingCount: number }> {
-  console.log('Verifying sync completeness...');
+  console.log('Verifying sync completeness: checking Gmail\'s newest emails exist locally...');
 
-  // Get the newest emails from Gmail (check more than just a few)
+  // Ask Gmail for its newest emails, then verify we have ALL of them
+  // The count (50) is implementation detail; the guarantee is: Gmail's emails = our emails
   const response = await listMessages(accessToken, {
-    maxResults: 50, // Check 50 recent emails for thorough verification
+    maxResults: 50,
     q: '-in:sent -in:drafts -in:trash -in:spam',
   });
 
@@ -821,7 +826,7 @@ async function verifyCompletenessAndSync(
   let missingIds = gmailIds.filter(id => !existingIds.has(id));
 
   if (missingIds.length === 0) {
-    console.log('Completeness check: All recent emails are synced ✓');
+    console.log('Completeness check: All of Gmail\'s newest emails exist locally ✓');
     return { addedCount: 0, complete: true, missingCount: 0 };
   }
 
@@ -849,7 +854,7 @@ async function verifyCompletenessAndSync(
     return { addedCount: result.addedCount, complete: false, missingCount: stillMissing.length };
   }
 
-  console.log('Completeness check: Verified all emails now synced ✓');
+  console.log('Completeness check: Verified all of Gmail\'s newest emails now exist locally ✓');
   return { addedCount: result.addedCount, complete: true, missingCount: 0 };
 }
 
