@@ -1446,7 +1446,7 @@ const Dashboard = () => {
           <div className="mt-6">
             {/* Overview Tab */}
             {activeTab === 'overview' && <div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white rounded-lg shadow p-6">
                     <div className="flex items-center">
                       <div className="p-3 rounded-full bg-purple-100 text-purple-600">
@@ -1458,21 +1458,6 @@ const Dashboard = () => {
                         </h3>
                         <p className="text-2xl font-bold text-purple-600">
                           {userData.stats.emailsProcessed}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-green-100 text-green-600">
-                        <CheckCircleIcon className="h-6 w-6" />
-                      </div>
-                      <div className="ml-4">
-                        <h3 className="text-lg font-medium text-gray-900">
-                          Unsubscribed / Deleted
-                        </h3>
-                        <p className="text-2xl font-bold text-green-600">
-                          {userData.stats.unsubscribed} / {userData.stats.deleted || 0}
                         </p>
                       </div>
                     </div>
