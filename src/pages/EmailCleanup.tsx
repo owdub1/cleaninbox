@@ -268,6 +268,7 @@ const SenderSkeleton = () => (
 
 // Undo toast component
 interface UndoAction {
+  id: string;
   type: 'delete' | 'archive';
   count: number;
   senderEmails: string[];
@@ -277,6 +278,7 @@ interface UndoAction {
 
 // Pending deletion state for true undo (deferred API calls)
 interface PendingDeletion {
+  id: string;
   type: 'single' | 'bulk';
   action: 'delete' | 'archive';
   // For single delete:
@@ -298,11 +300,13 @@ interface PendingDeletion {
 const UndoToast = ({
   action,
   onUndo,
-  onDismiss
+  onDismiss,
+  stackIndex = 0
 }: {
   action: UndoAction;
   onUndo: () => void;
   onDismiss: () => void;
+  stackIndex?: number;
 }) => {
   const [progress, setProgress] = useState(100);
   const UNDO_TIMEOUT = 4000; // 4 seconds to undo
@@ -327,8 +331,14 @@ const UndoToast = ({
     return () => clearInterval(interval);
   }, []);
 
+  // Stack toasts vertically with offset
+  const bottomOffset = 24 + (stackIndex * 72); // 72px per toast
+
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-50 animate-slide-up transition-all duration-200"
+      style={{ bottom: `${bottomOffset}px` }}
+    >
       <div className="bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-4 min-w-[300px]">
         <div className="flex-1">
           <p className="text-sm font-medium">
@@ -445,9 +455,9 @@ const EmailCleanup = () => {
   // State for storing loaded emails by sender
   const [senderEmails, setSenderEmails] = useState<Record<string, EmailMessage[]>>({});
   const [deletingEmailId, setDeletingEmailId] = useState<string | null>(null);
-  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
-  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null);
-  const pendingDeletionRef = useRef<PendingDeletion | null>(null);
+  const [undoActions, setUndoActions] = useState<UndoAction[]>([]);
+  const [pendingDeletions, setPendingDeletions] = useState<Map<string, PendingDeletion>>(new Map());
+  const pendingDeletionsRef = useRef<Map<string, PendingDeletion>>(new Map());
   const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
   // State for viewing individual email
   const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
@@ -548,20 +558,19 @@ const EmailCleanup = () => {
     }
   }, [sendersError, isAuthenticated]);
 
-  // Keep pendingDeletionRef in sync with state for async callbacks
+  // Keep pendingDeletionsRef in sync with state for async callbacks
   useEffect(() => {
-    pendingDeletionRef.current = pendingDeletion;
-  }, [pendingDeletion]);
+    pendingDeletionsRef.current = pendingDeletions;
+  }, [pendingDeletions]);
 
-  // Cleanup: execute pending deletion if component unmounts
+  // Cleanup: execute all pending deletions if component unmounts
   useEffect(() => {
     return () => {
-      if (pendingDeletionRef.current) {
-        clearTimeout(pendingDeletionRef.current.timeoutId);
+      pendingDeletionsRef.current.forEach((pending) => {
+        clearTimeout(pending.timeoutId);
         // Execute the pending deletion before unmount
         // Note: This runs synchronously, but the API call is async
         // The deletion will proceed even after unmount
-        const pending = pendingDeletionRef.current;
         if (connectedGmailAccount) {
           if (pending.type === 'single' && pending.email && pending.senderEmail) {
             deleteSingleEmail(
@@ -577,7 +586,7 @@ const EmailCleanup = () => {
             }
           }
         }
-      }
+      });
     };
   }, [connectedGmailAccount, deleteSingleEmail, deleteEmails, archiveEmails]);
 
@@ -655,7 +664,7 @@ const EmailCleanup = () => {
 
   // Execute cleanup action (deferred for delete/archive, immediate for unsubscribe)
   const executeCleanupAction = async () => {
-    if (!connectedGmailAccount || pendingDeletion) return;
+    if (!connectedGmailAccount) return;
 
     const { action, senders: actionSenders } = confirmModal;
     const senderEmailsList = actionSenders.map(s => s.email);
@@ -705,26 +714,33 @@ const EmailCleanup = () => {
     // Calculate total count for undo toast
     const totalCount = actionSenders.reduce((sum, s) => sum + s.emailCount, 0);
 
+    // Generate unique ID for this action
+    const actionId = `bulk-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     // Set up deferred deletion (API call after 4 seconds)
     const timeoutId = setTimeout(() => {
-      executePendingDeletion();
+      executePendingDeletion(actionId);
     }, 4000);
 
-    setPendingDeletion({
+    const newPendingDeletion: PendingDeletion = {
+      id: actionId,
       type: 'bulk',
       action,
       senders: originalSenders,
       senderEmails: senderEmailsList,
       senderNames: senderNamesList,
       timeoutId
-    });
+    };
 
-    setUndoAction({
+    setPendingDeletions(prev => new Map(prev).set(actionId, newPendingDeletion));
+
+    setUndoActions(prev => [...prev, {
+      id: actionId,
       type: action,
       count: totalCount,
       senderEmails: senderEmailsList,
       timestamp: Date.now()
-    });
+    }]);
 
     // Increment free actions used (will be decremented on undo if needed)
     if (!hasPaidPlan) {
@@ -737,10 +753,16 @@ const EmailCleanup = () => {
   };
 
   // Execute pending deletion when undo timeout expires
-  const executePendingDeletion = async () => {
-    const pending = pendingDeletionRef.current;
+  const executePendingDeletion = async (actionId: string) => {
+    const pending = pendingDeletionsRef.current.get(actionId);
     if (!pending || !connectedGmailAccount) {
-      setPendingDeletion(null);
+      // Remove from state even if not found
+      setPendingDeletions(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(actionId);
+        return newMap;
+      });
+      setUndoActions(prev => prev.filter(a => a.id !== actionId));
       return;
     }
 
@@ -767,12 +789,18 @@ const EmailCleanup = () => {
       fetchSenders();
     }
 
-    setPendingDeletion(null);
+    // Remove this specific pending deletion
+    setPendingDeletions(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(actionId);
+      return newMap;
+    });
+    setUndoActions(prev => prev.filter(a => a.id !== actionId));
   };
 
   // Handle deleting a single email (deferred API call for true undo)
   const handleDeleteSingleEmail = (email: EmailMessage, senderEmail: string, senderName: string) => {
-    if (!connectedGmailAccount || pendingDeletion) return;
+    if (!connectedGmailAccount) return;
 
     const senderKey = `${senderName}|||${senderEmail}`;
 
@@ -793,13 +821,17 @@ const EmailCleanup = () => {
     }
     updateSenderCount(senderEmail, senderName, -1);
 
+    // Generate unique ID for this action
+    const actionId = `single-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     // Set up deferred deletion (API call after 4 seconds)
     const timeoutId = setTimeout(() => {
-      executePendingDeletion();
+      executePendingDeletion(actionId);
     }, 4000);
 
     // Store pending deletion for undo capability
-    setPendingDeletion({
+    const newPendingDeletion: PendingDeletion = {
+      id: actionId,
       type: 'single',
       action: 'delete',
       email,
@@ -810,22 +842,26 @@ const EmailCleanup = () => {
       originalSenderCount: currentSender?.emailCount,
       originalLastEmailDate: currentSender?.lastEmailDate,
       timeoutId
-    });
+    };
+
+    setPendingDeletions(prev => new Map(prev).set(actionId, newPendingDeletion));
 
     // Show undo toast
-    setUndoAction({
+    setUndoActions(prev => [...prev, {
+      id: actionId,
       type: 'delete',
       count: 1,
       senderEmails: [senderEmail],
       messageIds: [email.id],
       timestamp: Date.now()
-    });
+    }]);
   };
 
   // Handle undo action - true restoration (cancels pending API call)
-  const handleUndo = () => {
+  const handleUndo = (actionId: string) => {
+    const pendingDeletion = pendingDeletions.get(actionId);
     if (!pendingDeletion) {
-      setUndoAction(null);
+      setUndoActions(prev => prev.filter(a => a.id !== actionId));
       return;
     }
 
@@ -835,19 +871,24 @@ const EmailCleanup = () => {
     // Restore UI state based on deletion type
     if (pendingDeletion.type === 'single' && pendingDeletion.senderKey) {
       // Restore email to local state
+      const restoredEmails = pendingDeletion.originalEmails || [];
       setSenderEmails(prev => ({
         ...prev,
-        [pendingDeletion.senderKey!]: pendingDeletion.originalEmails || []
+        [pendingDeletion.senderKey!]: restoredEmails
       }));
 
-      // Restore sender count and date
+      // Restore sender count and recalculate date from actual emails
+      // (Don't use cached originalLastEmailDate - it may be stale with concurrent deletions)
       if (pendingDeletion.senderEmail && pendingDeletion.senderName) {
         updateSenderCount(pendingDeletion.senderEmail, pendingDeletion.senderName, 1);
-        if (pendingDeletion.originalLastEmailDate) {
+        if (restoredEmails.length > 0) {
+          const sortedByDate = [...restoredEmails].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
           updateSenderLastEmailDate(
             pendingDeletion.senderEmail,
             pendingDeletion.senderName,
-            pendingDeletion.originalLastEmailDate
+            sortedByDate[0].date
           );
         }
       }
@@ -860,9 +901,13 @@ const EmailCleanup = () => {
       }
     }
 
-    // Clear pending deletion and undo toast
-    setPendingDeletion(null);
-    setUndoAction(null);
+    // Remove this specific pending deletion and undo toast
+    setPendingDeletions(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(actionId);
+      return newMap;
+    });
+    setUndoActions(prev => prev.filter(a => a.id !== actionId));
 
     const actionWord = pendingDeletion.action === 'archive' ? 'Archive' : 'Deletion';
     setNotification({ type: 'success', message: `${actionWord} cancelled` });
@@ -1054,12 +1099,23 @@ const EmailCleanup = () => {
 
   // Filter out senders that are pending bulk deletion
   const filterPendingBulkDeletions = (senderList: Sender[]): Sender[] => {
-    if (!pendingDeletion || pendingDeletion.type !== 'bulk') return senderList;
+    if (pendingDeletions.size === 0) return senderList;
+
+    // Collect all pending bulk deletion sender emails/names
+    const pendingBulkSenders = new Set<string>();
+    pendingDeletions.forEach(pending => {
+      if (pending.type === 'bulk' && pending.senderEmails && pending.senderNames) {
+        pending.senderEmails.forEach((email, index) => {
+          pendingBulkSenders.add(`${email}|||${pending.senderNames![index]}`);
+        });
+      }
+    });
+
+    if (pendingBulkSenders.size === 0) return senderList;
+
     return senderList.filter(sender => {
-      const emailIndex = pendingDeletion.senderEmails?.indexOf(sender.email) ?? -1;
-      if (emailIndex === -1) return true;
-      // Also check name matches (in case same email has different display names)
-      return pendingDeletion.senderNames?.[emailIndex] !== sender.name;
+      const key = `${sender.email}|||${sender.name}`;
+      return !pendingBulkSenders.has(key);
     });
   };
 
@@ -2143,18 +2199,16 @@ const EmailCleanup = () => {
         </div>
       </section>
 
-      {/* Undo Toast */}
-      {undoAction && (
+      {/* Undo Toasts (stacked) */}
+      {undoActions.map((action, index) => (
         <UndoToast
-          action={undoAction}
-          onUndo={handleUndo}
-          onDismiss={() => {
-            // Toast dismissed = timeout expired = execute the deletion
-            executePendingDeletion();
-            setUndoAction(null);
-          }}
+          key={action.id}
+          action={action}
+          onUndo={() => handleUndo(action.id)}
+          onDismiss={() => executePendingDeletion(action.id)}
+          stackIndex={index}
         />
-      )}
+      ))}
 
       {/* Animation styles */}
       <style>{`
