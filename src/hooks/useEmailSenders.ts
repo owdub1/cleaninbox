@@ -133,13 +133,14 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
    * @param options - Sync options
    * @param options.maxMessages - Max messages to fetch (default 1000)
    * @param options.fullSync - If true, fetches all emails for accurate counts (slower)
+   * @param options.repair - If true, recalculates sender stats from existing emails (fixes corrupted data)
    * Returns object with success status and optional error details
    */
   const syncEmails = useCallback(async (
     email: string,
-    options: { maxMessages?: number; fullSync?: boolean } = {}
+    options: { maxMessages?: number; fullSync?: boolean; repair?: boolean } = {}
   ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string }> => {
-    const { maxMessages = 1000, fullSync = false } = options;
+    const { maxMessages = 1000, fullSync = false, repair = false } = options;
 
     if (!token) {
       setError('Authentication required');
@@ -156,7 +157,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, maxMessages, fullSync }),
+        body: JSON.stringify({ email, maxMessages, fullSync, repair }),
       });
 
       const data = await response.json();

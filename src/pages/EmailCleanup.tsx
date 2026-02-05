@@ -620,17 +620,19 @@ const EmailCleanup = () => {
     setCurrentView('tools');
   };
 
-  const handleSync = async (fullSync: boolean = false) => {
+  const handleSync = async (fullSync: boolean = false, repair: boolean = false) => {
     // Use connected account, or fall back to any Gmail account
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
-      console.log(`${fullSync ? 'Full' : 'Incremental'} sync for:`, accountToSync.email);
-      const result = await syncEmails(accountToSync.email, { fullSync });
+      const syncType = repair ? 'Repair' : (fullSync ? 'Full' : 'Incremental');
+      console.log(`${syncType} sync for:`, accountToSync.email);
+      const result = await syncEmails(accountToSync.email, { fullSync, repair });
       if (result.success) {
         // Clear cached email lists and collapse dropdowns so UI reflects fresh data
         setSenderEmails({});
         setExpandedSenders([]);
-        setNotification({ type: 'success', message: fullSync ? 'Full sync completed!' : 'Emails synced successfully!' });
+        const message = repair ? 'Data repaired successfully!' : (fullSync ? 'Full sync completed!' : 'Emails synced successfully!');
+        setNotification({ type: 'success', message });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
         const message = result.upgradeMessage
@@ -1594,14 +1596,22 @@ const EmailCleanup = () => {
                   </div>
                 )}
                 {connectedGmailAccount && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <button
-                      onClick={() => handleSync(false)}
+                      onClick={() => handleSync(false, false)}
                       disabled={syncing}
                       className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                       {syncing ? 'Syncing...' : 'Sync Now'}
+                    </button>
+                    <button
+                      onClick={() => handleSync(false, true)}
+                      disabled={syncing}
+                      className="text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+                      title="Fix incorrect sender dates and counts"
+                    >
+                      Repair Data
                     </button>
                   </div>
                 )}
