@@ -293,7 +293,9 @@ async function performFullSync(
     const { senderEmail, senderName } = parseSender(fromHeader);
     if (senderEmail === userEmail || !senderEmail) continue;
 
-    const receivedAt = dateHeader ? new Date(dateHeader).toISOString() : new Date(parseInt(msg.internalDate)).toISOString();
+    // Use Gmail's internalDate (epoch ms) instead of Date header for reliable timezone handling
+    // The Date header can be in any timezone and JS parsing can shift the date
+    const receivedAt = new Date(parseInt(msg.internalDate)).toISOString();
     const isUnread = labels.includes('UNREAD');
 
     // Add to emails list
@@ -654,7 +656,9 @@ async function processNewMessages(
     const { senderEmail, senderName } = parseSender(fromHeader);
     if (senderEmail === userEmail || !senderEmail) continue;
 
-    const receivedAt = dateHeader ? new Date(dateHeader).toISOString() : new Date(parseInt(msg.internalDate)).toISOString();
+    // Use Gmail's internalDate (epoch ms) instead of Date header for reliable timezone handling
+    // The Date header can be in any timezone and JS parsing can shift the date
+    const receivedAt = new Date(parseInt(msg.internalDate)).toISOString();
 
     // Insert email (unique constraint will reject duplicates)
     const { error } = await supabase.from('emails').insert({
