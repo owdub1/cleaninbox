@@ -295,7 +295,14 @@ async function performFullSync(
 
     // Use Gmail's internalDate (epoch ms) instead of Date header for reliable timezone handling
     // The Date header can be in any timezone and JS parsing can shift the date
-    const receivedAt = new Date(parseInt(msg.internalDate)).toISOString();
+    const internalDateMs = parseInt(msg.internalDate);
+    const receivedAt = new Date(internalDateMs).toISOString();
+
+    // Debug: log LinkedIn emails to verify date parsing
+    if (senderEmail.includes('linkedin')) {
+      console.log(`LinkedIn email debug: internalDate=${msg.internalDate}, parsed=${internalDateMs}, receivedAt=${receivedAt}, dateHeader=${dateHeader}, subject=${subjectHeader?.substring(0, 50)}`);
+    }
+
     const isUnread = labels.includes('UNREAD');
 
     // Add to emails list
