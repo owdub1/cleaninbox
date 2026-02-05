@@ -758,6 +758,10 @@ const EmailCleanup = () => {
   // Execute pending deletion when undo timeout expires
   const executePendingDeletion = async (actionId: string) => {
     const pending = pendingDeletionsRef.current.get(actionId);
+
+    // Remove undo toast immediately when timer fires (don't wait for API)
+    setUndoActions(prev => prev.filter(a => a.id !== actionId));
+
     if (!pending || !connectedGmailAccount) {
       // Remove from state even if not found
       setPendingDeletions(prev => {
@@ -765,7 +769,6 @@ const EmailCleanup = () => {
         newMap.delete(actionId);
         return newMap;
       });
-      setUndoActions(prev => prev.filter(a => a.id !== actionId));
       return;
     }
 
@@ -802,13 +805,12 @@ const EmailCleanup = () => {
       fetchSenders();
     }
 
-    // Remove this specific pending deletion
+    // Remove this specific pending deletion from tracking
     setPendingDeletions(prev => {
       const newMap = new Map(prev);
       newMap.delete(actionId);
       return newMap;
     });
-    setUndoActions(prev => prev.filter(a => a.id !== actionId));
   };
 
   // Handle deleting a single email (deferred API call for true undo)
