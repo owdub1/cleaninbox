@@ -402,6 +402,20 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     });
   }, []);
 
+  /**
+   * Remove multiple senders from the local state (for optimistic UI after bulk deletion)
+   * @param senderKeys - Array of sender identifiers (email + name pairs)
+   */
+  const removeSenders = useCallback((
+    senderKeys: Array<{ email: string; name: string }>
+  ) => {
+    setSenders(prevSenders =>
+      prevSenders.filter(sender =>
+        !senderKeys.some(key => key.email === sender.email && key.name === sender.name)
+      )
+    );
+  }, []);
+
   return {
     senders,
     loading,
@@ -419,5 +433,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     fetchEmailsBySender,
     updateSenderCount,
     updateSenderLastEmailDate,
+    removeSenders,
   };
 };

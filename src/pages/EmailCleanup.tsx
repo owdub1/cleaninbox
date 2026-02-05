@@ -449,7 +449,8 @@ const EmailCleanup = () => {
     getSendersByYear,
     fetchEmailsBySender,
     updateSenderCount,
-    updateSenderLastEmailDate
+    updateSenderLastEmailDate,
+    removeSenders
   } = useEmailSenders({ autoFetch: true });
 
   // State for storing loaded emails by sender
@@ -781,8 +782,18 @@ const EmailCleanup = () => {
         } else if (pending.action === 'archive') {
           await archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
         }
-        // Refresh senders list after bulk action completes
-        fetchSenders();
+        // Remove senders from local state (no refetch needed - already filtered visually)
+        if (pending.senders) {
+          const senderKeys = pending.senders.map(s => ({ email: s.email, name: s.name }));
+          removeSenders(senderKeys);
+          // Clean up cached emails for deleted senders
+          const keysToRemove = pending.senders.map(s => `${s.name}|||${s.email}`);
+          setSenderEmails(prev => {
+            const updated = { ...prev };
+            keysToRemove.forEach(key => delete updated[key]);
+            return updated;
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to execute pending deletion:', error);
