@@ -1013,18 +1013,14 @@ const EmailCleanup = () => {
   };
 
   // Get senders grouped by time period (Today, Yesterday, days of week, months, then years)
-  // Uses local timezone for grouping to match user's perception of "today"
+  // Uses UTC to match Gmail's date display behavior (dates shown match Date header)
   const getSendersByTimePeriod = (): { period: string; senders: Sender[]; sortOrder: number }[] => {
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth();
 
-    // Create date boundaries at midnight local time
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const twoDaysAgoStart = new Date(todayStart);
-    twoDaysAgoStart.setDate(twoDaysAgoStart.getDate() - 2);
+    // Create date boundaries at midnight UTC (matches how dates are stored and displayed)
+    const todayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
 
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -1034,15 +1030,15 @@ const EmailCleanup = () => {
 
     for (const sender of senders) {
       const emailDate = new Date(sender.lastEmailDate);
-      const emailYear = emailDate.getFullYear();
-      const emailMonth = emailDate.getMonth();
-      const emailDayOfMonth = emailDate.getDate();
+      const emailYear = emailDate.getUTCFullYear();
+      const emailMonth = emailDate.getUTCMonth();
+      const emailDayOfMonth = emailDate.getUTCDate();
 
-      // Create a date at midnight local time for the email's date
-      const emailDayStart = new Date(emailYear, emailMonth, emailDayOfMonth, 0, 0, 0, 0);
+      // Create a date at midnight UTC for the email's date
+      const emailDayStart = Date.UTC(emailYear, emailMonth, emailDayOfMonth, 0, 0, 0, 0);
 
-      // Calculate days difference
-      const msDiff = todayStart.getTime() - emailDayStart.getTime();
+      // Calculate days difference (both values are epoch ms)
+      const msDiff = todayStart - emailDayStart;
       const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
 
       let period: string;
@@ -1055,8 +1051,8 @@ const EmailCleanup = () => {
         period = 'Yesterday';
         sortOrder = 1;
       } else if (daysDiff >= 2 && daysDiff <= 6) {
-        // 2-6 days ago - show day name
-        period = dayNames[emailDate.getDay()];
+        // 2-6 days ago - show day name (UTC)
+        period = dayNames[emailDate.getUTCDay()];
         sortOrder = daysDiff;
       } else if (daysDiff >= 7 && daysDiff <= 30) {
         // 7-30 days ago - "Last Week" or "Earlier This Month"
