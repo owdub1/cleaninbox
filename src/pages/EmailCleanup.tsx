@@ -1862,7 +1862,7 @@ const EmailCleanup = () => {
                                             </div>
                                             <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
                                             <div className="text-xs text-gray-400 mt-1">
-                                              {new Date(email.date).toLocaleDateString()}
+                                              {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                             </div>
                                           </div>
                                           <button
@@ -1931,7 +1931,7 @@ const EmailCleanup = () => {
                           <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
                         </div>
                         <div className="text-sm text-gray-400 mr-4">
-                          {new Date(sender.lastEmailDate).toLocaleDateString()}
+                          {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                         </div>
                       </button>
                       <div className="flex items-center gap-3">
@@ -1974,7 +1974,7 @@ const EmailCleanup = () => {
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
                                     <div className="text-xs text-gray-400 mt-1">
-                                      {new Date(email.date).toLocaleDateString()}
+                                      {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                     </div>
                                   </div>
                                   <button
@@ -2097,7 +2097,7 @@ const EmailCleanup = () => {
                                         {email.snippet}
                                       </p>
                                       <div className="text-xs text-gray-400 mt-1">
-                                        {new Date(email.date).toLocaleDateString()} at {new Date(email.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })} at {new Date(email.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
                                       </div>
                                     </div>
                                     <button
@@ -2151,7 +2151,7 @@ const EmailCleanup = () => {
                           <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
                         </div>
                         <div className="text-sm text-gray-400 mr-4">
-                          Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
+                          Last: {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                         </div>
                       </div>
                       <button
