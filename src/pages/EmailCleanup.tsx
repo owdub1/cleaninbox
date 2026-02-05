@@ -1013,16 +1013,18 @@ const EmailCleanup = () => {
   };
 
   // Get senders grouped by time period (Today, Yesterday, days of week, months, then years)
-  // Uses UTC for all comparisons to match how dates are stored in the database
+  // Uses local timezone for grouping to match user's perception of "today"
   const getSendersByTimePeriod = (): { period: string; senders: Sender[]; sortOrder: number }[] => {
     const now = new Date();
-    const currentYear = now.getUTCFullYear();
-    const currentMonth = now.getUTCMonth();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
 
-    // Create date boundaries at midnight UTC
-    const todayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
-    const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
-    const twoDaysAgoStart = todayStart - 2 * 24 * 60 * 60 * 1000;
+    // Create date boundaries at midnight local time
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const twoDaysAgoStart = new Date(todayStart);
+    twoDaysAgoStart.setDate(twoDaysAgoStart.getDate() - 2);
 
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -1032,15 +1034,15 @@ const EmailCleanup = () => {
 
     for (const sender of senders) {
       const emailDate = new Date(sender.lastEmailDate);
-      const emailYear = emailDate.getUTCFullYear();
-      const emailMonth = emailDate.getUTCMonth();
-      const emailDayOfMonth = emailDate.getUTCDate();
+      const emailYear = emailDate.getFullYear();
+      const emailMonth = emailDate.getMonth();
+      const emailDayOfMonth = emailDate.getDate();
 
-      // Create a date at midnight UTC for the email's date
-      const emailDayStart = Date.UTC(emailYear, emailMonth, emailDayOfMonth, 0, 0, 0, 0);
+      // Create a date at midnight local time for the email's date
+      const emailDayStart = new Date(emailYear, emailMonth, emailDayOfMonth, 0, 0, 0, 0);
 
-      // Calculate days difference (both values are epoch ms from Date.UTC)
-      const msDiff = todayStart - emailDayStart;
+      // Calculate days difference
+      const msDiff = todayStart.getTime() - emailDayStart.getTime();
       const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
 
       let period: string;
@@ -1054,7 +1056,7 @@ const EmailCleanup = () => {
         sortOrder = 1;
       } else if (daysDiff >= 2 && daysDiff <= 6) {
         // 2-6 days ago - show day name
-        period = dayNames[emailDate.getUTCDay()];
+        period = dayNames[emailDate.getDay()];
         sortOrder = daysDiff;
       } else if (daysDiff >= 7 && daysDiff <= 30) {
         // 7-30 days ago - "Last Week" or "Earlier This Month"
@@ -1860,7 +1862,7 @@ const EmailCleanup = () => {
                                             </div>
                                             <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
                                             <div className="text-xs text-gray-400 mt-1">
-                                              {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                              {new Date(email.date).toLocaleDateString()}
                                             </div>
                                           </div>
                                           <button
@@ -1929,7 +1931,7 @@ const EmailCleanup = () => {
                           <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
                         </div>
                         <div className="text-sm text-gray-400 mr-4">
-                          {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                          {new Date(sender.lastEmailDate).toLocaleDateString()}
                         </div>
                       </button>
                       <div className="flex items-center gap-3">
@@ -1972,7 +1974,7 @@ const EmailCleanup = () => {
                                     </div>
                                     <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
                                     <div className="text-xs text-gray-400 mt-1">
-                                      {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                      {new Date(email.date).toLocaleDateString()}
                                     </div>
                                   </div>
                                   <button
@@ -2095,7 +2097,7 @@ const EmailCleanup = () => {
                                         {email.snippet}
                                       </p>
                                       <div className="text-xs text-gray-400 mt-1">
-                                        {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })} at {new Date(email.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
+                                        {new Date(email.date).toLocaleDateString()} at {new Date(email.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                       </div>
                                     </div>
                                     <button
@@ -2149,7 +2151,7 @@ const EmailCleanup = () => {
                           <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
                         </div>
                         <div className="text-sm text-gray-400 mr-4">
-                          Last: {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                          Last: {new Date(sender.lastEmailDate).toLocaleDateString()}
                         </div>
                       </div>
                       <button
