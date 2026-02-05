@@ -61,7 +61,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { email, fullSync = false } = req.body;
+  const { email, fullSync = false, repair = false } = req.body;
 
   if (!email) {
     return res.status(400).json({
@@ -145,6 +145,13 @@ export default async function handler(
         error: `Gmail connection error: ${tokenError.message}. Please reconnect your Gmail account.`,
         code: 'TOKEN_ERROR'
       });
+    }
+
+    // ==================== REPAIR MODE ====================
+    // Recalculate all sender stats from existing emails (no Gmail fetch)
+    if (repair) {
+      console.log(`Repair mode: recalculating sender stats for ${email}`);
+      return await performRepairSync(res, user.userId, account.id, email);
     }
 
     // Determine sync mode
@@ -966,4 +973,118 @@ function extractUnsubscribeLink(header: string): string | null {
   if (mailtoMatch) return mailtoMatch[1];
 
   return null;
+}
+
+/**
+ * Repair Sync: Recalculate all sender stats from existing emails
+ *
+ * This fixes corrupted sender data (wrong dates, counts) without re-fetching from Gmail.
+ * It reads all emails from the database and rebuilds sender stats from scratch.
+ */
+async function performRepairSync(
+  res: VercelResponse,
+  userId: string,
+  accountId: string,
+  email: string
+) {
+  console.log('Repair sync: fetching all emails from database...');
+
+  // Get all emails for this account
+  const { data: emails, error: emailsError } = await supabase
+    .from('emails')
+    .select('sender_email, sender_name, received_at, is_unread')
+    .eq('email_account_id', accountId);
+
+  if (emailsError) {
+    console.error('Repair sync: failed to fetch emails:', emailsError);
+    return res.status(500).json({ error: 'Failed to fetch emails for repair' });
+  }
+
+  if (!emails || emails.length === 0) {
+    console.log('Repair sync: no emails found');
+    return res.status(200).json({
+      success: true,
+      message: 'No emails to repair',
+      syncType: 'repair'
+    });
+  }
+
+  console.log(`Repair sync: recalculating stats from ${emails.length} emails...`);
+
+  // Aggregate emails by sender (name + email composite key)
+  const senderStats = new Map<string, {
+    sender_email: string;
+    sender_name: string;
+    email_count: number;
+    unread_count: number;
+    first_email_date: string;
+    last_email_date: string;
+  }>();
+
+  for (const emailRecord of emails) {
+    const key = `${emailRecord.sender_name}|||${emailRecord.sender_email}`;
+    const existing = senderStats.get(key);
+
+    if (existing) {
+      existing.email_count++;
+      if (emailRecord.is_unread) existing.unread_count++;
+      if (emailRecord.received_at < existing.first_email_date) {
+        existing.first_email_date = emailRecord.received_at;
+      }
+      if (emailRecord.received_at > existing.last_email_date) {
+        existing.last_email_date = emailRecord.received_at;
+      }
+    } else {
+      senderStats.set(key, {
+        sender_email: emailRecord.sender_email,
+        sender_name: emailRecord.sender_name,
+        email_count: 1,
+        unread_count: emailRecord.is_unread ? 1 : 0,
+        first_email_date: emailRecord.received_at,
+        last_email_date: emailRecord.received_at,
+      });
+    }
+  }
+
+  console.log(`Repair sync: updating ${senderStats.size} senders...`);
+
+  // Update each sender's stats
+  let updatedCount = 0;
+  for (const [key, stats] of senderStats) {
+    const { error: updateError } = await supabase
+      .from('email_senders')
+      .update({
+        email_count: stats.email_count,
+        unread_count: stats.unread_count,
+        first_email_date: stats.first_email_date,
+        last_email_date: stats.last_email_date,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email_account_id', accountId)
+      .eq('sender_email', stats.sender_email)
+      .eq('sender_name', stats.sender_name);
+
+    if (!updateError) {
+      updatedCount++;
+    } else {
+      console.warn(`Repair sync: failed to update sender ${stats.sender_email}:`, updateError.message);
+    }
+  }
+
+  console.log(`Repair sync: updated ${updatedCount} senders`);
+
+  // Log activity
+  await supabase.from('activity_log').insert({
+    user_id: userId,
+    action_type: 'email_sync',
+    description: `Repair sync: recalculated stats for ${updatedCount} senders`,
+    metadata: { email, syncType: 'repair', sendersUpdated: updatedCount }
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: `Repaired ${updatedCount} sender records`,
+    sendersUpdated: updatedCount,
+    syncType: 'repair'
+  });
 }
