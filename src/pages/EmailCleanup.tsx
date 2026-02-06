@@ -2155,20 +2155,12 @@ const EmailCleanup = () => {
                           Last: {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          className="px-5 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          onClick={() => handleCleanupAction('archive', [sender])}
-                        >
-                          Archive
-                        </button>
-                        <button
-                          className="px-5 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
-                          onClick={() => handleCleanupAction('delete', [sender])}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <button
+                        className="px-5 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                        onClick={() => handleCleanupAction('delete', [sender])}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
