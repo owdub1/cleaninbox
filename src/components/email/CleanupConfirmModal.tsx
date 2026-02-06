@@ -112,14 +112,16 @@ export const CleanupConfirmModal = ({
 
           {/* Summary */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between mb-2">
+            <div className={`flex items-center justify-between ${action !== 'unsubscribe' ? 'mb-2' : ''}`}>
               <span className="text-gray-600">Selected senders:</span>
               <span className="font-semibold text-gray-900">{senders.length}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Total emails:</span>
-              <span className="font-semibold text-gray-900">{totalEmails.toLocaleString()}</span>
-            </div>
+            {action !== 'unsubscribe' && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Total emails:</span>
+                <span className="font-semibold text-gray-900">{totalEmails.toLocaleString()}</span>
+              </div>
+            )}
 
             {/* Sender list preview */}
             {senders.length <= 5 && (
