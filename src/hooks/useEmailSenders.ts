@@ -162,6 +162,14 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       const data = await response.json();
 
+      // Log full sync response for debugging (check browser DevTools console)
+      console.log('[Sync Response]', JSON.stringify(data, null, 2));
+      if (data.diagnostics) {
+        console.log('[Sync Diagnostics] Today\'s emails in DB:', data.diagnostics.todaySenders);
+        console.log('[Sync Diagnostics] Completeness check passed:', data.diagnostics.completenessCheckPassed);
+        console.log('[Sync Diagnostics] Sync method:', data.diagnostics.syncMethod);
+      }
+
       if (!response.ok) {
         // Handle sync limit reached (429)
         if (response.status === 429 && data.code === 'SYNC_LIMIT_REACHED') {

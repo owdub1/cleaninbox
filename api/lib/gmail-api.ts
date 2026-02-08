@@ -169,7 +169,11 @@ export async function listMessages(
   if (options.maxResults) params.set('maxResults', options.maxResults.toString());
   if (options.pageToken) params.set('pageToken', options.pageToken);
   if (options.q) params.set('q', options.q);
-  if (options.labelIds) params.set('labelIds', options.labelIds.join(','));
+  if (options.labelIds) {
+    for (const labelId of options.labelIds) {
+      params.append('labelIds', labelId);
+    }
+  }
 
   const queryString = params.toString();
   const endpoint = `/messages${queryString ? `?${queryString}` : ''}`;

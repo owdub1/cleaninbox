@@ -710,6 +710,20 @@ async function performIncrementalSync(
     }
   });
 
+  // Build diagnostics for debugging (visible in browser DevTools since Vercel logs aren't accessible on Hobby)
+  const diagnostics: any = {
+    syncMethod,
+    verifyDepth,
+    todayEmailCount: todayEmails?.length || 0,
+    todaySenders: todayEmails ? Array.from(new Set(todayEmails.map(e => e.sender_email))).map(email => ({
+      email,
+      count: todayEmails.filter(e => e.sender_email === email).length,
+      subjects: todayEmails.filter(e => e.sender_email === email).map(e => e.subject?.substring(0, 60))
+    })) : [],
+    completenessCheckPassed: completenessResult.complete,
+    completenessCheckMissing: completenessResult.missingCount,
+  };
+
   return res.status(200).json({
     success: !syncMethod.includes('failed'),
     totalSenders: affectedSenders.size,
@@ -719,7 +733,8 @@ async function performIncrementalSync(
       ? `Sync incomplete - ${completenessResult.missingCount} emails could not be synced`
       : (addedCount > 0 || deletedCount > 0 ? description : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
-    syncMethod
+    syncMethod,
+    diagnostics
   });
 }
 
@@ -911,8 +926,8 @@ async function verifyCompletenessAndSync(
   console.log(`Verifying sync completeness: checking Gmail's newest ${depth} inbox emails exist locally...`);
 
   // Verify INBOX emails specifically — this is what the user sees in Gmail
-  // Using in:inbox instead of exclusion query ensures we verify the emails users care about
-  const query = 'in:inbox';
+  // Using labelIds: ['INBOX'] instead of q: 'in:inbox' for direct label lookup
+  // This bypasses Gmail's search index which can have delays for recently arrived emails
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
 
@@ -920,7 +935,7 @@ async function verifyCompletenessAndSync(
     const response = await listMessages(accessToken, {
       maxResults: Math.min(100, depth - allMessageRefs.length),
       pageToken,
-      q: query,
+      labelIds: ['INBOX'],
     });
 
     if (!response.messages || response.messages.length === 0) break;
