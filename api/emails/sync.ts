@@ -712,7 +712,7 @@ async function performIncrementalSync(
     }
   });
 
-  // Build diagnostics for debugging (visible in browser DevTools since Vercel logs aren't accessible on Hobby)
+  // Build diagnostics for debugging
   const diagnostics: any = {
     syncMethod,
     verifyDepth,
@@ -720,10 +720,13 @@ async function performIncrementalSync(
     todaySenders: todayEmails ? Array.from(new Set(todayEmails.map(e => e.sender_email))).map(email => ({
       email,
       count: todayEmails.filter(e => e.sender_email === email).length,
-      subjects: todayEmails.filter(e => e.sender_email === email).map(e => e.subject?.substring(0, 60))
     })) : [],
     completenessCheckPassed: completenessResult.complete,
     completenessCheckMissing: completenessResult.missingCount,
+    auditSendersRecalculated: affectedSenders.size,
+    auditSampleKeys: Array.from(affectedSenders).slice(0, 5),
+    totalEmailsInDB: totalEmails,
+    totalInSenderStats: senderSum,
   };
 
   return res.status(200).json({
