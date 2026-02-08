@@ -186,7 +186,13 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       // Refresh senders after sync - fetch ALL senders (not just this account)
       // The frontend filters by selectedAccountEmail, so we need all accounts' data
-      await fetchSenders();
+      const refreshedSenders = await fetchSenders();
+
+      // Debug: check if popeye sender was returned by the API
+      const popeyeMatches = refreshedSenders.filter(s =>
+        s.email.toLowerCase().includes('popeye') || s.name.toLowerCase().includes('popeye')
+      );
+      console.log(`[DEBUG] fetchSenders returned ${refreshedSenders.length} senders. Popeye matches: ${JSON.stringify(popeyeMatches.map(s => ({ email: s.email, name: s.name, count: s.emailCount, lastDate: s.lastEmailDate })))}`);
 
       return { success: true, diagnostics: data.diagnostics };
     } catch (err: any) {
