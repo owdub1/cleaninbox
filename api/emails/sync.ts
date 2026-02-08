@@ -659,6 +659,30 @@ async function performIncrementalSync(
     }
   }
 
+  // Diagnostic: log today's senders to help debug missing emails
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const { data: todayEmails } = await supabase
+    .from('emails')
+    .select('sender_email, sender_name, received_at, subject')
+    .eq('email_account_id', accountId)
+    .gte('received_at', todayStart.toISOString())
+    .order('received_at', { ascending: false })
+    .limit(20);
+
+  if (todayEmails && todayEmails.length > 0) {
+    const todaySenders = new Map<string, number>();
+    for (const e of todayEmails) {
+      const key = e.sender_email;
+      todaySenders.set(key, (todaySenders.get(key) || 0) + 1);
+    }
+    console.log(`Today's emails in DB (${todayEmails.length}): ${
+      Array.from(todaySenders.entries()).map(([email, count]) => `${email}(${count})`).join(', ')
+    }`);
+  } else {
+    console.log('No emails from today found in DB');
+  }
+
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
   await supabase
@@ -929,7 +953,22 @@ async function verifyCompletenessAndSync(
   let missingIds = gmailIds.filter(id => !existingIds.has(id));
 
   if (missingIds.length === 0) {
-    console.log('Completeness check: All of Gmail\'s newest emails exist locally ✓');
+    // Diagnostic: log sample of verified emails to help debug sync issues
+    const sampleIds = gmailIds.slice(0, 20);
+    const { data: sampleEmails } = await supabase
+      .from('emails')
+      .select('gmail_message_id, sender_email, sender_name, received_at')
+      .eq('email_account_id', accountId)
+      .in('gmail_message_id', sampleIds)
+      .order('received_at', { ascending: false });
+
+    if (sampleEmails) {
+      console.log(`Completeness check: verified ${gmailIds.length} inbox emails. Recent sample: ${
+        sampleEmails.slice(0, 5).map(e => `${e.sender_email} (${e.received_at.substring(0, 10)})`).join(', ')
+      }`);
+    }
+
+    console.log('Completeness check: All of Gmail\'s newest inbox emails exist locally ✓');
     return { addedCount: 0, complete: true, missingCount: 0 };
   }
 
