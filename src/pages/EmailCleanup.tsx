@@ -1614,6 +1614,14 @@ const EmailCleanup = () => {
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                       {syncing ? 'Syncing...' : 'Sync Now'}
                     </button>
+                    <button
+                      onClick={() => handleSync(true, false)}
+                      disabled={syncing}
+                      className="text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+                      title="Resync all emails from Gmail"
+                    >
+                      Full Sync
+                    </button>
                   </div>
                 )}
               </div>
