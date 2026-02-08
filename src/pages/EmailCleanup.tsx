@@ -635,7 +635,9 @@ const EmailCleanup = () => {
         let message = repair ? 'Data repaired successfully!' : 'Emails synced successfully!';
         if (result.diagnostics) {
           const d = result.diagnostics;
-          message += ` [audit=${d.auditSendersRecalculated} fixed, DB=${d.totalEmailsInDB}, stats=${d.totalInSenderStats}, keys=${(d.auditSampleKeys||[]).join(' | ')}]`;
+          const pe = (d.popeyeEmails||[]).map((e: any) => `${e.email}|${e.name}|${e.date}`).join(', ');
+          const ps = (d.popeyeSenders||[]).map((s: any) => `${s.sender_email}|${s.sender_name}|count=${s.email_count}`).join(', ');
+          message += ` [audit=${d.auditSendersRecalculated}, DB=${d.totalEmailsInDB}, stats=${d.totalInSenderStats}, EMAILS:${pe || 'none'}, SENDERS:${ps || 'none'}]`;
         }
         setNotification({ type: 'success', message });
       } else if (result.limitReached) {

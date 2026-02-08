@@ -661,6 +661,22 @@ async function performIncrementalSync(
     }
   }
 
+  // Post-audit verification: check for emails with popeye in sender_email
+  const { data: popeyeEmails } = await supabase
+    .from('emails')
+    .select('gmail_message_id, sender_email, sender_name, received_at, subject')
+    .eq('email_account_id', accountId)
+    .ilike('sender_email', '%popeye%');
+
+  const { data: popeyeSenders } = await supabase
+    .from('email_senders')
+    .select('sender_email, sender_name, email_count, last_email_date')
+    .eq('email_account_id', accountId)
+    .ilike('sender_email', '%popeye%');
+
+  console.log(`DEBUG Popeye emails in DB: ${JSON.stringify(popeyeEmails)}`);
+  console.log(`DEBUG Popeye senders in DB: ${JSON.stringify(popeyeSenders)}`);
+
   // Diagnostic: log today's senders to help debug missing emails
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -727,6 +743,8 @@ async function performIncrementalSync(
     auditSampleKeys: Array.from(affectedSenders).slice(0, 5),
     totalEmailsInDB: totalEmails,
     totalInSenderStats: senderSum,
+    popeyeEmails: popeyeEmails?.map(e => ({ email: e.sender_email, name: e.sender_name, date: e.received_at, subject: e.subject?.substring(0, 40) })) || [],
+    popeyeSenders: popeyeSenders || [],
   };
 
   return res.status(200).json({
@@ -1081,7 +1099,7 @@ async function recalculateSenderStats(
       .eq('id', existingSender.id);
   } else {
     // Create new sender
-    await supabase.from('email_senders').insert({
+    const { error: insertError } = await supabase.from('email_senders').insert({
       user_id: userId,
       email_account_id: accountId,
       sender_email: senderEmail,
@@ -1095,6 +1113,9 @@ async function recalculateSenderStats(
       is_promotional: false,
       updated_at: new Date().toISOString()
     });
+    if (insertError) {
+      console.error(`Failed to create sender ${senderEmail}|||${senderName}: ${insertError.message} (code: ${insertError.code})`);
+    }
   }
 }
 
