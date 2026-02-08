@@ -632,7 +632,13 @@ const EmailCleanup = () => {
         // Clear cached email lists and collapse dropdowns so UI reflects fresh data
         setSenderEmails({});
         setExpandedSenders([]);
-        const message = repair ? 'Data repaired successfully!' : 'Emails synced successfully!';
+        // Temporarily show diagnostics in the success message for debugging
+        let message = repair ? 'Data repaired successfully!' : 'Emails synced successfully!';
+        if (result.diagnostics) {
+          const d = result.diagnostics;
+          const senderList = (d.todaySenders || []).map((s: any) => `${s.email}(${s.count})`).join(', ');
+          message += ` [DEBUG: method=${d.syncMethod}, today=${d.todayEmailCount} emails: ${senderList || 'none'}, completeness=${d.completenessCheckPassed ? 'PASS' : 'FAIL'}]`;
+        }
         setNotification({ type: 'success', message });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
