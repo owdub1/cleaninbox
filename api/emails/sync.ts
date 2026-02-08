@@ -590,6 +590,41 @@ async function performIncrementalSync(
     }
   }
 
+  // Sender stats consistency check: detect stale stats from interrupted syncs
+  // If the total email count doesn't match the sum of sender counts, stats are stale
+  const { count: totalEmails } = await supabase
+    .from('emails')
+    .select('*', { count: 'exact', head: true })
+    .eq('email_account_id', accountId);
+
+  const { data: allSenders } = await supabase
+    .from('email_senders')
+    .select('sender_email, sender_name, email_count')
+    .eq('email_account_id', accountId);
+
+  const senderSum = (allSenders || []).reduce((sum, s) => sum + (s.email_count || 0), 0);
+
+  if (totalEmails !== null && totalEmails !== senderSum) {
+    console.log(`Sender stats inconsistency: ${totalEmails} emails in DB vs ${senderSum} in sender stats. Fixing...`);
+
+    // Add all existing senders to recalculation queue
+    for (const s of (allSenders || [])) {
+      affectedSenders.add(`${s.sender_email}|||${s.sender_name}`);
+    }
+
+    // Also find senders from recent emails that might not have sender records at all
+    const recentDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentEmails } = await supabase
+      .from('emails')
+      .select('sender_email, sender_name')
+      .eq('email_account_id', accountId)
+      .gte('received_at', recentDate);
+
+    for (const e of (recentEmails || [])) {
+      affectedSenders.add(`${e.sender_email}|||${e.sender_name}`);
+    }
+  }
+
   // Recalculate sender stats for affected senders
   if (affectedSenders.size > 0) {
     console.log(`Incremental sync: recalculating stats for ${affectedSenders.size} senders`);
