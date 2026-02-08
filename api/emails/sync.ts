@@ -604,50 +604,52 @@ async function performIncrementalSync(
 
   const senderSum = (allSenders || []).reduce((sum, s) => sum + (s.email_count || 0), 0);
 
-  if (totalEmails !== null && totalEmails !== senderSum) {
-    console.log(`Sender stats inconsistency: ${totalEmails} emails in DB vs ${senderSum} in sender stats. Finding mismatches...`);
+  // Always run sender stats audit to catch orphaned emails from interrupted syncs.
+  // An email can exist in the DB without a matching email_senders entry if a previous
+  // sync was interrupted between inserting the email and recalculating sender stats.
+  // The totals check (totalEmails vs senderSum) is unreliable because counts can balance out.
+  console.log(`Sender stats audit: ${totalEmails} emails in DB, ${senderSum} in sender stats. Checking per-sender...`);
 
-    // Build actual per-sender counts from the emails table (paginated)
-    const actualCounts = new Map<string, number>();
-    const PAGE_SIZE = 1000;
-    let page = 0;
-    while (true) {
-      const { data: emailPage } = await supabase
-        .from('emails')
-        .select('sender_email, sender_name')
-        .eq('email_account_id', accountId)
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+  // Build actual per-sender counts from the emails table (paginated)
+  const actualCounts = new Map<string, number>();
+  const PAGE_SIZE = 1000;
+  let page = 0;
+  while (true) {
+    const { data: emailPage } = await supabase
+      .from('emails')
+      .select('sender_email, sender_name')
+      .eq('email_account_id', accountId)
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-      if (!emailPage || emailPage.length === 0) break;
-      for (const e of emailPage) {
-        const key = `${e.sender_email}|||${e.sender_name}`;
-        actualCounts.set(key, (actualCounts.get(key) || 0) + 1);
-      }
-      if (emailPage.length < PAGE_SIZE) break;
-      page++;
+    if (!emailPage || emailPage.length === 0) break;
+    for (const e of emailPage) {
+      const key = `${e.sender_email}|||${e.sender_name}`;
+      actualCounts.set(key, (actualCounts.get(key) || 0) + 1);
     }
-
-    // Find senders with wrong counts
-    const storedCounts = new Map<string, number>();
-    for (const s of (allSenders || [])) {
-      storedCounts.set(`${s.sender_email}|||${s.sender_name}`, s.email_count);
-    }
-
-    // Senders where actual count != stored count
-    for (const [key, actualCount] of actualCounts) {
-      if (storedCounts.get(key) !== actualCount) {
-        affectedSenders.add(key);
-      }
-    }
-    // Senders in email_senders with no emails (should be deleted)
-    for (const [key] of storedCounts) {
-      if (!actualCounts.has(key)) {
-        affectedSenders.add(key);
-      }
-    }
-
-    console.log(`Sender stats audit: ${affectedSenders.size} senders need recalculation`);
+    if (emailPage.length < PAGE_SIZE) break;
+    page++;
   }
+
+  // Find senders with wrong counts
+  const storedCounts = new Map<string, number>();
+  for (const s of (allSenders || [])) {
+    storedCounts.set(`${s.sender_email}|||${s.sender_name}`, s.email_count);
+  }
+
+  // Senders where actual count != stored count (includes missing senders)
+  for (const [key, actualCount] of actualCounts) {
+    if (storedCounts.get(key) !== actualCount) {
+      affectedSenders.add(key);
+    }
+  }
+  // Senders in email_senders with no emails (should be deleted)
+  for (const [key] of storedCounts) {
+    if (!actualCounts.has(key)) {
+      affectedSenders.add(key);
+    }
+  }
+
+  console.log(`Sender stats audit: ${affectedSenders.size} senders need recalculation`);
 
   // Recalculate sender stats for affected senders
   if (affectedSenders.size > 0) {
