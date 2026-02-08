@@ -787,7 +787,11 @@ async function processNewMessages(
     if (!error) {
       addedCount++;
       affectedSenders.add(`${senderEmail}|||${senderName}`);
-    } else if (!error.message?.includes('duplicate') && !error.code?.includes('23505')) {
+    } else if (error.message?.includes('duplicate') || error.code?.includes('23505')) {
+      // Email already in DB (from a previous interrupted sync) but sender stats
+      // may not have been created. Always mark sender for recalculation.
+      affectedSenders.add(`${senderEmail}|||${senderName}`);
+    } else {
       console.error(`Failed to insert email ${msg.id} from ${senderEmail}: ${error.message} (code: ${error.code})`);
     }
   }
