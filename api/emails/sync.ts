@@ -179,7 +179,8 @@ export default async function handler(
         userEmail,
         email,
         account.last_synced,
-        account.history_id
+        account.history_id,
+        planLimits.emailProcessingLimit
       );
     }
 
@@ -428,7 +429,8 @@ async function performIncrementalSync(
   userEmail: string,
   email: string,
   lastSyncedAt: string,
-  storedHistoryId: string | null
+  storedHistoryId: string | null,
+  emailLimit: number
 ) {
   let addedCount = 0;
   let deletedCount = 0;
@@ -554,8 +556,10 @@ async function performIncrementalSync(
   }
 
   // Post-sync completeness check
+  // Use deeper verification for timestamp fallback since history was expired
+  const verifyDepth = syncMethod === 'timestamp' ? 500 : 200;
   const completenessResult = await verifyCompletenessAndSync(
-    accessToken, accountId, userEmail, affectedSenders
+    accessToken, accountId, userEmail, affectedSenders, verifyDepth
   );
   addedCount += completenessResult.addedCount;
 
@@ -569,16 +573,17 @@ async function performIncrementalSync(
     );
     addedCount += recoveryResult.addedCount;
 
-    // Final verification - if still incomplete, this is a critical failure
+    // Final verification - if still incomplete, escalate to full sync
     const finalCheck = await verifyCompletenessAndSync(
-      accessToken, accountId, userEmail, affectedSenders
+      accessToken, accountId, userEmail, affectedSenders, verifyDepth
     );
     addedCount += finalCheck.addedCount;
 
     if (!finalCheck.complete) {
-      console.error(`CRITICAL: Recovery sync failed - ${finalCheck.missingCount} emails still missing`);
-      // Still update last_synced to prevent infinite loops, but log the failure
-      syncMethod = 'recovery-failed';
+      console.log(`Recovery sync insufficient - ${finalCheck.missingCount} emails still missing. Escalating to full sync...`);
+
+      // Nuclear option: full sync rebuilds everything from scratch
+      return await performFullSync(res, userId, accountId, accessToken, userEmail, emailLimit, email);
     } else {
       console.log('Recovery sync succeeded - all emails now synced ✓');
       syncMethod = 'recovery';
@@ -706,7 +711,7 @@ async function performRecoverySync(
   console.log('Recovery sync: Fetching all recent emails to catch missed messages...');
 
   // Fetch a large number of recent emails to ensure completeness
-  const RECOVERY_FETCH_COUNT = 500;
+  const RECOVERY_FETCH_COUNT = 1000;
   const query = '-in:sent -in:drafts -in:trash -in:spam';
 
   const messageRefs: Array<{ id: string; threadId: string }> = [];
@@ -815,32 +820,51 @@ async function verifyCompletenessAndSync(
   accessToken: string,
   accountId: string,
   userEmail: string,
-  affectedSenders: Set<string>
+  affectedSenders: Set<string>,
+  depth: number = 200
 ): Promise<{ addedCount: number; complete: boolean; missingCount: number }> {
-  console.log('Verifying sync completeness: checking Gmail\'s newest emails exist locally...');
+  console.log(`Verifying sync completeness: checking Gmail's newest ${depth} emails exist locally...`);
 
   // Ask Gmail for its newest emails, then verify we have ALL of them
-  // The count (50) is implementation detail; the guarantee is: Gmail's emails = our emails
-  const response = await listMessages(accessToken, {
-    maxResults: 50,
-    q: '-in:sent -in:drafts -in:trash -in:spam',
-  });
+  // The depth controls how many emails to verify - higher depth = more thorough check
+  const query = '-in:sent -in:drafts -in:trash -in:spam';
+  const allMessageRefs: Array<{ id: string; threadId: string }> = [];
+  let pageToken: string | undefined;
 
-  if (!response.messages || response.messages.length === 0) {
+  while (allMessageRefs.length < depth) {
+    const response = await listMessages(accessToken, {
+      maxResults: Math.min(100, depth - allMessageRefs.length),
+      pageToken,
+      q: query,
+    });
+
+    if (!response.messages || response.messages.length === 0) break;
+    allMessageRefs.push(...response.messages);
+
+    if (!response.nextPageToken) break;
+    pageToken = response.nextPageToken;
+  }
+
+  if (allMessageRefs.length === 0) {
     console.log('Completeness check: No messages in Gmail');
     return { addedCount: 0, complete: true, missingCount: 0 };
   }
 
-  const gmailIds = response.messages.map(m => m.id);
+  const gmailIds = allMessageRefs.map(m => m.id);
 
-  // Check if these exist in our DB
-  const { data: existingEmails } = await supabase
-    .from('emails')
-    .select('gmail_message_id')
-    .eq('email_account_id', accountId)
-    .in('gmail_message_id', gmailIds);
+  // Check if these exist in our DB (in batches to avoid Supabase limits)
+  const existingIds = new Set<string>();
+  for (let i = 0; i < gmailIds.length; i += 500) {
+    const batch = gmailIds.slice(i, i + 500);
+    const { data: existingEmails } = await supabase
+      .from('emails')
+      .select('gmail_message_id')
+      .eq('email_account_id', accountId)
+      .in('gmail_message_id', batch);
 
-  const existingIds = new Set((existingEmails || []).map(e => e.gmail_message_id));
+    (existingEmails || []).forEach(e => existingIds.add(e.gmail_message_id));
+  }
+
   let missingIds = gmailIds.filter(id => !existingIds.has(id));
 
   if (missingIds.length === 0) {
