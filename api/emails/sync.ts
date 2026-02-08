@@ -591,7 +591,7 @@ async function performIncrementalSync(
   }
 
   // Sender stats consistency check: detect stale stats from interrupted syncs
-  // If the total email count doesn't match the sum of sender counts, stats are stale
+  // Only recalculate senders with actual mismatches (not all senders)
   const { count: totalEmails } = await supabase
     .from('emails')
     .select('*', { count: 'exact', head: true })
@@ -605,24 +605,48 @@ async function performIncrementalSync(
   const senderSum = (allSenders || []).reduce((sum, s) => sum + (s.email_count || 0), 0);
 
   if (totalEmails !== null && totalEmails !== senderSum) {
-    console.log(`Sender stats inconsistency: ${totalEmails} emails in DB vs ${senderSum} in sender stats. Fixing...`);
+    console.log(`Sender stats inconsistency: ${totalEmails} emails in DB vs ${senderSum} in sender stats. Finding mismatches...`);
 
-    // Add all existing senders to recalculation queue
+    // Build actual per-sender counts from the emails table (paginated)
+    const actualCounts = new Map<string, number>();
+    const PAGE_SIZE = 1000;
+    let page = 0;
+    while (true) {
+      const { data: emailPage } = await supabase
+        .from('emails')
+        .select('sender_email, sender_name')
+        .eq('email_account_id', accountId)
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (!emailPage || emailPage.length === 0) break;
+      for (const e of emailPage) {
+        const key = `${e.sender_email}|||${e.sender_name}`;
+        actualCounts.set(key, (actualCounts.get(key) || 0) + 1);
+      }
+      if (emailPage.length < PAGE_SIZE) break;
+      page++;
+    }
+
+    // Find senders with wrong counts
+    const storedCounts = new Map<string, number>();
     for (const s of (allSenders || [])) {
-      affectedSenders.add(`${s.sender_email}|||${s.sender_name}`);
+      storedCounts.set(`${s.sender_email}|||${s.sender_name}`, s.email_count);
     }
 
-    // Also find senders from recent emails that might not have sender records at all
-    const recentDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentEmails } = await supabase
-      .from('emails')
-      .select('sender_email, sender_name')
-      .eq('email_account_id', accountId)
-      .gte('received_at', recentDate);
-
-    for (const e of (recentEmails || [])) {
-      affectedSenders.add(`${e.sender_email}|||${e.sender_name}`);
+    // Senders where actual count != stored count
+    for (const [key, actualCount] of actualCounts) {
+      if (storedCounts.get(key) !== actualCount) {
+        affectedSenders.add(key);
+      }
     }
+    // Senders in email_senders with no emails (should be deleted)
+    for (const [key] of storedCounts) {
+      if (!actualCounts.has(key)) {
+        affectedSenders.add(key);
+      }
+    }
+
+    console.log(`Sender stats audit: ${affectedSenders.size} senders need recalculation`);
   }
 
   // Recalculate sender stats for affected senders
@@ -860,11 +884,11 @@ async function verifyCompletenessAndSync(
   affectedSenders: Set<string>,
   depth: number = 200
 ): Promise<{ addedCount: number; complete: boolean; missingCount: number }> {
-  console.log(`Verifying sync completeness: checking Gmail's newest ${depth} emails exist locally...`);
+  console.log(`Verifying sync completeness: checking Gmail's newest ${depth} inbox emails exist locally...`);
 
-  // Ask Gmail for its newest emails, then verify we have ALL of them
-  // The depth controls how many emails to verify - higher depth = more thorough check
-  const query = '-in:sent -in:drafts -in:trash -in:spam';
+  // Verify INBOX emails specifically — this is what the user sees in Gmail
+  // Using in:inbox instead of exclusion query ensures we verify the emails users care about
+  const query = 'in:inbox';
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
 
