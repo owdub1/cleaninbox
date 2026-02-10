@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/api';
 
@@ -62,6 +62,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     offset: 0,
   });
   const [hasFetched, setHasFetched] = useState(false);
+  const hasSendersRef = useRef(false);
+
+  // Keep ref in sync with senders state (avoids adding senders to useCallback deps)
+  hasSendersRef.current = senders.length > 0;
 
   // Destructure options to avoid dependency on object reference
   const { email: optEmail, sortBy: optSortBy, sortDirection: optSortDirection, filter: optFilter, limit: optLimit } = options;
@@ -85,7 +89,11 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     const limit = fetchOptions?.limit ?? optLimit;
 
     try {
-      setLoading(true);
+      // Only show loading state on initial fetch (no senders yet)
+      // During refresh/post-sync, keep existing senders visible
+      if (!hasSendersRef.current) {
+        setLoading(true);
+      }
       setError(null);
 
       const params = new URLSearchParams();
