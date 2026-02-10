@@ -12,6 +12,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
+import { getValidAccessToken } from '../lib/gmail.js';
+import { sendMessage } from '../lib/gmail-api.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -113,7 +115,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id')
+      .select('id, gmail_email, connection_status')
       .eq('user_id', user.userId)
       .eq('email', accountEmail)
       .single();
@@ -128,11 +130,12 @@ export default async function handler(
     // Get unsubscribe link and one-click flag from cache if not provided
     let linkToUse = unsubscribeLink;
     let supportsOneClick = hasOneClickUnsubscribe ?? false;
+    let mailtoLink: string | null = null;
 
     if (!linkToUse || hasOneClickUnsubscribe === undefined) {
       const { data: senderData } = await supabase
         .from('email_senders')
-        .select('unsubscribe_link, sender_name, has_one_click_unsubscribe')
+        .select('unsubscribe_link, sender_name, has_one_click_unsubscribe, mailto_unsubscribe_link')
         .eq('email_account_id', account.id)
         .eq('sender_email', senderEmail)
         .single();
@@ -143,6 +146,9 @@ export default async function handler(
       if (hasOneClickUnsubscribe === undefined && senderData) {
         supportsOneClick = senderData.has_one_click_unsubscribe ?? false;
       }
+      if (senderData?.mailto_unsubscribe_link) {
+        mailtoLink = senderData.mailto_unsubscribe_link;
+      }
     }
 
     if (!linkToUse) {
@@ -152,27 +158,44 @@ export default async function handler(
       });
     }
 
-    // Handle mailto: links
-    if (linkToUse.startsWith('mailto:')) {
-      // We can't send emails directly, return the mailto link for manual action
-      await supabase
-        .from('cleanup_actions')
-        .insert({
-          user_id: user.userId,
-          email_account_id: account.id,
-          action_type: 'unsubscribe',
-          sender_email: senderEmail,
-          emails_affected: 0,
-          status: 'pending',
-          error_message: 'Manual email unsubscribe required'
-        });
+    // Get access token for Gmail API (needed for mailto unsubscribe)
+    let accessToken: string | null = null;
+    try {
+      const tokenResult = await getValidAccessToken(user.userId, account.gmail_email || accountEmail);
+      accessToken = tokenResult.accessToken;
+    } catch (tokenError: any) {
+      console.warn('Could not get Gmail access token for mailto unsubscribe:', tokenError.message);
+    }
 
-      return res.status(200).json({
-        success: false,
-        requiresManualAction: true,
-        unsubscribeLink: linkToUse,
-        message: 'This sender requires email-based unsubscribe. Please click the link to send an unsubscribe email.'
-      });
+    // Handle mailto: links - send unsubscribe email via Gmail API
+    if (linkToUse.startsWith('mailto:') && accessToken) {
+      try {
+        const mailtoResult = await sendMailtoUnsubscribe(linkToUse, accessToken);
+        if (mailtoResult.success) {
+          // Log success and update stats (same as HTTP One-Click success path)
+          await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
+          return res.status(200).json({
+            success: true,
+            message: `Successfully sent unsubscribe email for ${senderEmail}`
+          });
+        }
+        // If mailto send failed, fall through to manual action
+        return res.status(200).json({
+          success: false,
+          requiresManualAction: true,
+          unsubscribeLink: linkToUse,
+          error: mailtoResult.error,
+          message: 'Failed to send unsubscribe email automatically. Please try manually.'
+        });
+      } catch (mailtoError: any) {
+        return res.status(200).json({
+          success: false,
+          requiresManualAction: true,
+          unsubscribeLink: linkToUse,
+          error: mailtoError.message,
+          message: 'Failed to send unsubscribe email automatically. Please try manually.'
+        });
+      }
     }
 
     // Attempt HTTP unsubscribe
@@ -201,7 +224,26 @@ export default async function handler(
     }
 
     // Handle manual action required (no One-Click support)
+    // Try mailto fallback before opening browser
     if (result.requiresManualAction) {
+      // Check if we have a mailto link to use as fallback
+      const fallbackMailto = mailtoLink || (linkToUse.startsWith('mailto:') ? linkToUse : null);
+      if (fallbackMailto && accessToken) {
+        try {
+          const mailtoResult = await sendMailtoUnsubscribe(fallbackMailto, accessToken);
+          if (mailtoResult.success) {
+            await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
+            return res.status(200).json({
+              success: true,
+              message: `Successfully sent unsubscribe email for ${senderEmail}`
+            });
+          }
+        } catch (mailtoError: any) {
+          console.warn('Mailto fallback failed:', mailtoError.message);
+        }
+      }
+
+      // No mailto fallback available or it failed - require manual action
       await supabase
         .from('cleanup_actions')
         .insert({
@@ -237,50 +279,7 @@ export default async function handler(
       });
 
     if (result.success) {
-      // Update user stats (fetch current, then increment)
-      const { data: currentStats } = await supabase
-        .from('user_stats')
-        .select('unsubscribed')
-        .eq('user_id', user.userId)
-        .single();
-
-      if (currentStats) {
-        await supabase
-          .from('user_stats')
-          .update({
-            unsubscribed: (currentStats.unsubscribed || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.userId);
-      }
-
-      // Update email account unsubscribed count
-      const { data: currentAccount } = await supabase
-        .from('email_accounts')
-        .select('unsubscribed')
-        .eq('id', account.id)
-        .single();
-
-      if (currentAccount) {
-        await supabase
-          .from('email_accounts')
-          .update({
-            unsubscribed: (currentAccount.unsubscribed || 0) + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', account.id);
-      }
-
-      // Log to activity_log for Recent Activity display
-      await supabase
-        .from('activity_log')
-        .insert({
-          user_id: user.userId,
-          action_type: 'unsubscribe',
-          description: `Unsubscribed from ${senderEmail}`,
-          metadata: { senderEmail }
-        });
-
+      await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
       return res.status(200).json({
         success: true,
         message: `Successfully unsubscribed from ${senderEmail}`
@@ -303,4 +302,103 @@ export default async function handler(
       code: 'UNSUBSCRIBE_ERROR'
     });
   }
+}
+
+/**
+ * Parse a mailto: link and send the unsubscribe email via Gmail API
+ */
+async function sendMailtoUnsubscribe(
+  mailtoLink: string,
+  accessToken: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Parse mailto link: mailto:address?subject=X&body=Y
+    const withoutPrefix = mailtoLink.replace(/^mailto:/i, '');
+    const [address, queryString] = withoutPrefix.split('?');
+
+    if (!address) {
+      return { success: false, error: 'Invalid mailto link: no address' };
+    }
+
+    let subject = 'Unsubscribe';
+    let body = 'Unsubscribe';
+
+    if (queryString) {
+      const params = new URLSearchParams(queryString);
+      if (params.get('subject')) subject = params.get('subject')!;
+      if (params.get('body')) body = params.get('body')!;
+    }
+
+    await sendMessage(accessToken, decodeURIComponent(address), subject, body);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to send mailto unsubscribe:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Log a successful unsubscribe action (update stats, activity log, cleanup action)
+ */
+async function logSuccessfulUnsubscribe(
+  userId: string,
+  accountId: string,
+  senderEmail: string
+): Promise<void> {
+  // Log cleanup action
+  await supabase
+    .from('cleanup_actions')
+    .insert({
+      user_id: userId,
+      email_account_id: accountId,
+      action_type: 'unsubscribe',
+      sender_email: senderEmail,
+      emails_affected: 1,
+      status: 'completed',
+      completed_at: new Date().toISOString()
+    });
+
+  // Update user stats
+  const { data: currentStats } = await supabase
+    .from('user_stats')
+    .select('unsubscribed')
+    .eq('user_id', userId)
+    .single();
+
+  if (currentStats) {
+    await supabase
+      .from('user_stats')
+      .update({
+        unsubscribed: (currentStats.unsubscribed || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+  }
+
+  // Update email account unsubscribed count
+  const { data: currentAccount } = await supabase
+    .from('email_accounts')
+    .select('unsubscribed')
+    .eq('id', accountId)
+    .single();
+
+  if (currentAccount) {
+    await supabase
+      .from('email_accounts')
+      .update({
+        unsubscribed: (currentAccount.unsubscribed || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', accountId);
+  }
+
+  // Log to activity_log for Recent Activity display
+  await supabase
+    .from('activity_log')
+    .insert({
+      user_id: userId,
+      action_type: 'unsubscribe',
+      description: `Unsubscribed from ${senderEmail}`,
+      metadata: { senderEmail }
+    });
 }

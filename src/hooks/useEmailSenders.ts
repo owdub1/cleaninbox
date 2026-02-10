@@ -11,6 +11,7 @@ export interface Sender {
   firstEmailDate: string;
   lastEmailDate: string;
   unsubscribeLink: string | null;
+  mailtoUnsubscribeLink?: string | null;
   hasUnsubscribe: boolean;
   hasOneClickUnsubscribe?: boolean;
   isNewsletter: boolean;

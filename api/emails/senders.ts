@@ -28,6 +28,7 @@ export interface SenderResponse {
   firstEmailDate: string;
   lastEmailDate: string;
   unsubscribeLink: string | null;
+  mailtoUnsubscribeLink: string | null;
   hasUnsubscribe: boolean;
   hasOneClickUnsubscribe: boolean;
   isNewsletter: boolean;
@@ -79,6 +80,7 @@ export default async function handler(
         first_email_date,
         last_email_date,
         unsubscribe_link,
+        mailto_unsubscribe_link,
         has_unsubscribe,
         has_one_click_unsubscribe,
         is_newsletter,
@@ -166,6 +168,7 @@ export default async function handler(
         firstEmailDate: sender.first_email_date,
         lastEmailDate: sender.last_email_date,
         unsubscribeLink: sender.unsubscribe_link,
+        mailtoUnsubscribeLink: sender.mailto_unsubscribe_link || null,
         hasUnsubscribe: sender.has_unsubscribe,
         hasOneClickUnsubscribe: sender.has_one_click_unsubscribe ?? false,
         isNewsletter: sender.is_newsletter,

@@ -276,11 +276,13 @@ async function performFullSync(
     first_email_date: string;
     last_email_date: string;
     unsubscribe_link: string | null;
+    mailto_unsubscribe_link: string | null;
     has_unsubscribe: boolean;
     has_one_click_unsubscribe: boolean;
     is_newsletter: boolean;
     is_promotional: boolean;
     _unsub_link_date?: string; // in-memory only, stripped before DB insert
+    _mailto_unsub_link_date?: string; // in-memory only, stripped before DB insert
   }>();
 
   for (const msg of messages) {
@@ -321,6 +323,7 @@ async function performFullSync(
     const senderKey = `${senderEmail}|||${senderName}`;
     const existing = senderStats.get(senderKey);
     const unsubscribeLink = extractUnsubscribeLink(unsubscribeHeader);
+    const mailtoUnsubscribeLink = extractMailtoUnsubscribeLink(unsubscribeHeader);
     const hasOneClick = unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click');
 
     if (existing) {
@@ -335,6 +338,11 @@ async function performFullSync(
         existing.has_one_click_unsubscribe = hasOneClick;
         existing._unsub_link_date = receivedAt;
       }
+      // Track most recent mailto unsubscribe link separately
+      if (mailtoUnsubscribeLink && (!existing._mailto_unsub_link_date || receivedAt > existing._mailto_unsub_link_date)) {
+        existing.mailto_unsubscribe_link = mailtoUnsubscribeLink;
+        existing._mailto_unsub_link_date = receivedAt;
+      }
     } else {
       senderStats.set(senderKey, {
         sender_email: senderEmail,
@@ -344,11 +352,13 @@ async function performFullSync(
         first_email_date: receivedAt,
         last_email_date: receivedAt,
         unsubscribe_link: unsubscribeLink,
+        mailto_unsubscribe_link: mailtoUnsubscribeLink,
         has_unsubscribe: !!unsubscribeLink,
         has_one_click_unsubscribe: hasOneClick,
         is_newsletter: labels.includes('CATEGORY_UPDATES') && !!unsubscribeLink,
         is_promotional: labels.includes('CATEGORY_PROMOTIONS'),
         _unsub_link_date: unsubscribeLink ? receivedAt : undefined,
+        _mailto_unsub_link_date: mailtoUnsubscribeLink ? receivedAt : undefined,
       });
     }
   }
@@ -361,8 +371,8 @@ async function performFullSync(
     if (error) console.error('Email insert error:', error.message);
   }
 
-  // Step 6: Insert senders (strip _unsub_link_date which is in-memory only)
-  const sendersToInsert = Array.from(senderStats.values()).map(({ _unsub_link_date, ...s }) => ({
+  // Step 6: Insert senders (strip in-memory-only tracking fields)
+  const sendersToInsert = Array.from(senderStats.values()).map(({ _unsub_link_date, _mailto_unsub_link_date, ...s }) => ({
     user_id: userId,
     email_account_id: accountId,
     ...s,
@@ -975,7 +985,7 @@ function parseSender(fromHeader: string): { senderEmail: string; senderName: str
 }
 
 /**
- * Extract unsubscribe link from List-Unsubscribe header
+ * Extract unsubscribe link from List-Unsubscribe header (prefers HTTP)
  */
 function extractUnsubscribeLink(header: string): string | null {
   if (!header) return null;
@@ -988,6 +998,16 @@ function extractUnsubscribeLink(header: string): string | null {
   if (mailtoMatch) return mailtoMatch[1];
 
   return null;
+}
+
+/**
+ * Extract mailto unsubscribe link from List-Unsubscribe header (always extracts mailto if present)
+ */
+function extractMailtoUnsubscribeLink(header: string): string | null {
+  if (!header) return null;
+
+  const mailtoMatch = header.match(/<(mailto:[^>]+)>/);
+  return mailtoMatch ? mailtoMatch[1] : null;
 }
 
 /**

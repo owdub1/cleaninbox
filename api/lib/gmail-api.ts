@@ -89,12 +89,14 @@ export interface SenderStats {
   firstDate: string;
   lastDate: string;
   unsubscribeLink?: string;
+  mailtoUnsubscribeLink?: string;
   hasUnsubscribe: boolean;
   hasOneClickUnsubscribe: boolean;
   isNewsletter: boolean;
   isPromotional: boolean;
   messageIds: string[];
   _unsubLinkDate?: string; // in-memory only, tracks which email the unsub link came from
+  _mailtoUnsubLinkDate?: string; // in-memory only, tracks which email the mailto unsub link came from
 }
 
 export interface EmailRecord {
@@ -560,7 +562,7 @@ function parseSender(fromHeader: string): { email: string; name: string } {
 }
 
 /**
- * Extract unsubscribe link from headers
+ * Extract unsubscribe link from headers (prefers HTTP)
  */
 function extractUnsubscribeLink(message: GmailMessage): string | undefined {
   const listUnsubscribe = getHeader(message, 'List-Unsubscribe');
@@ -582,6 +584,49 @@ function extractUnsubscribeLink(message: GmailMessage): string | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Extract mailto unsubscribe link from headers (always extracts mailto if present)
+ */
+function extractMailtoUnsubscribeLink(message: GmailMessage): string | undefined {
+  const listUnsubscribe = getHeader(message, 'List-Unsubscribe');
+  if (!listUnsubscribe) return undefined;
+
+  const mailtoMatch = listUnsubscribe.match(/<(mailto:[^>]+)>/);
+  return mailtoMatch ? mailtoMatch[1] : undefined;
+}
+
+/**
+ * Send an email via Gmail API
+ * Used for mailto-based unsubscribe requests
+ */
+export async function sendMessage(
+  accessToken: string,
+  to: string,
+  subject: string,
+  body: string
+): Promise<void> {
+  // Construct RFC 2822 formatted email
+  const email = [
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'Content-Type: text/plain; charset=UTF-8',
+    '',
+    body,
+  ].join('\r\n');
+
+  // Base64url encode the email
+  const encodedMessage = Buffer.from(email)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  await gmailRequest(accessToken, '/messages/send', {
+    method: 'POST',
+    body: JSON.stringify({ raw: encodedMessage }),
+  });
 }
 
 /**
@@ -648,6 +693,7 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     const compositeKey = getSenderKey(email, senderName);
     const messageDate = new Date(parseInt(message.internalDate)).toISOString();
     const unsubscribeLink = extractUnsubscribeLink(message);
+    const mailtoUnsubLink = extractMailtoUnsubscribeLink(message);
     const unsubscribePostHeader = getHeader(message, 'List-Unsubscribe-Post') || '';
     const hasOneClick = unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click');
     const isUnread = message.labelIds?.includes('UNREAD') || false;
@@ -661,12 +707,14 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
         firstDate: messageDate,
         lastDate: messageDate,
         unsubscribeLink,
+        mailtoUnsubscribeLink: mailtoUnsubLink,
         hasUnsubscribe: !!unsubscribeLink,
         hasOneClickUnsubscribe: hasOneClick,
         isNewsletter: isNewsletter(message),
         isPromotional: isPromotional(message),
         messageIds: [],
         _unsubLinkDate: unsubscribeLink ? messageDate : undefined,
+        _mailtoUnsubLinkDate: mailtoUnsubLink ? messageDate : undefined,
       });
     }
 
@@ -685,6 +733,12 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
       stats.hasUnsubscribe = true;
       stats.hasOneClickUnsubscribe = hasOneClick;
       stats._unsubLinkDate = messageDate;
+    }
+
+    // Track most recent mailto unsubscribe link separately
+    if (mailtoUnsubLink && (!stats._mailtoUnsubLinkDate || messageDate > stats._mailtoUnsubLinkDate)) {
+      stats.mailtoUnsubscribeLink = mailtoUnsubLink;
+      stats._mailtoUnsubLinkDate = messageDate;
     }
 
     // Update newsletter/promotional flags
