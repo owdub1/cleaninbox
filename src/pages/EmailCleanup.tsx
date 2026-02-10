@@ -1714,13 +1714,15 @@ const EmailCleanup = () => {
                   </span>
                 </div>
                 <div className="flex space-x-4">
-                  <button
-                    className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                    onClick={() => handleCleanupAction('archive', getSelectedSenders())}
-                  >
-                    <ArchiveIcon className="h-3 w-3 mr-1" />
-                    Archive
-                  </button>
+                  {selectedTool !== 'archive' && (
+                    <button
+                      className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                      onClick={() => handleCleanupAction('archive', getSelectedSenders())}
+                    >
+                      <ArchiveIcon className="h-3 w-3 mr-1" />
+                      Archive
+                    </button>
+                  )}
                   <button
                     className="flex items-center text-xs font-medium text-red-600 hover:text-red-800"
                     onClick={() => handleCleanupAction('delete', getSelectedSenders())}
