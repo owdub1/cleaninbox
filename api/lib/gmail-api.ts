@@ -133,16 +133,16 @@ async function gmailRequest(
   if (!response.ok) {
     const error = await response.text();
 
-    // Handle rate limit and server errors with exponential backoff
-    if ((response.status === 429 || response.status === 403 || response.status >= 500) && retryCount < RATE_LIMIT.MAX_RETRIES) {
+    // Handle rate limit errors with exponential backoff
+    if ((response.status === 429 || response.status === 403) && retryCount < RATE_LIMIT.MAX_RETRIES) {
       const backoffMs = getBackoffMs(retryCount);
       console.warn(`Rate limited (${response.status}), retrying in ${Math.round(backoffMs)}ms (attempt ${retryCount + 1}/${RATE_LIMIT.MAX_RETRIES})`);
       await sleep(backoffMs);
       return gmailRequest(accessToken, endpoint, options, retryCount + 1);
     }
 
-    // Only log full error for non-retryable errors or after all retries exhausted
-    if (response.status !== 429 && response.status !== 403 && response.status < 500) {
+    // Only log full error for non-rate-limit errors or after all retries exhausted
+    if (response.status !== 429 && response.status !== 403) {
       console.error('Gmail API error response:', response.status, error);
     }
     throw new Error(`Gmail API error: ${response.status} - ${error}`);
@@ -169,11 +169,7 @@ export async function listMessages(
   if (options.maxResults) params.set('maxResults', options.maxResults.toString());
   if (options.pageToken) params.set('pageToken', options.pageToken);
   if (options.q) params.set('q', options.q);
-  if (options.labelIds) {
-    for (const labelId of options.labelIds) {
-      params.append('labelIds', labelId);
-    }
-  }
+  if (options.labelIds) params.set('labelIds', options.labelIds.join(','));
 
   const queryString = params.toString();
   const endpoint = `/messages${queryString ? `?${queryString}` : ''}`;
@@ -350,7 +346,7 @@ export async function batchGetMessages(
   const BATCH_SIZE = RATE_LIMIT.MAX_CONCURRENT;
   const DELAY_MS = RATE_LIMIT.DELAY_BETWEEN_BATCHES;
   const results: GmailMessage[] = [];
-  const failedIds: string[] = [];
+  let failedCount = 0;
 
   console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} with ${DELAY_MS}ms delay (format: ${format})...`);
 
@@ -360,7 +356,7 @@ export async function batchGetMessages(
     // Process batch with parallel requests
     const batchResults = await Promise.all(
       batch.map(id => getMessage(accessToken, id, format, metadataHeaders).catch((err) => {
-        failedIds.push(id);
+        failedCount++;
         return null;
       }))
     );
@@ -379,23 +375,8 @@ export async function batchGetMessages(
     }
   }
 
-  // Retry failed messages individually with longer delays
-  if (failedIds.length > 0) {
-    console.warn(`Retrying ${failedIds.length} failed messages: ${failedIds.slice(0, 5).join(', ')}${failedIds.length > 5 ? '...' : ''}`);
-    await sleep(2000); // Wait before retrying
-
-    let retrySuccessCount = 0;
-    for (const id of failedIds) {
-      try {
-        const msg = await getMessage(accessToken, id, format, metadataHeaders);
-        results.push(msg);
-        retrySuccessCount++;
-      } catch (err) {
-        console.error(`Permanently failed to fetch message ${id}`);
-      }
-      await sleep(500); // Slower pace for retries
-    }
-    console.log(`Retry recovered ${retrySuccessCount}/${failedIds.length} messages`);
+  if (failedCount > 0) {
+    console.warn(`Warning: ${failedCount} messages failed to fetch`);
   }
 
   return results;

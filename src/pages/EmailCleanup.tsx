@@ -632,13 +632,7 @@ const EmailCleanup = () => {
         // Clear cached email lists and collapse dropdowns so UI reflects fresh data
         setSenderEmails({});
         setExpandedSenders([]);
-        let message = repair ? 'Data repaired successfully!' : 'Emails synced successfully!';
-        if (result.diagnostics) {
-          const d = result.diagnostics;
-          const pe = (d.popeyeEmails||[]).map((e: any) => `${e.email}|${e.name}|${e.date}`).join(', ');
-          const ps = (d.popeyeSenders||[]).map((s: any) => `${s.sender_email}|${s.sender_name}|count=${s.email_count}`).join(', ');
-          message += ` [audit=${d.auditSendersRecalculated}, DB=${d.totalEmailsInDB}, stats=${d.totalInSenderStats}, EMAILS:${pe || 'none'}, SENDERS:${ps || 'none'}]`;
-        }
+        const message = repair ? 'Data repaired successfully!' : (fullSync ? 'Full sync completed!' : 'Emails synced successfully!');
         setNotification({ type: 'success', message });
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
@@ -1619,6 +1613,14 @@ const EmailCleanup = () => {
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                       {syncing ? 'Syncing...' : 'Sync Now'}
+                    </button>
+                    <button
+                      onClick={() => handleSync(true, false)}
+                      disabled={syncing}
+                      className="text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+                      title="Resync all emails from Gmail"
+                    >
+                      Full Sync
                     </button>
                   </div>
                 )}

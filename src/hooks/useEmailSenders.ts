@@ -139,7 +139,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const syncEmails = useCallback(async (
     email: string,
     options: { maxMessages?: number; fullSync?: boolean; repair?: boolean } = {}
-  ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string; diagnostics?: any }> => {
+  ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string }> => {
     const { maxMessages = 1000, fullSync = false, repair = false } = options;
 
     if (!token) {
@@ -162,14 +162,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       const data = await response.json();
 
-      // Log full sync response for debugging (check browser DevTools console)
-      console.log('[Sync Response]', JSON.stringify(data, null, 2));
-      if (data.diagnostics) {
-        console.log('[Sync Diagnostics] Today\'s emails in DB:', data.diagnostics.todaySenders);
-        console.log('[Sync Diagnostics] Completeness check passed:', data.diagnostics.completenessCheckPassed);
-        console.log('[Sync Diagnostics] Sync method:', data.diagnostics.syncMethod);
-      }
-
       if (!response.ok) {
         // Handle sync limit reached (429)
         if (response.status === 429 && data.code === 'SYNC_LIMIT_REACHED') {
@@ -186,15 +178,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       // Refresh senders after sync - fetch ALL senders (not just this account)
       // The frontend filters by selectedAccountEmail, so we need all accounts' data
-      const refreshedSenders = await fetchSenders();
+      await fetchSenders();
 
-      // Debug: check if popeye sender was returned by the API
-      const popeyeMatches = refreshedSenders.filter(s =>
-        s.email.toLowerCase().includes('popeye') || s.name.toLowerCase().includes('popeye')
-      );
-      console.log(`[DEBUG] fetchSenders returned ${refreshedSenders.length} senders. Popeye matches: ${JSON.stringify(popeyeMatches.map(s => ({ email: s.email, name: s.name, count: s.emailCount, lastDate: s.lastEmailDate })))}`);
-
-      return { success: true, diagnostics: data.diagnostics };
+      return { success: true };
     } catch (err: any) {
       console.error('Sync emails error:', err);
       setError(err.message);
