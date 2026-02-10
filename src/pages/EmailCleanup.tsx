@@ -193,6 +193,25 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
 };
 
 // Avatar component for senders
+// Staleness badge for unsubscribe view - shows how old the last email from a sender is
+const getStalenessBadge = (lastEmailDate: string): { label: string; className: string } | null => {
+  const lastDate = new Date(lastEmailDate);
+  const now = new Date();
+  const monthsAgo = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+
+  if (monthsAgo > 24) {
+    const year = lastDate.getFullYear();
+    return { label: `Last email ${year}`, className: 'bg-red-100 text-red-700' };
+  }
+  if (monthsAgo > 12) {
+    return { label: 'Over 1 year ago', className: 'bg-amber-100 text-amber-700' };
+  }
+  if (monthsAgo > 6) {
+    return { label: 'Over 6 months ago', className: 'bg-yellow-100 text-yellow-700' };
+  }
+  return null;
+};
+
 const SenderAvatar = ({ sender }: { sender: Sender }) => {
   const [imgError, setImgError] = useState(false);
 
@@ -680,7 +699,8 @@ const EmailCleanup = () => {
           const result = await unsubscribe(
             connectedGmailAccount.email,
             actionSenders[0].email,
-            actionSenders[0].unsubscribeLink || undefined
+            actionSenders[0].unsubscribeLink || undefined,
+            actionSenders[0].hasOneClickUnsubscribe
           );
 
           if (result?.success) {
@@ -693,6 +713,11 @@ const EmailCleanup = () => {
             });
             fetchSenders();
             setSelectedSenderKeys([]);
+          } else if (result?.linkExpired) {
+            setNotification({
+              type: 'error',
+              message: result.message || 'This unsubscribe link has expired or is no longer valid.'
+            });
           } else if (result?.requiresManualAction) {
             setNotification({
               type: 'success',
@@ -988,7 +1013,8 @@ const EmailCleanup = () => {
   };
 
   // Filter and sort senders
-  const filterAndSortSenders = (senderList: Sender[]) => {
+  // overrideSort allows specific views (like unsubscribe) to force a sort order
+  const filterAndSortSenders = (senderList: Sender[], overrideSort?: { by: string; direction: string }) => {
     let filtered = [...senderList];
 
     // Filter by selected account when multiple accounts exist
@@ -1005,17 +1031,19 @@ const EmailCleanup = () => {
         item.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+    const effectiveSortBy = overrideSort?.by ?? sortBy;
+    const effectiveDirection = overrideSort?.direction ?? sortDirection;
     filtered.sort((a, b) => {
-      if (sortBy === 'name') {
-        return sortDirection === 'asc'
+      if (effectiveSortBy === 'name') {
+        return effectiveDirection === 'asc'
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name);
-      } else if (sortBy === 'date') {
-        return sortDirection === 'asc'
+      } else if (effectiveSortBy === 'date') {
+        return effectiveDirection === 'asc'
           ? new Date(a.lastEmailDate).getTime() - new Date(b.lastEmailDate).getTime()
           : new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime();
       } else {
-        return sortDirection === 'asc' ? a.emailCount - b.emailCount : b.emailCount - a.emailCount;
+        return effectiveDirection === 'asc' ? a.emailCount - b.emailCount : b.emailCount - a.emailCount;
       }
     });
     return filtered;
@@ -1131,6 +1159,7 @@ const EmailCleanup = () => {
   };
 
   // Get senders that can be unsubscribed (for Unsubscribe tool) - exclude 0 email senders
+  // Sorting is handled by filterAndSortSenders with date override in the unsubscribe view
   const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
 
   // Get all senders sorted by date (newest first) for Delete & Clean view
@@ -2018,7 +2047,7 @@ const EmailCleanup = () => {
                     </p>
                   </div>
                 ) : (
-                  filterPendingBulkDeletions(filterAndSortSenders(unsubscribableSenders)).map(sender => (
+                  filterPendingBulkDeletions(filterAndSortSenders(unsubscribableSenders, { by: 'date', direction: 'desc' })).map(sender => (
                     <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                       <div className="px-5 py-4 flex items-center justify-between">
                         <button
@@ -2040,6 +2069,14 @@ const EmailCleanup = () => {
                                   Newsletter
                                 </span>
                               )}
+                              {(() => {
+                                const badge = getStalenessBadge(sender.lastEmailDate);
+                                return badge ? (
+                                  <span className={`ml-2 px-2.5 py-0.5 text-sm rounded-full ${badge.className}`}>
+                                    {badge.label}
+                                  </span>
+                                ) : null;
+                              })()}
                             </div>
                             <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
                           </div>

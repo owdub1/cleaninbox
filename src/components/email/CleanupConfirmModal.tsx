@@ -130,6 +130,11 @@ export const CleanupConfirmModal = ({
                   {senders.map(sender => (
                     <li key={sender.email} className="text-sm text-gray-600 truncate">
                       {sender.name || sender.email} ({sender.emailCount} emails)
+                      {action === 'unsubscribe' && sender.lastEmailDate && (
+                        <span className="text-gray-400 ml-1">
+                          — last email {new Date(sender.lastEmailDate).toLocaleDateString()}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

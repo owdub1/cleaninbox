@@ -27,50 +27,48 @@ const limiter = rateLimit({
 
 /**
  * Attempt HTTP unsubscribe
+ * @param url - The unsubscribe URL
+ * @param supportsOneClick - Whether the sender supports RFC 8058 One-Click unsubscribe
  */
-async function httpUnsubscribe(url: string): Promise<{ success: boolean; error?: string }> {
+async function httpUnsubscribe(
+  url: string,
+  supportsOneClick: boolean
+): Promise<{ success: boolean; requiresManualAction?: boolean; linkExpired?: boolean; error?: string }> {
   try {
-    // Make a POST request (List-Unsubscribe-Post support)
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'User-Agent': 'CleanInbox/1.0 (Unsubscribe Bot)',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'List-Unsubscribe=One-Click',
-      redirect: 'follow',
-    });
-
-    // If POST fails, try GET
-    if (!response.ok && response.status === 405) {
-      const getResponse = await fetch(url, {
-        method: 'GET',
+    if (supportsOneClick) {
+      // RFC 8058 One-Click: POST with List-Unsubscribe=One-Click body
+      const response = await fetch(url, {
+        method: 'POST',
         headers: {
           'User-Agent': 'CleanInbox/1.0 (Unsubscribe Bot)',
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
+        body: 'List-Unsubscribe=One-Click',
         redirect: 'follow',
       });
 
-      if (getResponse.ok || getResponse.status === 200) {
+      if (response.ok) {
         return { success: true };
+      }
+
+      // Expired/dead link detection
+      if (response.status === 404 || response.status === 410) {
+        return { success: false, linkExpired: true, error: 'This unsubscribe link has expired or is no longer valid.' };
       }
 
       return {
         success: false,
-        error: `Unsubscribe request failed with status ${getResponse.status}`
+        error: `Unsubscribe request failed with status ${response.status}`
       };
+    } else {
+      // No One-Click support: the link needs to be opened in a browser for the user to complete manually
+      return { success: false, requiresManualAction: true };
     }
-
-    if (response.ok || response.status === 200) {
-      return { success: true };
-    }
-
-    return {
-      success: false,
-      error: `Unsubscribe request failed with status ${response.status}`
-    };
-
   } catch (error: any) {
+    // DNS failure or network error - likely a dead/expired link
+    if (error.cause?.code === 'ENOTFOUND' || error.message?.includes('ENOTFOUND')) {
+      return { success: false, linkExpired: true, error: 'This unsubscribe link is no longer valid (domain not found).' };
+    }
     return {
       success: false,
       error: error.message || 'Failed to reach unsubscribe URL'
@@ -94,7 +92,7 @@ export default async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { accountEmail, senderEmail, unsubscribeLink } = req.body;
+  const { accountEmail, senderEmail, unsubscribeLink, hasOneClickUnsubscribe } = req.body;
 
   // Validate input
   if (!accountEmail) {
@@ -127,19 +125,23 @@ export default async function handler(
       });
     }
 
-    // Get unsubscribe link from cache if not provided
+    // Get unsubscribe link and one-click flag from cache if not provided
     let linkToUse = unsubscribeLink;
+    let supportsOneClick = hasOneClickUnsubscribe ?? false;
 
-    if (!linkToUse) {
+    if (!linkToUse || hasOneClickUnsubscribe === undefined) {
       const { data: senderData } = await supabase
         .from('email_senders')
-        .select('unsubscribe_link, sender_name')
+        .select('unsubscribe_link, sender_name, has_one_click_unsubscribe')
         .eq('email_account_id', account.id)
         .eq('sender_email', senderEmail)
         .single();
 
-      if (senderData?.unsubscribe_link) {
+      if (senderData?.unsubscribe_link && !linkToUse) {
         linkToUse = senderData.unsubscribe_link;
+      }
+      if (hasOneClickUnsubscribe === undefined && senderData) {
+        supportsOneClick = senderData.has_one_click_unsubscribe ?? false;
       }
     }
 
@@ -174,7 +176,51 @@ export default async function handler(
     }
 
     // Attempt HTTP unsubscribe
-    const { success, error } = await httpUnsubscribe(linkToUse);
+    const result = await httpUnsubscribe(linkToUse, supportsOneClick);
+
+    // Handle expired links
+    if (result.linkExpired) {
+      await supabase
+        .from('cleanup_actions')
+        .insert({
+          user_id: user.userId,
+          email_account_id: account.id,
+          action_type: 'unsubscribe',
+          sender_email: senderEmail,
+          emails_affected: 0,
+          status: 'failed',
+          error_message: result.error || 'Link expired'
+        });
+
+      return res.status(200).json({
+        success: false,
+        linkExpired: true,
+        error: result.error,
+        message: result.error || 'This unsubscribe link has expired.'
+      });
+    }
+
+    // Handle manual action required (no One-Click support)
+    if (result.requiresManualAction) {
+      await supabase
+        .from('cleanup_actions')
+        .insert({
+          user_id: user.userId,
+          email_account_id: account.id,
+          action_type: 'unsubscribe',
+          sender_email: senderEmail,
+          emails_affected: 0,
+          status: 'pending',
+          error_message: 'Manual unsubscribe required (no One-Click support)'
+        });
+
+      return res.status(200).json({
+        success: false,
+        requiresManualAction: true,
+        unsubscribeLink: linkToUse,
+        message: 'This sender doesn\'t support automatic unsubscribe. Opening the unsubscribe page for you to complete manually.'
+      });
+    }
 
     // Log cleanup action
     await supabase
@@ -184,13 +230,13 @@ export default async function handler(
         email_account_id: account.id,
         action_type: 'unsubscribe',
         sender_email: senderEmail,
-        emails_affected: success ? 1 : 0,
-        status: success ? 'completed' : 'failed',
-        error_message: success ? null : error,
-        completed_at: success ? new Date().toISOString() : null
+        emails_affected: result.success ? 1 : 0,
+        status: result.success ? 'completed' : 'failed',
+        error_message: result.success ? null : result.error,
+        completed_at: result.success ? new Date().toISOString() : null
       });
 
-    if (success) {
+    if (result.success) {
       // Update user stats (fetch current, then increment)
       const { data: currentStats } = await supabase
         .from('user_stats')
@@ -241,12 +287,12 @@ export default async function handler(
       });
     }
 
-    // If automatic unsubscribe failed, provide the link for manual action
+    // If automatic unsubscribe failed for other reasons, provide the link for manual action
     return res.status(200).json({
       success: false,
       requiresManualAction: true,
       unsubscribeLink: linkToUse,
-      error: error,
+      error: result.error,
       message: 'Automatic unsubscribe failed. Please try the unsubscribe link manually.'
     });
 

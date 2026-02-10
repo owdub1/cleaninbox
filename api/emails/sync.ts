@@ -257,7 +257,7 @@ async function performFullSync(
 
   // Step 2: Fetch message details
   const messageIds = allMessageRefs.map(m => m.id);
-  const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe'];
+  const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
   console.log(`Full sync: fetched ${messages.length} message details`);
 
@@ -277,8 +277,10 @@ async function performFullSync(
     last_email_date: string;
     unsubscribe_link: string | null;
     has_unsubscribe: boolean;
+    has_one_click_unsubscribe: boolean;
     is_newsletter: boolean;
     is_promotional: boolean;
+    _unsub_link_date?: string; // in-memory only, stripped before DB insert
   }>();
 
   for (const msg of messages) {
@@ -289,6 +291,7 @@ async function performFullSync(
     const dateHeader = msg.payload?.headers?.find((h: any) => h.name === 'Date')?.value || '';
     const subjectHeader = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || '';
     const unsubscribeHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe')?.value || '';
+    const unsubscribePostHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe-Post')?.value || '';
 
     const { senderEmail, senderName } = parseSender(fromHeader);
     if (senderEmail === userEmail || !senderEmail) continue;
@@ -297,11 +300,6 @@ async function performFullSync(
     // The Date header can be in any timezone and JS parsing can shift the date
     const internalDateMs = parseInt(msg.internalDate);
     const receivedAt = new Date(internalDateMs).toISOString();
-
-    // Debug: log LinkedIn emails to verify date parsing
-    if (senderEmail.includes('linkedin')) {
-      console.log(`LinkedIn email debug: internalDate=${msg.internalDate}, parsed=${internalDateMs}, receivedAt=${receivedAt}, dateHeader=${dateHeader}, subject=${subjectHeader?.substring(0, 50)}`);
-    }
 
     const isUnread = labels.includes('UNREAD');
 
@@ -323,15 +321,19 @@ async function performFullSync(
     const senderKey = `${senderEmail}|||${senderName}`;
     const existing = senderStats.get(senderKey);
     const unsubscribeLink = extractUnsubscribeLink(unsubscribeHeader);
+    const hasOneClick = unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click');
 
     if (existing) {
       existing.email_count++;
       if (isUnread) existing.unread_count++;
       if (receivedAt < existing.first_email_date) existing.first_email_date = receivedAt;
       if (receivedAt > existing.last_email_date) existing.last_email_date = receivedAt;
-      if (unsubscribeLink && !existing.unsubscribe_link) {
+      // Prefer the most recent email's unsubscribe link (more likely to be valid)
+      if (unsubscribeLink && (!existing._unsub_link_date || receivedAt > existing._unsub_link_date)) {
         existing.unsubscribe_link = unsubscribeLink;
         existing.has_unsubscribe = true;
+        existing.has_one_click_unsubscribe = hasOneClick;
+        existing._unsub_link_date = receivedAt;
       }
     } else {
       senderStats.set(senderKey, {
@@ -343,8 +345,10 @@ async function performFullSync(
         last_email_date: receivedAt,
         unsubscribe_link: unsubscribeLink,
         has_unsubscribe: !!unsubscribeLink,
+        has_one_click_unsubscribe: hasOneClick,
         is_newsletter: labels.includes('CATEGORY_UPDATES') && !!unsubscribeLink,
         is_promotional: labels.includes('CATEGORY_PROMOTIONS'),
+        _unsub_link_date: unsubscribeLink ? receivedAt : undefined,
       });
     }
   }
@@ -357,8 +361,8 @@ async function performFullSync(
     if (error) console.error('Email insert error:', error.message);
   }
 
-  // Step 6: Insert senders
-  const sendersToInsert = Array.from(senderStats.values()).map(s => ({
+  // Step 6: Insert senders (strip _unsub_link_date which is in-memory only)
+  const sendersToInsert = Array.from(senderStats.values()).map(({ _unsub_link_date, ...s }) => ({
     user_id: userId,
     email_account_id: accountId,
     ...s,
@@ -647,7 +651,7 @@ async function processNewMessages(
 ): Promise<{ addedCount: number }> {
   let addedCount = 0;
 
-  const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe'];
+  const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
 
   for (const msg of messages) {

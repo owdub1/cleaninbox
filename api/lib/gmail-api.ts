@@ -90,9 +90,11 @@ export interface SenderStats {
   lastDate: string;
   unsubscribeLink?: string;
   hasUnsubscribe: boolean;
+  hasOneClickUnsubscribe: boolean;
   isNewsletter: boolean;
   isPromotional: boolean;
   messageIds: string[];
+  _unsubLinkDate?: string; // in-memory only, tracks which email the unsub link came from
 }
 
 export interface EmailRecord {
@@ -646,6 +648,8 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     const compositeKey = getSenderKey(email, senderName);
     const messageDate = new Date(parseInt(message.internalDate)).toISOString();
     const unsubscribeLink = extractUnsubscribeLink(message);
+    const unsubscribePostHeader = getHeader(message, 'List-Unsubscribe-Post') || '';
+    const hasOneClick = unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click');
     const isUnread = message.labelIds?.includes('UNREAD') || false;
 
     if (!senderMap.has(compositeKey)) {
@@ -658,9 +662,11 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
         lastDate: messageDate,
         unsubscribeLink,
         hasUnsubscribe: !!unsubscribeLink,
+        hasOneClickUnsubscribe: hasOneClick,
         isNewsletter: isNewsletter(message),
         isPromotional: isPromotional(message),
         messageIds: [],
+        _unsubLinkDate: unsubscribeLink ? messageDate : undefined,
       });
     }
 
@@ -673,10 +679,12 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     if (messageDate < stats.firstDate) stats.firstDate = messageDate;
     if (messageDate > stats.lastDate) stats.lastDate = messageDate;
 
-    // Update unsubscribe link if we found one
-    if (unsubscribeLink && !stats.unsubscribeLink) {
+    // Prefer the most recent email's unsubscribe link (more likely to be valid)
+    if (unsubscribeLink && (!stats._unsubLinkDate || messageDate > stats._unsubLinkDate)) {
       stats.unsubscribeLink = unsubscribeLink;
       stats.hasUnsubscribe = true;
+      stats.hasOneClickUnsubscribe = hasOneClick;
+      stats._unsubLinkDate = messageDate;
     }
 
     // Update newsletter/promotional flags

@@ -34,6 +34,7 @@ interface ArchiveResult {
 interface UnsubscribeResult {
   success: boolean;
   requiresManualAction?: boolean;
+  linkExpired?: boolean;
   unsubscribeLink?: string;
   message?: string;
   error?: string;
@@ -222,7 +223,8 @@ export const useCleanupActions = () => {
   const unsubscribe = useCallback(async (
     accountEmail: string,
     senderEmail: string,
-    unsubscribeLink?: string
+    unsubscribeLink?: string,
+    hasOneClickUnsubscribe?: boolean
   ): Promise<UnsubscribeResult | null> => {
     if (!token) {
       setError('Authentication required');
@@ -243,6 +245,7 @@ export const useCleanupActions = () => {
           accountEmail,
           senderEmail,
           unsubscribeLink,
+          hasOneClickUnsubscribe,
         }),
       });
 
