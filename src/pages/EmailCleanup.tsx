@@ -60,9 +60,9 @@ const cleanupTools = [
   },
   {
     id: 'archive',
-    title: 'Archive Old Emails',
-    description: 'Archive emails older than 30/60/90 days.',
-    icon: Archive,
+    title: 'Delete Old Emails',
+    description: 'Delete emails older than 30/60/90 days.',
+    icon: Trash2,
     color: 'from-blue-400 to-indigo-400',
   },
   {
@@ -1486,10 +1486,10 @@ const EmailCleanup = () => {
                 </div>
                 <div className="text-center">
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 mb-3">
-                    <Archive className="w-6 h-6 text-white" />
+                    <Trash2 className="w-6 h-6 text-white" />
                   </div>
                   <p className="text-sm text-gray-600">
-                    Archive old emails to keep your inbox clean.
+                    Delete old emails to keep your inbox clean.
                   </p>
                 </div>
               </div>
@@ -2167,7 +2167,7 @@ const EmailCleanup = () => {
               </div>
             )}
 
-            {/* Archive Old Emails View */}
+            {/* Delete Old Emails View */}
             {!sendersLoading && senders.length > 0 && selectedTool === 'archive' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (

@@ -219,7 +219,7 @@ const Home = () => {
                 <div className="flex items-start">
                   <CheckIcon className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
                   <span className="ml-3 text-gray-700">
-                    Bulk delete or archive old emails
+                    Bulk delete old emails
                   </span>
                 </div>
               </div>

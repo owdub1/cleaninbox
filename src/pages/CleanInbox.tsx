@@ -492,7 +492,7 @@ const CleanInbox = () => {
                       <div>
                         <p className="font-medium">Email Cleanup</p>
                         <p className="text-sm text-indigo-300">
-                          Organize and archive old emails
+                          Delete and clean up old emails
                         </p>
                       </div>
                     </Link>
