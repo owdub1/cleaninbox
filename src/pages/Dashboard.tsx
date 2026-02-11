@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, XIcon, FileTextIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../lib/api';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useEmailAccounts } from '../hooks/useEmailAccounts';
 import { useSubscription } from '../hooks/useSubscription';
@@ -31,8 +32,23 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const {
     user,
-    logout
+    token,
+    updateUser
   } = useAuth();
+
+  // Settings tab state
+  const [settingsFirstName, setSettingsFirstName] = useState(user?.firstName || '');
+  const [settingsLastName, setSettingsLastName] = useState(user?.lastName || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsSuccess, setSettingsSuccess] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Format date helper
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
@@ -131,6 +147,108 @@ const Dashboard = () => {
     }
   };
   const isFreeUser = !isPaid;
+
+  const handleSaveSettings = async () => {
+    setSettingsError(null);
+    setSettingsSuccess(null);
+
+    // Validate password fields if any are filled
+    const hasPasswordChange = currentPassword || newPassword || confirmPassword;
+    if (hasPasswordChange) {
+      if (!currentPassword) {
+        setSettingsError('Current password is required to change password');
+        return;
+      }
+      if (!newPassword) {
+        setSettingsError('New password is required');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setSettingsError('New passwords do not match');
+        return;
+      }
+    }
+
+    // Check if name actually changed
+    const nameChanged = settingsFirstName !== (user?.firstName || '') || settingsLastName !== (user?.lastName || '');
+    if (!nameChanged && !hasPasswordChange) {
+      setSettingsError('No changes to save');
+      return;
+    }
+
+    setSettingsLoading(true);
+    try {
+      const body: Record<string, string> = {};
+      if (nameChanged) {
+        body.firstName = settingsFirstName;
+        body.lastName = settingsLastName;
+      }
+      if (hasPasswordChange) {
+        body.currentPassword = currentPassword;
+        body.newPassword = newPassword;
+      }
+
+      const response = await fetch(`${API_URL}/api/user/update-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      updateUser({
+        firstName: data.user.firstName,
+        lastName: data.user.lastName
+      }, data.token);
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setSettingsSuccess(hasPasswordChange ? 'Profile and password updated successfully' : 'Profile updated successfully');
+    } catch (error: any) {
+      setSettingsError(error.message);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError('Password is required');
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/user/delete-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: deletePassword })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      localStorage.clear();
+      navigate('/');
+    } catch (error: any) {
+      setDeleteError(error.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return <div className="w-full bg-white">
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8">
@@ -516,23 +634,40 @@ const Dashboard = () => {
                   </div>
                   <div className="p-6">
                     <div className="space-y-6">
+                      {settingsError && (
+                        <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                          <p className="text-sm text-red-700">{settingsError}</p>
+                        </div>
+                      )}
+                      {settingsSuccess && (
+                        <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                          <p className="text-sm text-green-700">{settingsSuccess}</p>
+                        </div>
+                      )}
                       <div>
                         <h4 className="text-md font-medium text-gray-900 mb-2">
                           Personal Information
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                              Full Name
+                            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                              First Name
                             </label>
-                            <input type="text" id="name" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" defaultValue={userData.name} />
+                            <input type="text" id="firstName" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={settingsFirstName} onChange={e => setSettingsFirstName(e.target.value)} />
                           </div>
                           <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                              Email
+                            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                              Last Name
                             </label>
-                            <input type="email" id="email" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" defaultValue={userData.email} />
+                            <input type="text" id="lastName" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={settingsLastName} onChange={e => setSettingsLastName(e.target.value)} />
                           </div>
+                        </div>
+                        <div className="mt-4">
+                          <label htmlFor="settingsEmail" className="block text-sm font-medium text-gray-700">
+                            Email
+                          </label>
+                          <input type="email" id="settingsEmail" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 text-gray-500 cursor-not-allowed" value={userData.email} disabled />
+                          <p className="mt-1 text-xs text-gray-400">Email cannot be changed</p>
                         </div>
                       </div>
                       <div>
@@ -544,29 +679,37 @@ const Dashboard = () => {
                             <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
                               Current Password
                             </label>
-                            <input type="password" id="currentPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            <input type="password" id="currentPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
                           </div>
                           <div>
                             <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
                               New Password
                             </label>
-                            <input type="password" id="newPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            <input type="password" id="newPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                           </div>
                           <div>
                             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                               Confirm New Password
                             </label>
-                            <input type="password" id="confirmPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                            <input type="password" id="confirmPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
                           </div>
                         </div>
                       </div>
                       <div className="pt-5 border-t border-gray-200">
                         <div className="flex justify-end">
-                          <button type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                          <button type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500" onClick={() => {
+                            setSettingsFirstName(user?.firstName || '');
+                            setSettingsLastName(user?.lastName || '');
+                            setCurrentPassword('');
+                            setNewPassword('');
+                            setConfirmPassword('');
+                            setSettingsError(null);
+                            setSettingsSuccess(null);
+                          }}>
                             Cancel
                           </button>
-                          <button type="submit" className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
-                            Save Changes
+                          <button type="button" className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gradient-to-r from-yellow-500 to-red-600 hover:from-yellow-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50" onClick={handleSaveSettings} disabled={settingsLoading}>
+                            {settingsLoading ? 'Saving...' : 'Save Changes'}
                           </button>
                         </div>
                       </div>
@@ -596,7 +739,7 @@ const Dashboard = () => {
                             </p>
                           </div>
                           <div className="mt-4">
-                            <button type="button" className="inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" onClick={logout}>
+                            <button type="button" className="inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" onClick={() => setShowDeleteModal(true)}>
                               Delete Account
                             </button>
                           </div>
@@ -729,6 +872,48 @@ const Dashboard = () => {
                   Yes, Disconnect
                 </button>
                 <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => setShowDisconnectModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>}
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !deleteLoading && setShowDeleteModal(false)}></div>
+          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
+            <div className="absolute top-0 right-0 pt-4 pr-4">
+              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => !deleteLoading && setShowDeleteModal(false)} disabled={deleteLoading}>
+                <XIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="text-center">
+                <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Delete Your Account
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  This action is permanent and cannot be undone. All your data, including connected email accounts, sender lists, and cleanup history will be permanently deleted.
+                </p>
+                {deleteError && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                    <p className="text-sm text-red-700">{deleteError}</p>
+                  </div>
+                )}
+                <div className="text-left mb-4">
+                  <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 mb-1">
+                    Enter your password to confirm
+                  </label>
+                  <input type="password" id="deletePassword" className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Your password" />
+                </div>
+              </div>
+              <div className="mt-5 sm:mt-6 flex flex-col space-y-3">
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50" onClick={handleDeleteAccount} disabled={deleteLoading || !deletePassword}>
+                  {deleteLoading ? 'Deleting...' : 'Permanently Delete Account'}
+                </button>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(null); }} disabled={deleteLoading}>
                   Cancel
                 </button>
               </div>

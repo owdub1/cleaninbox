@@ -17,6 +17,7 @@ type AuthContextType = {
   signup: (email: string, password: string, firstName: string, lastName: string, captchaToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
+  updateUser: (updates: Partial<User>, newToken?: string) => void;
   loading: boolean;
   token: string | null;
 };
@@ -202,6 +203,18 @@ export const AuthProvider: React.FC<{
     navigate('/dashboard');
   };
 
+  const updateUser = (updates: Partial<User>, newToken?: string) => {
+    const updatedUser = user ? { ...user, ...updates } : null;
+    setUser(updatedUser);
+    if (updatedUser) {
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+    }
+    if (newToken) {
+      setToken(newToken);
+      localStorage.setItem(TOKEN_KEY, newToken);
+    }
+  };
+
   const logout = async () => {
     // TODO: Call API to revoke refresh token in database
     setUser(null);
@@ -223,6 +236,7 @@ export const AuthProvider: React.FC<{
         signup,
         logout,
         refreshToken,
+        updateUser,
         loading,
       }}
     >
