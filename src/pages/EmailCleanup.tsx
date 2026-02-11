@@ -396,8 +396,8 @@ const EmailCleanup = () => {
   // Subscription hook - get actual subscription status (needed early for view logic)
   const { subscription, isPaid, isUnlimited, loading: subscriptionLoading } = useSubscription();
 
-  // Determine initial view - paid users with email go straight to tools
-  const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
+  // Determine initial view - authenticated users start on tools, others on onboarding
+  const shouldStartWithTools = isAuthenticated;
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
     shouldStartWithTools ? 'tools' : 'onboarding'
   );
@@ -408,13 +408,12 @@ const EmailCleanup = () => {
     if (!viewInitialized && !subscriptionLoading && !dashboardLoading) {
       if (isPaid && emailAccounts && emailAccounts.length > 0) {
         setCurrentView('tools');
+      } else if (!isPaid || !emailAccounts || emailAccounts.length === 0) {
+        setCurrentView('onboarding');
       }
       setViewInitialized(true);
     }
   }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized]);
-
-  // Show loading while determining view for authenticated users
-  const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedPeriods, setExpandedPeriods] = useState<string[]>(['Today', 'Yesterday']); // Time periods expanded by default
@@ -1167,17 +1166,6 @@ const EmailCleanup = () => {
     new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime()
   );
 
-  // Show loading while determining initial view for authenticated users
-  if (isLoadingInitialView) {
-    return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Show onboarding funnel (skip for paid users who have connected email)
   const shouldShowOnboarding = currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan);
