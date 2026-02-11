@@ -1408,7 +1408,7 @@ const EmailCleanup = () => {
         <section className="pt-10 pb-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Free trial banner */}
-            {!hasPaidPlan && (
+            {!hasPaidPlan && !subscriptionLoading && (
               <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
