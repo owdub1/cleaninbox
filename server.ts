@@ -43,6 +43,10 @@ import subscriptionCancel from './api/subscription/cancel.js';
 import activityGet from './api/activity/get.js';
 import activityLog from './api/activity/log.js';
 
+// User routes
+import userUpdateProfile from './api/user/update-profile.js';
+import userDeleteAccount from './api/user/delete-account.js';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -144,6 +148,10 @@ app.post('/api/subscription/cancel', wrapHandler(subscriptionCancel));
 // Activity routes
 app.get('/api/activity/get', wrapHandler(activityGet));
 app.post('/api/activity/log', wrapHandler(activityLog));
+
+// User routes
+app.post('/api/user/update-profile', wrapHandler(userUpdateProfile));
+app.post('/api/user/delete-account', wrapHandler(userDeleteAccount));
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
