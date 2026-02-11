@@ -367,6 +367,17 @@ async function logSuccessfulUnsubscribe(
       completed_at: new Date().toISOString()
     });
 
+  // Mark sender as unsubscribed so it no longer appears in the unsubscribe list
+  await supabase
+    .from('email_senders')
+    .update({
+      has_unsubscribe: false,
+      has_one_click_unsubscribe: false,
+      updated_at: new Date().toISOString()
+    })
+    .eq('email_account_id', accountId)
+    .eq('sender_email', senderEmail);
+
   // Update user stats
   const { data: currentStats } = await supabase
     .from('user_stats')
