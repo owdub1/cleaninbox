@@ -39,6 +39,9 @@ async function httpUnsubscribe(
   try {
     if (supportsOneClick) {
       // RFC 8058 One-Click: POST with List-Unsubscribe=One-Click body
+      // 7-second timeout to stay within Vercel's 10s function limit
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 7000);
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -47,7 +50,9 @@ async function httpUnsubscribe(
         },
         body: 'List-Unsubscribe=One-Click',
         redirect: 'follow',
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (response.ok) {
         return { success: true };
@@ -67,6 +72,10 @@ async function httpUnsubscribe(
       return { success: false, requiresManualAction: true };
     }
   } catch (error: any) {
+    // Timeout - the unsubscribe URL took too long to respond
+    if (error.name === 'AbortError') {
+      return { success: false, error: 'Unsubscribe request timed out. The server took too long to respond.' };
+    }
     // DNS failure or network error - likely a dead/expired link
     if (error.cause?.code === 'ENOTFOUND' || error.message?.includes('ENOTFOUND')) {
       return { success: false, linkExpired: true, error: 'This unsubscribe link is no longer valid (domain not found).' };

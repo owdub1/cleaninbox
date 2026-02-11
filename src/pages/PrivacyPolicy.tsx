@@ -69,12 +69,12 @@ const PrivacyPolicy = () => {
                 <LockIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                 <div className="ml-3">
                   <h4 className="text-sm font-medium text-green-800">
-                    No Email Storage Policy
+                    No Email Content Storage
                   </h4>
                   <p className="mt-1 text-sm text-green-700">
-                    We do not store your emails or their contents. All
-                    processing happens in real-time and we only retain the
-                    minimum information necessary to provide our services.
+                    We do not store your email bodies or attachments. We retain
+                    only sender metadata (names, addresses, dates, subject lines)
+                    to power your dashboard and cleanup tools.
                   </p>
                 </div>
               </div>

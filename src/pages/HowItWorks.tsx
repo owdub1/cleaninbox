@@ -355,11 +355,11 @@ const HowItWorks = () => {
                 <ShieldIcon className="h-8 w-8 text-indigo-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900">
-                No Data Storage
+                No Email Content Storage
               </h3>
               <p className="mt-4 text-gray-600">
-                We never store your emails, their contents, or your credentials.
-                All processing happens in real-time during your session.
+                We never store your email bodies, attachments, or passwords.
+                Only sender metadata is kept to power your dashboard.
               </p>
             </div>
             <div className="bg-gray-50 p-8 rounded-lg">
@@ -408,7 +408,7 @@ const HowItWorks = () => {
             </div>
             <p className="mt-6 text-gray-600 flex items-center justify-center">
               <ShieldIcon className="h-5 w-5 mr-2 text-indigo-600" />
-              <span>Your data is never stored or shared</span>
+              <span>Your email content is never stored or shared</span>
             </p>
           </div>
         </div>

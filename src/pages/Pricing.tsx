@@ -186,7 +186,7 @@ const Pricing = () => {
           </Link>
           <div className="mt-6 flex items-center justify-center text-indigo-100">
             <ShieldIcon className="h-5 w-5 mr-2" />
-            <span>Your data is never stored or shared</span>
+            <span>Your email content is never stored or shared</span>
           </div>
         </div>
       </section>

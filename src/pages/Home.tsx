@@ -48,7 +48,7 @@ const Home = () => {
               <div className="mt-8 flex items-center">
                 <ShieldIcon className="h-5 w-5 text-indigo-600" />
                 <span className="ml-2 text-gray-600">
-                  Your data is never stored or shared
+                  Your email content is never stored or shared
                 </span>
               </div>
             </div>
@@ -134,11 +134,11 @@ const Home = () => {
                 <UserIcon className="h-8 w-8 text-indigo-600" />
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900">
-                Works With Any Email
+                Works With Gmail
               </h3>
               <p className="mt-4 text-gray-600">
-                Compatible with Gmail, Outlook, Yahoo, and any custom IMAP/SMTP
-                email service. Connect all your accounts easily.
+                Connect your Gmail account and let CleanInbox analyze your inbox.
+                Simple setup with secure OAuth authentication.
               </p>
             </div>
           </div>
@@ -253,11 +253,11 @@ const Home = () => {
                   <CheckIcon className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" />
                   <div className="ml-3">
                     <h3 className="text-lg font-medium text-gray-900">
-                      No Email Storage
+                      No Email Content Storage
                     </h3>
                     <p className="mt-1 text-gray-600">
-                      We never store your emails or their contents. All
-                      processing happens in real-time.
+                      We never store your email bodies or attachments. Only
+                      sender info and metadata are kept for your dashboard.
                     </p>
                   </div>
                 </div>
@@ -428,7 +428,7 @@ const Home = () => {
             </div>
             <p className="mt-6 text-gray-600 flex items-center justify-center">
               <ShieldIcon className="h-5 w-5 mr-2 text-indigo-600" />
-              <span>Your data is never stored or shared</span>
+              <span>Your email content is never stored or shared</span>
             </p>
           </div>
         </div>
