@@ -200,7 +200,10 @@ export const AuthProvider: React.FC<{
     localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
-    navigate('/dashboard');
+    // First login goes to dashboard, returning users go straight to tools
+    const hasLoggedInBefore = localStorage.getItem('has_logged_in_before');
+    localStorage.setItem('has_logged_in_before', 'true');
+    navigate(hasLoggedInBefore ? '/email-cleanup' : '/dashboard');
   };
 
   const updateUser = (updates: Partial<User>, newToken?: string) => {
