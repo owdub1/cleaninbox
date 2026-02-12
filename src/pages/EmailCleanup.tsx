@@ -409,14 +409,19 @@ const EmailCleanup = () => {
   const [viewInitialized, setViewInitialized] = useState(false);
 
   // Update view once subscription/dashboard data loads (only once)
+  // Skip if user has already navigated (e.g. clicked a tool) to avoid kicking them out
   useEffect(() => {
     if (!viewInitialized && !subscriptionLoading && !dashboardLoading) {
-      if (isPaid && emailAccounts && emailAccounts.length > 0) {
-        setCurrentView('tools');
+      if (currentView !== 'cleanup') {
+        if (isPaid && emailAccounts && emailAccounts.length > 0) {
+          setCurrentView('tools');
+        } else if (!isPaid || !emailAccounts || emailAccounts.length === 0) {
+          setCurrentView('onboarding');
+        }
       }
       setViewInitialized(true);
     }
-  }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized]);
+  }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized, currentView]);
 
   // Show loading while determining view for authenticated users
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
