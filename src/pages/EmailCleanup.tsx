@@ -1791,7 +1791,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Delete & Clean Inbox View - Time period grouping when sorting by date */}
-            {senders.length > 0 && selectedTool === 'delete' && sortBy === 'date' && (
+            {!sendersLoading && senders.length > 0 && selectedTool === 'delete' && sortBy === 'date' && (
               <div>
                 {sendersByTimePeriod.map(({ period, senders: periodSenders }) => {
                   const filteredSenders = filterPendingBulkDeletions(filterAndSortSenders(periodSenders));
@@ -1936,7 +1936,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Delete & Clean Inbox View - Flat list with expandable senders when sorting by name or count */}
-            {senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
+            {!sendersLoading && senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
                   <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -2044,7 +2044,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Unsubscribe View - Only senders with unsubscribe option, expandable */}
-            {senders.length > 0 && selectedTool === 'unsubscribe' && (
+            {!sendersLoading && senders.length > 0 && selectedTool === 'unsubscribe' && (
               <div className="px-4 py-3 space-y-3">
                 {unsubscribableSenders.length === 0 ? (
                   <div className="text-center py-12">
@@ -2176,7 +2176,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Delete Old Emails View */}
-            {senders.length > 0 && selectedTool === 'archive' && (
+            {!sendersLoading && senders.length > 0 && selectedTool === 'archive' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
                   <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -2213,7 +2213,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Top Senders View */}
-            {senders.length > 0 && selectedTool === 'top-senders' && (() => {
+            {!sendersLoading && senders.length > 0 && selectedTool === 'top-senders' && (() => {
               const topSenders = filterPendingBulkDeletions([...senders].sort((a, b) => b.emailCount - a.emailCount)).slice(0, 20);
               const maxEmailCount = topSenders[0]?.emailCount || 1;
               return (
