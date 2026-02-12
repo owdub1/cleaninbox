@@ -15,18 +15,9 @@ const Navbar = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
-  // Check if user has a paid subscription
-  const hasPaidSubscription = isAuthenticated && user?.subscription?.plan !== 'Free';
-
   // Handle Clean My Inbox button click
   const handleCleanInboxClick = () => {
-    if (hasPaidSubscription) {
-      // User has paid subscription - direct to email cleanup page
-      navigate('/email-cleanup');
-    } else {
-      // User is free or not authenticated - direct to checkout
-      navigate('/checkout');
-    }
+    navigate('/email-cleanup');
   };
   return <nav className="bg-white py-4">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

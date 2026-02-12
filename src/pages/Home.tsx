@@ -37,7 +37,7 @@ const Home = () => {
                 Unsubscribe from newsletters and marketing emails quickly — one click for supported senders, easy links for the rest.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Link to="/checkout" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors text-center">
+                <Link to="/email-cleanup" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors text-center">
                   Clean My Inbox Now
                 </Link>
                 <Link to="/how-it-works" className="bg-gray-100 text-gray-800 px-6 py-3 rounded-md font-medium hover:bg-gray-200 transition-colors text-center">
@@ -227,7 +227,7 @@ const Home = () => {
             </div>
           </div>
           <div className="mt-16 text-center">
-            <Link to="/pricing" className="bg-indigo-600 text-white px-8 py-4 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
+            <Link to="/email-cleanup" className="bg-indigo-600 text-white px-8 py-4 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
               Clean My Inbox Now
             </Link>
           </div>
@@ -419,7 +419,7 @@ const Home = () => {
               reclaimed their time.
             </p>
             <div className="mt-8">
-              <Link to="/pricing" className="bg-indigo-600 text-white px-8 py-4 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
+              <Link to="/email-cleanup" className="bg-indigo-600 text-white px-8 py-4 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
                 Clean My Inbox Now
               </Link>
             </div>

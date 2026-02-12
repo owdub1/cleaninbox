@@ -181,7 +181,7 @@ const Pricing = () => {
             Join thousands of users who have decluttered their inboxes and
             reclaimed their time.
           </p>
-          <Link to="/checkout" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-md font-medium hover:bg-indigo-50 transition-colors">
+          <Link to="/email-cleanup" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-md font-medium hover:bg-indigo-50 transition-colors">
             Clean My Inbox Now
           </Link>
           <div className="mt-6 flex items-center justify-center text-indigo-100">

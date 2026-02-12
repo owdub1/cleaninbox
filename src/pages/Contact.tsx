@@ -200,7 +200,7 @@ const Contact = () => {
               reclaimed their time.
             </p>
             <div className="mt-8">
-              <Link to="/" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
+              <Link to="/email-cleanup" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
                 Clean My Inbox Now
               </Link>
             </div>
