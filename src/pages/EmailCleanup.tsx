@@ -219,13 +219,18 @@ const SenderAvatar = ({ sender }: { sender: Sender }) => {
   const domain = sender.email.split('@')[1];
   const logoUrl = `https://logo.clearbit.com/${domain}`;
 
-  // Get initials from name
+  // Get initials from name (letters only, skip special characters)
   const getInitials = (name: string) => {
-    const parts = name.split(' ').filter(Boolean);
+    const parts = name.split(' ').filter(p => p && /[a-zA-Z]/.test(p[0]));
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    return name.slice(0, 2).toUpperCase();
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    // Fallback: first two letters found anywhere in the name
+    const letters = name.replace(/[^a-zA-Z]/g, '');
+    return (letters.slice(0, 2) || '?').toUpperCase();
   };
 
   // Generate consistent color based on email
