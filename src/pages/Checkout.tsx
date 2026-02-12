@@ -198,7 +198,7 @@ const Checkout = () => {
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <TagIcon className="h-5 w-5 text-gray-400" />
                           </div>
-                          <input type="text" id="discountCode" name="discountCode" value={discountCode} onChange={handleDiscountChange} className="block w-full border border-gray-300 rounded-l-md shadow-sm pl-10 p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter code (try CLEAN25)" />
+                          <input type="text" id="discountCode" name="discountCode" value={discountCode} onChange={handleDiscountChange} className="block w-full border border-gray-300 rounded-l-md shadow-sm pl-10 p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter discount code" />
                         </div>
                         <button type="button" onClick={applyDiscount} className="bg-gray-200 text-gray-800 px-4 py-3 rounded-r-md font-medium hover:bg-gray-300 transition-colors">
                           Apply

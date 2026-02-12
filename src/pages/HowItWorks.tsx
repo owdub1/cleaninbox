@@ -234,7 +234,7 @@ const HowItWorks = () => {
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700">
-                      All processing happens in real-time
+                      Email data is processed on demand when you sync
                     </span>
                   </li>
                   <li className="flex items-start">
@@ -269,19 +269,13 @@ const HowItWorks = () => {
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700">
-                      We complete any unsubscribe forms automatically
+                      We send the unsubscribe request automatically when one-click is supported
                     </span>
                   </li>
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700">
-                      We verify the unsubscribe was successful
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="ml-3 text-gray-700">
-                      Your session data is immediately deleted after completion
+                      We confirm the unsubscribe request was received
                     </span>
                   </li>
                 </ul>
@@ -367,7 +361,7 @@ const HowItWorks = () => {
                 <LockIcon className="h-8 w-8 text-indigo-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900">
-                End-to-End Encryption
+                Encrypted Connections
               </h3>
               <p className="mt-4 text-gray-600">
                 All communication between our servers and your email provider is

@@ -34,8 +34,7 @@ const Home = () => {
                 Take Back Control of Your Inbox
               </h1>
               <p className="mt-6 text-xl text-gray-600">
-                Automatically unsubscribe from unwanted emails and newsletters
-                with just a few clicks. No more spam, no more clutter.
+                Unsubscribe from newsletters and marketing emails quickly — one click for supported senders, easy links for the rest.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Link to="/checkout" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors text-center">
@@ -101,8 +100,7 @@ const Home = () => {
                 Secure & Private
               </h3>
               <p className="mt-4 text-gray-600">
-                We never store your emails or credentials. All processing
-                happens in real-time with end-to-end encryption.
+                We never store your emails or credentials. All connections are secured with TLS encryption.
               </p>
             </div>
             <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 text-center">
@@ -177,13 +175,13 @@ const Home = () => {
                 <div className="flex items-start">
                   <CheckIcon className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
                   <span className="ml-3 text-gray-700">
-                    Automatically handles confirmation pages
+                    Supports one-click and email-based unsubscribe methods
                   </span>
                 </div>
                 <div className="flex items-start">
                   <CheckIcon className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
                   <span className="ml-3 text-gray-700">
-                    Verifies successful unsubscription
+                    Confirms the unsubscribe request was sent successfully
                   </span>
                 </div>
               </div>
@@ -277,7 +275,7 @@ const Home = () => {
                   <CheckIcon className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" />
                   <div className="ml-3">
                     <h3 className="text-lg font-medium text-gray-900">
-                      End-to-End Encryption
+                      Encrypted Connections
                     </h3>
                     <p className="mt-1 text-gray-600">
                       All communication between our servers and your email
@@ -292,8 +290,7 @@ const Home = () => {
                       No Data Retention
                     </h3>
                     <p className="mt-1 text-gray-600">
-                      After you're done, we don't keep any information about
-                      your emails or subscriptions.
+                      You can delete your account and all stored data at any time from your settings.
                     </p>
                   </div>
                 </div>
@@ -319,7 +316,7 @@ const Home = () => {
                         Data Processing
                       </h4>
                       <p className="mt-1 text-sm text-gray-600">
-                        All processing happens in your browser session
+                        Secure server-side processing with encrypted connections
                       </p>
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div className="bg-green-500 h-2 rounded-full" style={{
@@ -332,7 +329,7 @@ const Home = () => {
                         Data Storage
                       </h4>
                       <p className="mt-1 text-sm text-gray-600">
-                        No emails or credentials are stored
+                        Email content and passwords are never stored
                       </p>
                       <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                         <div className="bg-green-500 h-2 rounded-full" style={{
