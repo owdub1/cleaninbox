@@ -423,6 +423,9 @@ const EmailCleanup = () => {
     }
   }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized, currentView]);
 
+  // Show loading while determining view for authenticated users
+  const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
+
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [expandedPeriods, setExpandedPeriods] = useState<string[]>(['Today', 'Yesterday']); // Time periods expanded by default
   const [expandedSenders, setExpandedSenders] = useState<string[]>([]); // For Unsubscribe view
@@ -1174,6 +1177,18 @@ const EmailCleanup = () => {
     new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime()
   );
 
+
+  // Show loading while determining initial view for authenticated users
+  if (isLoadingInitialView) {
+    return (
+      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show onboarding funnel (skip for paid users who have connected email)
   // Don't show onboarding while data is still loading for authenticated users - avoids flash of "Connect Email" screen
