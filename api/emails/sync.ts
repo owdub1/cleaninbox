@@ -664,6 +664,9 @@ async function processNewMessages(
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
 
+  // Track senders that need unsubscribe info restored
+  const sendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
+
   for (const msg of messages) {
     const labels = msg.labelIds || [];
     // Skip spam/trash, but also skip sent/drafts to only get inbox emails
@@ -673,6 +676,8 @@ async function processNewMessages(
     const fromHeader = msg.payload?.headers?.find((h: any) => h.name === 'From')?.value || '';
     const dateHeader = msg.payload?.headers?.find((h: any) => h.name === 'Date')?.value || '';
     const subjectHeader = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || '';
+    const unsubscribeHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe')?.value || '';
+    const unsubscribePostHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe-Post')?.value || '';
 
     const { senderEmail, senderName } = parseSender(fromHeader);
     if (senderEmail === userEmail || !senderEmail) continue;
@@ -680,6 +685,22 @@ async function processNewMessages(
     // Use Gmail's internalDate (epoch ms) instead of Date header for reliable timezone handling
     // The Date header can be in any timezone and JS parsing can shift the date
     const receivedAt = new Date(parseInt(msg.internalDate)).toISOString();
+
+    // Track unsubscribe info from new emails to restore has_unsubscribe if needed
+    const unsubscribeLink = extractUnsubscribeLink(unsubscribeHeader);
+    const mailtoLink = extractMailtoUnsubscribeLink(unsubscribeHeader);
+    if (unsubscribeLink) {
+      const key = `${senderEmail}|||${senderName}`;
+      const existing = sendersWithUnsubscribe.get(key);
+      if (!existing || receivedAt > existing.receivedAt) {
+        sendersWithUnsubscribe.set(key, {
+          unsubscribeLink,
+          mailtoLink,
+          hasOneClick: unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click'),
+          receivedAt,
+        });
+      }
+    }
 
     // Insert email (unique constraint will reject duplicates)
     const { error } = await supabase.from('emails').insert({
@@ -699,6 +720,23 @@ async function processNewMessages(
       addedCount++;
       affectedSenders.add(`${senderEmail}|||${senderName}`);
     }
+  }
+
+  // Restore has_unsubscribe for senders whose new emails have unsubscribe headers
+  for (const [key, info] of sendersWithUnsubscribe) {
+    const [senderEmail, senderName] = key.split('|||');
+    await supabase
+      .from('email_senders')
+      .update({
+        has_unsubscribe: true,
+        unsubscribe_link: info.unsubscribeLink,
+        ...(info.mailtoLink && { mailto_unsubscribe_link: info.mailtoLink }),
+        has_one_click_unsubscribe: info.hasOneClick,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('email_account_id', accountId)
+      .eq('sender_email', senderEmail)
+      .eq('sender_name', senderName);
   }
 
   return { addedCount };
