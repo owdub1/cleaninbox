@@ -10,23 +10,23 @@ const Pricing = () => {
     name: 'Basic',
     description: 'For individuals with light email usage',
     price: billingCycle === 'monthly' ? '$9.99' : '$7.99',
-    features: ['Import up to 1,000 emails total', 'Connect up to 2 email accounts', 'One-click unsubscribe', 'Email support', 'Sender statistics and email counts'],
-    notIncluded: [],
+    features: ['Import up to 1,000 emails total', 'Connect up to 2 email accounts', 'Standard unsubscribe speed', 'Email support', 'Basic analytics'],
+    notIncluded: ['Scheduled cleanup', 'Custom domain support', 'Email cleanup service (since account creation)', 'Advanced analytics'],
     popular: false,
     gradient: 'from-blue-500 to-cyan-500'
   }, {
     name: 'Pro',
     description: 'For professionals with moderate email volume',
     price: billingCycle === 'monthly' ? '$19.99' : '$15.99',
-    features: ['Import up to 5,000 emails total', 'Connect up to 3 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
-    notIncluded: [],
+    features: ['Import up to 5,000 emails total', 'Connect up to 3 email accounts', 'Faster unsubscribe speed', 'Priority email support', 'Advanced analytics', 'Scheduled cleanup'],
+    notIncluded: ['Custom domain support', 'Email cleanup service (since account creation)'],
     popular: true,
     gradient: 'from-orange-500 to-red-600'
   }, {
     name: 'Unlimited',
     description: 'For businesses with high email volume',
     price: billingCycle === 'monthly' ? '$39.99' : '$31.99',
-    features: ['Unlimited email importing', 'Connect up to 5 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
+    features: ['Unlimited email importing', 'Connect up to 5 email accounts', 'Fastest unsubscribe speed', 'Priority phone & email support', 'Advanced analytics', 'Scheduled cleanup', 'Custom domain support', 'Email cleanup service (since account creation)'],
     notIncluded: [],
     popular: false,
     gradient: 'from-gray-800 to-gray-900'
@@ -152,16 +152,16 @@ const Pricing = () => {
             answer: 'Yes, you can upgrade or downgrade your plan at any time. Changes will be applied to your next billing cycle.'
           }, {
             question: 'What happens when I reach my email processing limit?',
-            answer: 'Once you reach your email import limit, you can upgrade your plan to process more emails.'
+            answer: 'You will be notified when you approach your limit. You can either upgrade to a higher plan or wait until your next billing cycle when your limit resets.'
           }, {
             question: 'Is there a free trial?',
-            answer: 'Yes! You get 5 free cleanup actions to try the service before purchasing a plan.'
+            answer: 'We do not offer a free trial, but we do have a 14-day money-back guarantee if you are not satisfied with our service.'
           }, {
             question: 'How do I cancel my subscription?',
             answer: 'You can cancel your subscription anytime from your account dashboard. Your service will continue until the end of your current billing period.'
           }, {
             question: 'What payment methods do you accept?',
-            answer: 'We accept all major credit cards through Stripe.'
+            answer: 'We accept all major credit cards, PayPal, and Apple Pay for payment.'
           }].map((faq, index) => <div key={index} className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
                 <h3 className="text-lg font-medium text-gray-900">
                   {faq.question}
@@ -181,7 +181,7 @@ const Pricing = () => {
             Join thousands of users who have decluttered their inboxes and
             reclaimed their time.
           </p>
-          <Link to="/email-cleanup" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-md font-medium hover:bg-indigo-50 transition-colors">
+          <Link to="/checkout" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-md font-medium hover:bg-indigo-50 transition-colors">
             Clean My Inbox Now
           </Link>
           <div className="mt-6 flex items-center justify-center text-indigo-100">

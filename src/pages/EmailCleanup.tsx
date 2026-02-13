@@ -219,18 +219,13 @@ const SenderAvatar = ({ sender }: { sender: Sender }) => {
   const domain = sender.email.split('@')[1];
   const logoUrl = `https://logo.clearbit.com/${domain}`;
 
-  // Get initials from name (letters only, skip special characters)
+  // Get initials from name
   const getInitials = (name: string) => {
-    const parts = name.split(' ').filter(p => p && /[a-zA-Z]/.test(p[0]));
+    const parts = name.split(' ').filter(Boolean);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-    // Fallback: first two letters found anywhere in the name
-    const letters = name.replace(/[^a-zA-Z]/g, '');
-    return (letters.slice(0, 2) || '?').toUpperCase();
+    return name.slice(0, 2).toUpperCase();
   };
 
   // Generate consistent color based on email
@@ -401,27 +396,22 @@ const EmailCleanup = () => {
   // Subscription hook - get actual subscription status (needed early for view logic)
   const { subscription, isPaid, isUnlimited, loading: subscriptionLoading } = useSubscription();
 
-  // Determine initial view - authenticated users start on tools, others on onboarding
-  const shouldStartWithTools = isAuthenticated;
+  // Determine initial view - paid users with email go straight to tools
+  const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
     shouldStartWithTools ? 'tools' : 'onboarding'
   );
   const [viewInitialized, setViewInitialized] = useState(false);
 
   // Update view once subscription/dashboard data loads (only once)
-  // Skip if user has already navigated (e.g. clicked a tool) to avoid kicking them out
   useEffect(() => {
     if (!viewInitialized && !subscriptionLoading && !dashboardLoading) {
-      if (currentView !== 'cleanup') {
-        if (isPaid && emailAccounts && emailAccounts.length > 0) {
-          setCurrentView('tools');
-        } else if (!isPaid || !emailAccounts || emailAccounts.length === 0) {
-          setCurrentView('onboarding');
-        }
+      if (isPaid && emailAccounts && emailAccounts.length > 0) {
+        setCurrentView('tools');
       }
       setViewInitialized(true);
     }
-  }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized, currentView]);
+  }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized]);
 
   // Show loading while determining view for authenticated users
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
@@ -1177,7 +1167,6 @@ const EmailCleanup = () => {
     new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime()
   );
 
-
   // Show loading while determining initial view for authenticated users
   if (isLoadingInitialView) {
     return (
@@ -1191,8 +1180,7 @@ const EmailCleanup = () => {
   }
 
   // Show onboarding funnel (skip for paid users who have connected email)
-  // Don't show onboarding while data is still loading for authenticated users - avoids flash of "Connect Email" screen
-  const shouldShowOnboarding = !dashboardLoading && (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan));
+  const shouldShowOnboarding = currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan);
   if (shouldShowOnboarding) {
     return (
       <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -1419,7 +1407,7 @@ const EmailCleanup = () => {
         <section className="pt-10 pb-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Free trial banner */}
-            {!hasPaidPlan && !subscriptionLoading && (
+            {!hasPaidPlan && (
               <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -1797,7 +1785,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Delete & Clean Inbox View - Time period grouping when sorting by date */}
-            {!sendersLoading && senders.length > 0 && selectedTool === 'delete' && sortBy === 'date' && (
+            {senders.length > 0 && selectedTool === 'delete' && sortBy === 'date' && (
               <div>
                 {sendersByTimePeriod.map(({ period, senders: periodSenders }) => {
                   const filteredSenders = filterPendingBulkDeletions(filterAndSortSenders(periodSenders));
@@ -1942,7 +1930,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Delete & Clean Inbox View - Flat list with expandable senders when sorting by name or count */}
-            {!sendersLoading && senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
+            {senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
                   <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -2050,7 +2038,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Unsubscribe View - Only senders with unsubscribe option, expandable */}
-            {!sendersLoading && senders.length > 0 && selectedTool === 'unsubscribe' && (
+            {senders.length > 0 && selectedTool === 'unsubscribe' && (
               <div className="px-4 py-3 space-y-3">
                 {unsubscribableSenders.length === 0 ? (
                   <div className="text-center py-12">
@@ -2182,7 +2170,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Delete Old Emails View */}
-            {!sendersLoading && senders.length > 0 && selectedTool === 'archive' && (
+            {senders.length > 0 && selectedTool === 'archive' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
                   <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
@@ -2219,7 +2207,7 @@ const EmailCleanup = () => {
             )}
 
             {/* Top Senders View */}
-            {!sendersLoading && senders.length > 0 && selectedTool === 'top-senders' && (() => {
+            {senders.length > 0 && selectedTool === 'top-senders' && (() => {
               const topSenders = filterPendingBulkDeletions([...senders].sort((a, b) => b.emailCount - a.emailCount)).slice(0, 20);
               const maxEmailCount = topSenders[0]?.emailCount || 1;
               return (

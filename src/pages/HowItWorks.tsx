@@ -234,7 +234,7 @@ const HowItWorks = () => {
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700">
-                      Email data is processed on demand when you sync
+                      All processing happens in real-time
                     </span>
                   </li>
                   <li className="flex items-start">
@@ -269,13 +269,19 @@ const HowItWorks = () => {
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700">
-                      We send the unsubscribe request automatically when one-click is supported
+                      We complete any unsubscribe forms automatically
                     </span>
                   </li>
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700">
-                      We confirm the unsubscribe request was received
+                      We verify the unsubscribe was successful
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="ml-3 text-gray-700">
+                      Your session data is immediately deleted after completion
                     </span>
                   </li>
                 </ul>
@@ -361,7 +367,7 @@ const HowItWorks = () => {
                 <LockIcon className="h-8 w-8 text-indigo-600" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900">
-                Encrypted Connections
+                End-to-End Encryption
               </h3>
               <p className="mt-4 text-gray-600">
                 All communication between our servers and your email provider is
@@ -396,7 +402,7 @@ const HowItWorks = () => {
               reclaimed their time.
             </p>
             <div className="mt-8">
-              <Link to="/email-cleanup" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
+              <Link to="/" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
                 Clean My Inbox Now
               </Link>
             </div>

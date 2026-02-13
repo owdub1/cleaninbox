@@ -149,7 +149,9 @@ const Contact = () => {
                 How secure is CleanInbox?
               </h3>
               <p className="mt-4 text-gray-600">
-                We use OAuth for authentication, never store your email content, and all connections are secured with TLS encryption.
+                Very secure. We use OAuth for authentication, never store your
+                emails or credentials, and all processing happens in real-time
+                with end-to-end encryption.
               </p>
             </div>
             <div className="bg-gray-50 p-8 rounded-lg">
@@ -157,7 +159,8 @@ const Contact = () => {
                 Which email providers do you support?
               </h3>
               <p className="mt-4 text-gray-600">
-                We currently support Gmail. Support for Outlook and Yahoo is coming soon.
+                We support all major email providers including Gmail, Outlook,
+                Yahoo, and any custom IMAP/SMTP email service.
               </p>
             </div>
             <div className="bg-gray-50 p-8 rounded-lg">
@@ -174,7 +177,9 @@ const Contact = () => {
                 What payment methods do you accept?
               </h3>
               <p className="mt-4 text-gray-600">
-                We accept payments through Stripe for maximum security and convenience. Your payment information is never stored on our servers.
+                We accept payments through PayPal and Stripe for maximum
+                security and convenience. Your payment information is never
+                stored on our servers.
               </p>
             </div>
           </div>
@@ -200,7 +205,7 @@ const Contact = () => {
               reclaimed their time.
             </p>
             <div className="mt-8">
-              <Link to="/email-cleanup" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
+              <Link to="/" className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors inline-block">
                 Clean My Inbox Now
               </Link>
             </div>

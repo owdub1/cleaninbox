@@ -93,10 +93,8 @@ const OAuthCallback = () => {
         // Clear the hash from URL for security (don't want tokens in browser history)
         window.history.replaceState(null, '', window.location.pathname);
 
-        // First login goes to dashboard, returning users go straight to tools
-        const hasLoggedInBefore = localStorage.getItem('has_logged_in_before');
-        localStorage.setItem('has_logged_in_before', 'true');
-        window.location.href = hasLoggedInBefore ? '/email-cleanup' : '/dashboard';
+        // Force full page reload to reinitialize AuthContext with new tokens
+        window.location.href = '/dashboard';
       } catch (err) {
         console.error('Failed to process OAuth callback:', err);
         setError('Failed to process sign-in. Please try again.');
