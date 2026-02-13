@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Mail, Calendar, User, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
 import { API_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 interface EmailViewModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
   onDelete,
 }) => {
   const { token } = useAuth();
+  const { theme } = useTheme();
   const [email, setEmail] = useState<FullEmail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,10 +104,10 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 truncate flex-1">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate flex-1">
             {loading ? 'Loading...' : email?.subject || 'Email'}
           </h2>
           <div className="flex items-center gap-2 ml-4">
@@ -115,7 +117,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                   onDelete();
                   onClose();
                 }}
-                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
                 title="Delete email"
               >
                 <Trash2 className="w-5 h-5" />
@@ -123,7 +125,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
             )}
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -141,10 +143,10 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
               <div className="text-red-500 mb-4">
                 <Mail className="w-12 h-12" />
               </div>
-              <p className="text-gray-600 text-center">{error}</p>
+              <p className="text-gray-600 dark:text-gray-400 text-center">{error}</p>
               <button
                 onClick={fetchEmail}
-                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
               >
                 Try Again
               </button>
@@ -154,29 +156,29 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
               {/* Email metadata */}
               <div className="mb-6 space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                    <User className="w-5 h-5 text-indigo-600" />
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900">{sender?.name}</div>
-                    <div className="text-sm text-gray-500">{sender?.email}</div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100">{sender?.name}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">{sender?.email}</div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-gray-500 pl-13">
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 pl-13">
                   <Calendar className="w-4 h-4" />
                   <span>{formatDate(email.date)}</span>
                 </div>
 
                 {email.to && (
-                  <div className="text-sm text-gray-500 pl-13">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 pl-13">
                     <span className="font-medium">To:</span> {email.to}
                   </div>
                 )}
               </div>
 
               {/* Divider */}
-              <div className="border-t border-gray-100 my-4" />
+              <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
 
               {/* Email body */}
               <div className="prose prose-sm max-w-none">
@@ -191,15 +193,15 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                       fontFamily: 'inherit',
                       fontSize: '14px',
                       lineHeight: '1.6',
-                      color: '#374151',
+                      color: theme === 'dark' ? '#d1d5db' : '#374151',
                     }}
                   />
                 ) : email.body ? (
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 dark:text-gray-300">
                     {email.body}
                   </pre>
                 ) : (
-                  <p className="text-gray-500 italic">No content available</p>
+                  <p className="text-gray-500 dark:text-gray-400 italic">No content available</p>
                 )}
               </div>
             </div>
@@ -208,7 +210,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
 
         {/* Footer */}
         {email && (
-          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
             <div className="flex items-center justify-between">
               <div className="text-xs text-gray-400">
                 Message ID: {email.id}
@@ -217,7 +219,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                 href={`https://mail.google.com/mail/?authuser=${encodeURIComponent(accountEmail)}#inbox/${email.threadId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
+                className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
               >
                 Open in Gmail
                 <ExternalLink className="w-4 h-4" />

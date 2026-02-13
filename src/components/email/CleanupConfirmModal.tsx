@@ -83,12 +83,12 @@ export const CleanupConfirmModal = ({
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6 transform transition-all">
+        <div className="relative bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-md w-full p-6 transform transition-all">
           {/* Close button */}
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            className="absolute top-4 right-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 disabled:opacity-50"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -101,34 +101,34 @@ export const CleanupConfirmModal = ({
           </div>
 
           {/* Title */}
-          <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-center text-gray-900 dark:text-gray-100 mb-2">
             {config.title}
           </h3>
 
           {/* Description */}
-          <p className="text-center text-gray-600 mb-6">
+          <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
             {config.description}
           </p>
 
           {/* Summary */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">
             <div className={`flex items-center justify-between ${action !== 'unsubscribe' ? 'mb-2' : ''}`}>
-              <span className="text-gray-600">Selected senders:</span>
-              <span className="font-semibold text-gray-900">{senders.length}</span>
+              <span className="text-gray-600 dark:text-gray-400">Selected senders:</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">{senders.length}</span>
             </div>
             {action !== 'unsubscribe' && (
               <div className="flex items-center justify-between">
-                <span className="text-gray-600">Total emails:</span>
-                <span className="font-semibold text-gray-900">{totalEmails.toLocaleString()}</span>
+                <span className="text-gray-600 dark:text-gray-400">Total emails:</span>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{totalEmails.toLocaleString()}</span>
               </div>
             )}
 
             {/* Sender list preview */}
             {senders.length <= 5 && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                 <ul className="space-y-1">
                   {senders.map(sender => (
-                    <li key={sender.email} className="text-sm text-gray-600 truncate">
+                    <li key={sender.email} className="text-sm text-gray-600 dark:text-gray-400 truncate">
                       {sender.name || sender.email} ({sender.emailCount} emails)
                       {action === 'unsubscribe' && sender.lastEmailDate && (
                         <span className="text-gray-400 ml-1">
@@ -147,7 +147,7 @@ export const CleanupConfirmModal = ({
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium disabled:opacity-50"
+              className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 font-medium disabled:opacity-50"
             >
               Cancel
             </button>

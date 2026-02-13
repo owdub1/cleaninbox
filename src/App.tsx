@@ -18,6 +18,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import OAuthCallback from './pages/OAuthCallback';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
 // Scroll to top component
@@ -32,7 +33,7 @@ function ScrollToTop() {
 }
 // Main app with AuthProvider
 function AppWithAuth() {
-  return <div className="flex flex-col min-h-screen bg-slate-50 text-base">
+  return <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-gray-950 text-base">
       <Navbar />
       <main className="flex-grow">
         <Routes>
@@ -69,8 +70,10 @@ function AppWithAuth() {
 export function App() {
   return <Router>
       <ScrollToTop />
-      <AuthProvider>
-        <AppWithAuth />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppWithAuth />
+        </AuthProvider>
+      </ThemeProvider>
     </Router>;
 }

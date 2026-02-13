@@ -98,7 +98,7 @@ const StepIndicator = ({ currentStep }: { currentStep: number }) => {
                     ? 'bg-green-500 text-white'
                     : isCurrent
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
+                    : 'bg-gray-200 text-gray-500 dark:bg-gray-600 dark:text-gray-400'
                 }`}
               >
                 {isCompleted ? (
@@ -109,7 +109,7 @@ const StepIndicator = ({ currentStep }: { currentStep: number }) => {
               </div>
               <span
                 className={`mt-2 text-sm font-medium ${
-                  isCurrent ? 'text-indigo-600' : isCompleted ? 'text-green-600' : 'text-gray-500'
+                  isCurrent ? 'text-indigo-600 dark:text-indigo-400' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
                 }`}
               >
                 {step.label}
@@ -118,7 +118,7 @@ const StepIndicator = ({ currentStep }: { currentStep: number }) => {
             {index < steps.length - 1 && (
               <div
                 className={`w-16 md:w-24 h-1 mx-2 rounded ${
-                  currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
+                  currentStep > step.number ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'
                 }`}
               />
             )}
@@ -135,10 +135,10 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-8 relative">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-8 relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400"
         >
           <X className="w-6 h-6" />
         </button>
@@ -148,17 +148,17 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
             <Gift className="w-8 h-8 text-white" />
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             You've Used Your Free Tries!
           </h2>
 
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Great job cleaning up! You've used all 5 free actions. Upgrade to Pro for unlimited cleaning and premium features.
           </p>
 
-          <div className="bg-indigo-50 rounded-xl p-4 mb-6">
-            <p className="text-indigo-900 font-semibold mb-2">Pro Plan - $9/month</p>
-            <ul className="text-sm text-indigo-700 space-y-1">
+          <div className="bg-indigo-50 dark:bg-indigo-950 rounded-xl p-4 mb-6">
+            <p className="text-indigo-900 dark:text-indigo-200 font-semibold mb-2">Pro Plan - $9/month</p>
+            <ul className="text-sm text-indigo-700 dark:text-indigo-400 space-y-1">
               <li className="flex items-center justify-center">
                 <Check className="w-4 h-4 mr-2" /> Unlimited unsubscribes
               </li>
@@ -174,14 +174,14 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
           <div className="space-y-3">
             <button
               onClick={onUpgrade}
-              className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center"
+              className="w-full py-3 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors flex items-center justify-center"
             >
               <Zap className="w-5 h-5 mr-2" />
               Upgrade to Pro
             </button>
             <button
               onClick={onClose}
-              className="w-full py-3 text-gray-500 hover:text-gray-700 text-sm"
+              className="w-full py-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
             >
               Maybe later
             </button>
@@ -201,13 +201,13 @@ const getStalenessBadge = (lastEmailDate: string): { label: string; className: s
 
   if (monthsAgo > 24) {
     const year = lastDate.getFullYear();
-    return { label: `Last email ${year}`, className: 'bg-red-100 text-red-700' };
+    return { label: `Last email ${year}`, className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
   }
   if (monthsAgo > 12) {
-    return { label: 'Over 1 year ago', className: 'bg-amber-100 text-amber-700' };
+    return { label: 'Over 1 year ago', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' };
   }
   if (monthsAgo > 6) {
-    return { label: 'Over 6 months ago', className: 'bg-yellow-100 text-yellow-700' };
+    return { label: 'Over 6 months ago', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' };
   }
   return null;
 };
@@ -268,23 +268,23 @@ const SenderAvatar = ({ sender }: { sender: Sender }) => {
 
 // Skeleton loader for sender rows
 const SenderSkeleton = () => (
-  <div className="bg-white rounded-2xl shadow-sm overflow-hidden animate-pulse">
+  <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm overflow-hidden animate-pulse">
     <div className="px-5 py-4 flex items-center justify-between">
       <div className="flex items-center flex-1">
-        <div className="h-5 w-5 bg-gray-200 rounded mr-3" />
-        <div className="h-5 w-5 bg-gray-200 rounded mr-4" />
-        <div className="w-12 h-12 bg-gray-200 rounded-full" />
+        <div className="h-5 w-5 bg-gray-200 dark:bg-gray-600 rounded mr-3" />
+        <div className="h-5 w-5 bg-gray-200 dark:bg-gray-600 rounded mr-4" />
+        <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-full" />
         <div className="flex-1 ml-4">
           <div className="flex items-center">
-            <div className="h-5 w-32 bg-gray-200 rounded" />
-            <div className="ml-3 h-5 w-16 bg-gray-100 rounded-full" />
+            <div className="h-5 w-32 bg-gray-200 dark:bg-gray-600 rounded" />
+            <div className="ml-3 h-5 w-16 bg-gray-100 dark:bg-gray-700 rounded-full" />
           </div>
-          <div className="h-4 w-48 bg-gray-100 rounded mt-1.5" />
+          <div className="h-4 w-48 bg-gray-100 dark:bg-gray-700 rounded mt-1.5" />
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <div className="h-9 w-20 bg-gray-100 rounded-lg" />
-        <div className="h-9 w-20 bg-gray-200 rounded-lg" />
+        <div className="h-9 w-20 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+        <div className="h-9 w-20 bg-gray-200 dark:bg-gray-600 rounded-lg" />
       </div>
     </div>
   </div>
@@ -1180,10 +1180,10 @@ const EmailCleanup = () => {
   // Show loading while determining initial view for authenticated users
   if (isLoadingInitialView) {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
+      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-950 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
+          <p className="text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -1194,11 +1194,11 @@ const EmailCleanup = () => {
   const shouldShowOnboarding = !dashboardLoading && (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan));
   if (shouldShowOnboarding) {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-950 dark:to-gray-900">
         {/* Notification */}
         {notification && (
           <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            notification.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
           }`}>
             <div className="flex items-center gap-2">
               {notification.type === 'success' ? (
@@ -1214,10 +1214,10 @@ const EmailCleanup = () => {
         <div className="max-w-4xl mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3">
               Clean Your Inbox in 3 Easy Steps
             </h1>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-gray-600 dark:text-gray-400">
               Get started in minutes and take control of your email
             </p>
           </div>
@@ -1226,36 +1226,36 @@ const EmailCleanup = () => {
           <StepIndicator currentStep={currentStep} />
 
           {/* Step Content */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 md:p-12">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 p-8 md:p-12">
             {/* Step 1: Sign Up */}
             {currentStep === 1 && (
               <div className="text-center">
-                <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <UserPlus className="w-10 h-10 text-indigo-600" />
+                <div className="w-20 h-20 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <UserPlus className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                   Create Your Free Account
                 </h2>
-                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
                   Join thousands of users who have decluttered their inboxes.
                   Sign up takes less than a minute!
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link
                     to="/register"
-                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
                   >
                     Sign Up Free
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
                   <Link
                     to="/login"
-                    className="inline-flex items-center justify-center px-8 py-4 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     Already have an account? Log In
                   </Link>
                 </div>
-                <div className="mt-8 flex items-center justify-center text-sm text-gray-500">
+                <div className="mt-8 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                   <ShieldIcon className="w-4 h-4 mr-2 text-green-500" />
                   No credit card required • 5 free cleanups included
                 </div>
@@ -1265,20 +1265,20 @@ const EmailCleanup = () => {
             {/* Step 2: Add Email */}
             {currentStep === 2 && (
               <div className="text-center">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Mail className="w-10 h-10 text-blue-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                   Connect Your Email
                 </h2>
-                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
                   Securely connect your email account so we can help you identify
                   and clean up unwanted messages.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-lg mx-auto mb-8">
                   <button
                     onClick={() => navigate('/dashboard?tab=myemails')}
-                    className="flex items-center justify-center p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all"
+                    className="flex items-center justify-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all"
                   >
                     {/* Gmail Icon */}
                     <svg className="w-8 h-8" viewBox="0 0 48 48">
@@ -1291,7 +1291,7 @@ const EmailCleanup = () => {
                   </button>
                   <button
                     disabled
-                    className="flex items-center justify-center p-4 bg-gray-50 border-2 border-gray-100 rounded-xl opacity-50 cursor-not-allowed"
+                    className="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl opacity-50 cursor-not-allowed"
                     title="Coming soon"
                   >
                     {/* Outlook Icon - 4 squares */}
@@ -1301,7 +1301,7 @@ const EmailCleanup = () => {
                   </button>
                   <button
                     disabled
-                    className="flex items-center justify-center p-4 bg-gray-50 border-2 border-gray-100 rounded-xl opacity-50 cursor-not-allowed"
+                    className="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl opacity-50 cursor-not-allowed"
                     title="Coming soon"
                   >
                     {/* Yahoo Icon */}
@@ -1320,12 +1320,12 @@ const EmailCleanup = () => {
                 </div>
                 <button
                   onClick={() => navigate('/dashboard?tab=myemails')}
-                  className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
                 >
                   Connect Email Account
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </button>
-                <div className="mt-8 flex items-center justify-center text-sm text-gray-500">
+                <div className="mt-8 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                   <ShieldIcon className="w-4 h-4 mr-2 text-green-500" />
                   We use OAuth • Your password is never stored
                 </div>
@@ -1338,17 +1338,17 @@ const EmailCleanup = () => {
                 <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                   You're All Set! Start Cleaning
                 </h2>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Your email is connected and ready to go. You have <span className="font-bold text-indigo-600">5 free cleanups</span> to try out the platform!
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                  Your email is connected and ready to go. You have <span className="font-bold text-indigo-600 dark:text-indigo-400">5 free cleanups</span> to try out the platform!
                 </p>
 
                 {/* Free trial badge */}
-                <div className="inline-flex items-center bg-gradient-to-r from-amber-100 to-orange-100 rounded-full px-6 py-3 mb-8">
-                  <Gift className="w-5 h-5 text-amber-600 mr-2" />
-                  <span className="text-amber-800 font-medium">5 Free Actions Included</span>
+                <div className="inline-flex items-center bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full px-6 py-3 mb-8">
+                  <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2" />
+                  <span className="text-amber-800 dark:text-amber-300 font-medium">5 Free Actions Included</span>
                 </div>
 
                 <button
@@ -1359,7 +1359,7 @@ const EmailCleanup = () => {
                   Start Cleaning Now
                 </button>
 
-                <p className="mt-6 text-sm text-gray-500">
+                <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
                   Unsubscribe, delete, or archive emails with one click
                 </p>
               </div>
@@ -1369,25 +1369,25 @@ const EmailCleanup = () => {
           {/* Benefits Section */}
           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-6">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ShieldIcon className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ShieldIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Secure & Private</h3>
-              <p className="text-sm text-gray-600">Your data is encrypted and never shared with third parties</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Secure & Private</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Your data is encrypted and never shared with third parties</p>
             </div>
             <div className="text-center p-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Inbox className="w-6 h-6 text-blue-600" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Easy to Use</h3>
-              <p className="text-sm text-gray-600">Simple interface to manage all your emails in one place</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Easy to Use</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Simple interface to manage all your emails in one place</p>
             </div>
             <div className="text-center p-6">
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckIcon className="w-6 h-6 text-purple-600" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">One-Click Actions</h3>
-              <p className="text-sm text-gray-600">Unsubscribe and clean up with a single click</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">One-Click Actions</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Unsubscribe and clean up with a single click</p>
             </div>
           </div>
         </div>
@@ -1398,11 +1398,11 @@ const EmailCleanup = () => {
   // Tools selection page
   if (currentView === 'tools') {
     return (
-      <div className="w-full bg-gray-50 min-h-screen">
+      <div className="w-full bg-gray-50 dark:bg-gray-800 min-h-screen">
         {/* Notification */}
         {notification && (
           <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-            notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            notification.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
           }`}>
             <div className="flex items-center gap-2">
               {notification.type === 'success' ? (
@@ -1419,18 +1419,18 @@ const EmailCleanup = () => {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Free trial banner */}
             {!hasPaidPlan && !subscriptionLoading && (
-              <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+              <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <Gift className="w-5 h-5 text-amber-600 mr-3" />
-                    <span className="text-amber-800">
+                    <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-3" />
+                    <span className="text-amber-800 dark:text-amber-300">
                       <span className="font-semibold">{freeActionsRemaining} free actions</span> remaining
                     </span>
                   </div>
                   {freeActionsRemaining < FREE_TRIAL_LIMIT && (
                     <button
                       onClick={() => navigate('/checkout')}
-                      className="text-sm font-medium text-amber-700 hover:text-amber-900 underline"
+                      className="text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                     >
                       Upgrade for unlimited
                     </button>
@@ -1440,8 +1440,8 @@ const EmailCleanup = () => {
             )}
 
             <div className="text-center mb-10">
-              <h1 className="text-3xl font-bold text-gray-900">Email Cleanup Tools</h1>
-              <p className="mt-2 text-lg text-gray-600">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Email Cleanup Tools</h1>
+              <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
                 Choose a cleanup tool to get started
               </p>
             </div>
@@ -1476,14 +1476,14 @@ const EmailCleanup = () => {
             </div>
 
             {/* How It Works Section */}
-            <div className="mt-12 bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-base font-medium text-gray-900 mb-4 text-center">How It Works</h3>
+            <div className="mt-12 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4 text-center">How It Works</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center">
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-red-400 to-pink-400 mb-3">
                     <Trash2 className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     View emails grouped by sender and delete in bulk.
                   </p>
                 </div>
@@ -1491,7 +1491,7 @@ const EmailCleanup = () => {
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-violet-400 mb-3">
                     <BellOff className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     One-click unsubscribe from newsletters and mailing lists.
                   </p>
                 </div>
@@ -1499,7 +1499,7 @@ const EmailCleanup = () => {
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 mb-3">
                     <Trash2 className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     Delete old emails to keep your inbox clean.
                   </p>
                 </div>
@@ -1508,7 +1508,7 @@ const EmailCleanup = () => {
 
             {/* Bottom Text Section */}
             <div className="mt-10 text-center">
-              <p className="text-gray-500 text-sm max-w-2xl mx-auto">
+              <p className="text-gray-500 dark:text-gray-400 text-sm max-w-2xl mx-auto">
                 Take control of your inbox in minutes. Our tools help you identify and remove unwanted emails,
                 unsubscribe from mailing lists, and keep your inbox organized. Your data is encrypted and never shared.
               </p>
@@ -1537,7 +1537,7 @@ const EmailCleanup = () => {
   const selectedToolData = cleanupTools.find(t => t.id === selectedTool);
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white dark:bg-gray-900">
       {/* Modals */}
       <UpgradeModal
         isOpen={showUpgradeModal}
@@ -1572,7 +1572,7 @@ const EmailCleanup = () => {
       {/* Notification */}
       {notification && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-          notification.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          notification.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
         }`}>
           <div className="flex items-center gap-2">
             {notification.type === 'success' ? (
@@ -1589,17 +1589,17 @@ const EmailCleanup = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Free trial banner */}
           {!hasPaidPlan && (
-            <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+            <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <Gift className="w-5 h-5 text-amber-600 mr-3" />
-                  <span className="text-amber-800">
+                  <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-3" />
+                  <span className="text-amber-800 dark:text-amber-300">
                     <span className="font-semibold">{freeActionsRemaining} free actions</span> remaining
                   </span>
                 </div>
                 <button
                   onClick={() => navigate('/checkout')}
-                  className="text-sm font-medium text-amber-700 hover:text-amber-900 underline"
+                  className="text-sm font-medium text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 underline"
                 >
                   Upgrade for unlimited
                 </button>
@@ -1610,17 +1610,17 @@ const EmailCleanup = () => {
           <div className="mb-6">
             <button
               onClick={handleBackToTools}
-              className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+              className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4 transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Cleanup Tools
             </button>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                   {selectedToolData?.title || 'Email Cleanup'}
                 </h1>
-                <p className="mt-2 text-lg text-gray-600">
+                <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
                   {selectedToolData?.description || 'Organize and clean your inbox by year and sender'}
                 </p>
               </div>
@@ -1631,7 +1631,7 @@ const EmailCleanup = () => {
                     <select
                       value={selectedAccountEmail || ''}
                       onChange={(e) => setSelectedAccountEmail(e.target.value)}
-                      className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+                      className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 dark:text-gray-300 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
                     >
                       {connectedGmailAccounts.map((account: any) => (
                         <option key={account.id} value={account.email}>
@@ -1649,7 +1649,7 @@ const EmailCleanup = () => {
                     <button
                       onClick={() => handleSync(false, false)}
                       disabled={syncing}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                       {syncing ? 'Syncing...' : 'Sync Now'}
@@ -1660,9 +1660,9 @@ const EmailCleanup = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             {/* Search and filter controls */}
-            <div className="p-4 border-b border-gray-200">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                 <div className="flex items-center gap-4">
                   {/* Select All checkbox */}
@@ -1673,7 +1673,7 @@ const EmailCleanup = () => {
                       checked={selectedSenderKeys.length > 0 && selectedSenderKeys.length === filterAndSortSenders(senders).length}
                       onChange={handleSelectAll}
                     />
-                    <span className="text-sm text-gray-700">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
                       {selectedSenderKeys.length > 0 ? `${selectedSenderKeys.length} selected` : 'Select All'}
                     </span>
                   </label>
@@ -1684,7 +1684,7 @@ const EmailCleanup = () => {
                     <input
                       type="text"
                       placeholder="Search by sender..."
-                      className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm"
+                      className="pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm dark:bg-gray-800 dark:text-gray-100"
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
@@ -1693,17 +1693,17 @@ const EmailCleanup = () => {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center">
                     <FilterIcon className="h-4 w-4 text-gray-400 mr-2" />
-                    <span className="text-sm text-gray-700 mr-2">Sort by:</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Sort by:</span>
                     <select
                       value={sortBy}
                       onChange={e => handleSortChange(e.target.value)}
-                      className="border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block sm:text-sm"
+                      className="border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block sm:text-sm dark:bg-gray-800 dark:text-gray-100"
                     >
                       <option value="count">Email Count</option>
                       <option value="name">Sender Name</option>
                       <option value="date">Last Email Date</option>
                     </select>
-                    <button onClick={toggleSortDirection} className="ml-2 p-1 rounded-md hover:bg-gray-100">
+                    <button onClick={toggleSortDirection} className="ml-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
                       {sortDirection === 'asc' ? (
                         <SortAscIcon className="h-4 w-4 text-gray-500" />
                       ) : (
@@ -1717,17 +1717,17 @@ const EmailCleanup = () => {
 
             {/* Selected items action bar */}
             {selectedSenderKeys.length > 0 && (
-              <div className="bg-indigo-50 p-3 flex items-center justify-between">
+              <div className="bg-indigo-50 dark:bg-indigo-950 p-3 flex items-center justify-between">
                 <div className="flex items-center">
-                  <CheckIcon className="h-4 w-4 text-indigo-600 mr-2" />
-                  <span className="text-indigo-800 text-sm font-medium">
+                  <CheckIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 mr-2" />
+                  <span className="text-indigo-800 dark:text-indigo-300 text-sm font-medium">
                     {selectedSenderKeys.length} sender{selectedSenderKeys.length !== 1 ? 's' : ''} selected
                   </span>
                 </div>
                 <div className="flex space-x-4">
                   {selectedTool !== 'archive' && (
                     <button
-                      className="flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                      className="flex items-center text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                       onClick={() => handleCleanupAction('archive', getSelectedSenders())}
                     >
                       <ArchiveIcon className="h-3 w-3 mr-1" />
@@ -1735,7 +1735,7 @@ const EmailCleanup = () => {
                     </button>
                   )}
                   <button
-                    className="flex items-center text-xs font-medium text-red-600 hover:text-red-800"
+                    className="flex items-center text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                     onClick={() => handleCleanupAction('delete', getSelectedSenders())}
                   >
                     <TrashIcon className="h-3 w-3 mr-1" />
@@ -1751,7 +1751,7 @@ const EmailCleanup = () => {
                 {syncing && (
                   <div className="flex items-center justify-center py-4 mb-2">
                     <RefreshCw className="w-5 h-5 animate-spin text-indigo-600 mr-2" />
-                    <span className="text-sm text-gray-600">Syncing your emails...</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Syncing your emails...</span>
                   </div>
                 )}
                 {/* Skeleton rows */}
@@ -1764,9 +1764,9 @@ const EmailCleanup = () => {
             {/* Empty state */}
             {!sendersLoading && !syncing && senders.length === 0 && (
               <div className="text-center py-12">
-                <Mail className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No emails found</h3>
-                <p className="text-gray-500 mb-4">
+                <Mail className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No emails found</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
                   {connectedGmailAccount
                     ? 'Click "Sync Emails" to fetch your email senders.'
                     : anyGmailAccount
@@ -1786,7 +1786,7 @@ const EmailCleanup = () => {
                   )}
                   <button
                     onClick={handleConnectGmail}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                   >
                     <Mail className="w-4 h-4" />
                     {connectedGmailAccount ? 'Reconnect Gmail' : 'Connect Gmail'}
@@ -1807,24 +1807,24 @@ const EmailCleanup = () => {
                   return (
                     <div key={period} className="mb-4">
                       {/* Time period divider header - always visible, not collapsible */}
-                      <div className="px-4 py-2 bg-gray-100 border-y border-gray-200 flex items-center justify-between sticky top-0 z-10">
+                      <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 border-y border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 z-10">
                         <div className="flex items-center">
-                          <span className="text-sm font-semibold text-gray-700">
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                             {period === 'Today' || period === 'Yesterday' ? `Last email: ${period.toLowerCase()}` : `Last email: ${period}`}
                           </span>
-                          <span className="ml-2 text-xs text-gray-500">
+                          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
                             {filteredSenders.length} sender{filteredSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} total emails
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            className="px-2 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                            className="px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded"
                             onClick={() => handleCleanupAction('archive', filteredSenders)}
                           >
                             Archive All
                           </button>
                           <button
-                            className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                            className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                             onClick={() => handleCleanupAction('delete', filteredSenders)}
                           >
                             Delete All
@@ -1835,7 +1835,7 @@ const EmailCleanup = () => {
                       {/* Senders within time period - always visible as cards */}
                       <div className="px-4 py-3 space-y-3">
                         {filteredSenders.map(sender => (
-                          <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                          <div key={sender.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                             <div className="px-5 py-4 flex items-center justify-between">
                               <button
                                 className="flex items-center flex-1 text-left"
@@ -1859,15 +1859,15 @@ const EmailCleanup = () => {
                                 <SenderAvatar sender={sender} />
                                 <div className="flex-1 ml-4">
                                   <div className="flex items-center">
-                                    <span className="text-base font-medium text-gray-900">{sender.name}</span>
-                                    <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 text-gray-600 rounded-full">{sender.emailCount} emails</span>
+                                    <span className="text-base font-medium text-gray-900 dark:text-gray-100">{sender.name}</span>
+                                    <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">{sender.emailCount} emails</span>
                                   </div>
-                                  <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{sender.email}</div>
                                 </div>
                               </button>
                               <div className="flex items-center gap-3">
                                 <button
-                                  className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                  className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition-colors"
                                   onClick={() => handleCleanupAction('archive', [sender])}
                                 >
                                   Archive
@@ -1882,16 +1882,16 @@ const EmailCleanup = () => {
                             </div>
                             {/* Individual emails dropdown */}
                             {expandedSenders.includes(getSenderKey(sender)) && (
-                              <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                              <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
                                   {loadingEmails === getSenderKey(sender) ? (
                                     <div className="flex items-center justify-center py-4">
                                       <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
-                                      <span className="text-sm text-gray-500">Loading emails...</span>
+                                      <span className="text-sm text-gray-500 dark:text-gray-400">Loading emails...</span>
                                     </div>
                                   ) : senderEmails[getSenderKey(sender)]?.length > 0 ? (
                                     senderEmails[getSenderKey(sender)].map(email => (
-                                      <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+                                      <div key={email.id} className="bg-white dark:bg-gray-900 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-800 group hover:border-indigo-200 dark:hover:border-indigo-600 hover:shadow-md transition-all cursor-pointer">
                                         <div className="flex items-start justify-between gap-3">
                                           <div
                                             className="flex-1 min-w-0"
@@ -1903,7 +1903,7 @@ const EmailCleanup = () => {
                                                 {email.subject}
                                               </span>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{email.snippet}</p>
                                             <div className="text-xs text-gray-400 mt-1">
                                               {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                             </div>
@@ -1924,7 +1924,7 @@ const EmailCleanup = () => {
                                       </div>
                                     ))
                                   ) : (
-                                    <div className="text-center py-2 text-sm text-gray-500">
+                                    <div className="text-center py-2 text-sm text-gray-500 dark:text-gray-400">
                                       No emails found
                                     </div>
                                   )}
@@ -1944,7 +1944,7 @@ const EmailCleanup = () => {
             {!sendersLoading && senders.length > 0 && selectedTool === 'delete' && sortBy !== 'date' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
-                  <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                  <div key={sender.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <div className="px-5 py-4 flex items-center justify-between">
                       <button
                         className="flex items-center flex-1 text-left"
@@ -1968,10 +1968,10 @@ const EmailCleanup = () => {
                         <SenderAvatar sender={sender} />
                         <div className="flex-1 ml-4">
                           <div className="flex items-center">
-                            <span className="text-base font-medium text-gray-900">{sender.name}</span>
-                            <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 text-gray-600 rounded-full">{sender.emailCount} emails</span>
+                            <span className="text-base font-medium text-gray-900 dark:text-gray-100">{sender.name}</span>
+                            <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">{sender.emailCount} emails</span>
                           </div>
-                          <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{sender.email}</div>
                         </div>
                         <div className="text-sm text-gray-400 mr-4">
                           {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
@@ -1979,7 +1979,7 @@ const EmailCleanup = () => {
                       </button>
                       <div className="flex items-center gap-3">
                         <button
-                          className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition-colors"
                           onClick={() => handleCleanupAction('archive', [sender])}
                         >
                           Archive
@@ -1994,16 +1994,16 @@ const EmailCleanup = () => {
                     </div>
                     {/* Individual emails dropdown */}
                     {expandedSenders.includes(getSenderKey(sender)) && (
-                      <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                      <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                           {loadingEmails === getSenderKey(sender) ? (
                             <div className="flex items-center justify-center py-4">
                               <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
-                              <span className="text-sm text-gray-500">Loading emails...</span>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">Loading emails...</span>
                             </div>
                           ) : senderEmails[getSenderKey(sender)]?.length > 0 ? (
                             senderEmails[getSenderKey(sender)].map(email => (
-                              <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+                              <div key={email.id} className="bg-white dark:bg-gray-900 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-800 group hover:border-indigo-200 dark:hover:border-indigo-600 hover:shadow-md transition-all cursor-pointer">
                                 <div className="flex items-start justify-between gap-3">
                                   <div
                                     className="flex-1 min-w-0"
@@ -2015,7 +2015,7 @@ const EmailCleanup = () => {
                                         {email.subject}
                                       </span>
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">{email.snippet}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{email.snippet}</p>
                                     <div className="text-xs text-gray-400 mt-1">
                                       {new Date(email.date).toLocaleDateString('en-US', { timeZone: 'UTC' })}
                                     </div>
@@ -2053,15 +2053,15 @@ const EmailCleanup = () => {
               <div className="px-4 py-3 space-y-3">
                 {unsubscribableSenders.length === 0 ? (
                   <div className="text-center py-12">
-                    <BellOff className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">No newsletters found</h3>
-                    <p className="text-gray-500">
+                    <BellOff className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No newsletters found</h3>
+                    <p className="text-gray-500 dark:text-gray-400">
                       No senders with unsubscribe options were found in your emails.
                     </p>
                   </div>
                 ) : (
                   filterPendingBulkDeletions(filterAndSortSenders(unsubscribableSenders, { by: 'date', direction: 'desc' })).map(sender => (
-                    <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <div key={sender.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                       <div className="px-5 py-4 flex items-center justify-between">
                         <button
                           className="flex items-center flex-1 text-left"
@@ -2075,10 +2075,10 @@ const EmailCleanup = () => {
                           <SenderAvatar sender={sender} />
                           <div className="flex-1 ml-4">
                             <div className="flex items-center">
-                              <span className="text-base font-medium text-gray-900">{sender.name}</span>
-                              <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 text-gray-600 rounded-full">{sender.emailCount} emails</span>
+                              <span className="text-base font-medium text-gray-900 dark:text-gray-100">{sender.name}</span>
+                              <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">{sender.emailCount} emails</span>
                               {sender.isNewsletter && (
-                                <span className="ml-2 px-2.5 py-0.5 text-sm bg-blue-100 text-blue-700 rounded-full">
+                                <span className="ml-2 px-2.5 py-0.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
                                   Newsletter
                                 </span>
                               )}
@@ -2091,7 +2091,7 @@ const EmailCleanup = () => {
                                 ) : null;
                               })()}
                             </div>
-                            <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{sender.email}</div>
                           </div>
                         </button>
                         <button
@@ -2102,20 +2102,20 @@ const EmailCleanup = () => {
                         </button>
                       </div>
                       {expandedSenders.includes(getSenderKey(sender)) && (
-                        <div className="bg-gray-50 px-4 py-3 border-t border-gray-100">
+                        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               Emails from this sender ({sender.emailCount} total):
                             </div>
                             <div className="flex gap-2">
                               <button
-                                className="px-2 py-1 text-xs text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded"
+                                className="px-2 py-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded"
                                 onClick={() => handleCleanupAction('archive', [sender])}
                               >
                                 Archive All
                               </button>
                               <button
-                                className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                                 onClick={() => handleCleanupAction('delete', [sender])}
                               >
                                 Delete All
@@ -2126,11 +2126,11 @@ const EmailCleanup = () => {
                             {loadingEmails === getSenderKey(sender) ? (
                               <div className="flex items-center justify-center py-4">
                                 <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
-                                <span className="text-sm text-gray-500">Loading emails...</span>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">Loading emails...</span>
                               </div>
                             ) : senderEmails[getSenderKey(sender)]?.length > 0 ? (
                               senderEmails[getSenderKey(sender)].map(email => (
-                                <div key={email.id} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 group hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer">
+                                <div key={email.id} className="bg-white dark:bg-gray-900 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-800 group hover:border-indigo-200 dark:hover:border-indigo-600 hover:shadow-md transition-all cursor-pointer">
                                   <div className="flex items-start justify-between gap-3">
                                     <div
                                       className="flex-1 min-w-0"
@@ -2140,11 +2140,11 @@ const EmailCleanup = () => {
                                         {email.isUnread && (
                                           <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                         )}
-                                        <span className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                        <span className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
                                           {email.subject}
                                         </span>
                                       </div>
-                                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                                         {email.snippet}
                                       </p>
                                       <div className="text-xs text-gray-400 mt-1">
@@ -2167,7 +2167,7 @@ const EmailCleanup = () => {
                                 </div>
                               ))
                             ) : (
-                              <div className="text-center py-4 text-sm text-gray-500">
+                              <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
                                 No emails found. Try syncing your emails.
                               </div>
                             )}
@@ -2184,7 +2184,7 @@ const EmailCleanup = () => {
             {!sendersLoading && senders.length > 0 && selectedTool === 'archive' && (
               <div className="px-4 py-3 space-y-3">
                 {filterPendingBulkDeletions(filterAndSortSenders(senders)).map(sender => (
-                  <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                  <div key={sender.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                     <div className="px-5 py-4 flex items-center justify-between">
                       <div className="flex items-center flex-1">
                         <input
@@ -2196,10 +2196,10 @@ const EmailCleanup = () => {
                         <SenderAvatar sender={sender} />
                         <div className="flex-1 ml-4">
                           <div className="flex items-center">
-                            <span className="text-base font-medium text-gray-900">{sender.name}</span>
-                            <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 text-gray-600 rounded-full">{sender.emailCount} emails</span>
+                            <span className="text-base font-medium text-gray-900 dark:text-gray-100">{sender.name}</span>
+                            <span className="ml-3 px-2.5 py-0.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full">{sender.emailCount} emails</span>
                           </div>
-                          <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{sender.email}</div>
                         </div>
                         <div className="text-sm text-gray-400 mr-4">
                           Last: {new Date(sender.lastEmailDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
@@ -2224,30 +2224,30 @@ const EmailCleanup = () => {
               return (
                 <div className="px-4 py-3 space-y-3">
                   {topSenders.map((sender, index) => (
-                    <div key={sender.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <div key={sender.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                       <div className="px-5 py-4 flex items-center justify-between">
                         <div className="flex items-center flex-1">
                           <span className="w-8 text-base font-semibold text-gray-400 mr-3">#{index + 1}</span>
                           <SenderAvatar sender={sender} />
                           <div className="flex-1 ml-4">
                             <div className="flex items-center">
-                              <span className="text-base font-medium text-gray-900">{sender.name}</span>
+                              <span className="text-base font-medium text-gray-900 dark:text-gray-100">{sender.name}</span>
                               {sender.isNewsletter && (
-                                <span className="ml-2 px-2.5 py-0.5 text-sm bg-blue-100 text-blue-700 rounded-full">
+                                <span className="ml-2 px-2.5 py-0.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
                                   Newsletter
                                 </span>
                               )}
                             </div>
-                            <div className="text-sm text-gray-500 mt-0.5">{sender.email}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{sender.email}</div>
                           </div>
                           <div className="flex items-center mr-4">
-                            <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-3">
+                            <div className="w-32 bg-gray-200 dark:bg-gray-600 rounded-full h-2.5 mr-3">
                               <div
                                 className="bg-gradient-to-r from-amber-400 to-orange-500 h-2.5 rounded-full"
                                 style={{ width: `${Math.min((sender.emailCount / maxEmailCount) * 100, 100)}%` }}
                               />
                             </div>
-                            <span className="text-base font-semibold text-gray-700">{sender.emailCount}</span>
+                            <span className="text-base font-semibold text-gray-700 dark:text-gray-300">{sender.emailCount}</span>
                           </div>
                         </div>
                       </div>

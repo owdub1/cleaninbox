@@ -250,7 +250,7 @@ const Dashboard = () => {
     }
   };
 
-  return <div className="w-full bg-white">
+  return <div className="w-full bg-white dark:bg-gray-900">
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -266,7 +266,7 @@ const Dashboard = () => {
 
       {/* Friendly Upgrade Banner for Free Users */}
       {isFreeUser && (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100">
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-start">
@@ -274,8 +274,8 @@ const Dashboard = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <div>
-                  <h3 className="font-semibold text-gray-900">You're on the Free Plan</h3>
-                  <p className="text-sm text-gray-600">Upgrade to Pro to connect unlimited email accounts and unlock all features!</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">You're on the Free Plan</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Upgrade to Pro to connect unlimited email accounts and unlock all features!</p>
                 </div>
               </div>
               <button
@@ -289,23 +289,23 @@ const Dashboard = () => {
         </div>
       )}
 
-      <section className="py-8 bg-gray-50">
+      <section className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Dashboard Tabs */}
-          <div className="flex border-b border-gray-200 overflow-x-auto">
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'overview' ? 'border-b-2 border-gray-500 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`} onClick={() => setActiveTab('overview')}>
+          <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'overview' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('overview')}>
               Overview
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'myemails' ? 'border-b-2 border-gray-500 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`} onClick={() => setActiveTab('myemails')}>
+            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'myemails' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('myemails')}>
               Email Accounts
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'subscription' ? 'border-b-2 border-gray-500 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`} onClick={() => setActiveTab('subscription')}>
+            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'subscription' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('subscription')}>
               Subscription
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'payments' ? 'border-b-2 border-gray-500 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`} onClick={() => setActiveTab('payments')}>
+            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'payments' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('payments')}>
               Payment History
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'settings' ? 'border-b-2 border-gray-500 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`} onClick={() => setActiveTab('settings')}>
+            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'settings' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('settings')}>
               Settings
             </button>
           </div>
@@ -314,13 +314,13 @@ const Dashboard = () => {
             {/* Overview Tab */}
             {activeTab === 'overview' && <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                      <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600">
                         <MailIcon className="h-6 w-6" />
                       </div>
                       <div className="ml-4">
-                        <h3 className="text-lg font-medium text-gray-900">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                           Emails Processed
                         </h3>
                         <p className="text-2xl font-bold text-purple-600">
@@ -329,13 +329,13 @@ const Dashboard = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-white rounded-lg shadow p-6">
+                  <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
                     <div className="flex items-center">
-                      <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                      <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600">
                         <UserIcon className="h-6 w-6" />
                       </div>
                       <div className="ml-4">
-                        <h3 className="text-lg font-medium text-gray-900">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                           Email Accounts
                         </h3>
                         <p className="text-2xl font-bold text-blue-600">
@@ -345,32 +345,32 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="mt-8 bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Subscription Overview
                     </h3>
                   </div>
                   <div className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-gray-200">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
                       <div>
-                        <p className="text-sm text-gray-500">Current Plan</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current Plan</p>
                         <p className="text-lg font-medium text-purple-600">
                           {userData.subscription.plan}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Status</p>
-                        <p className="text-sm font-medium bg-green-100 text-green-800 px-2 py-1 rounded-full inline-flex items-center">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                        <p className="text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full inline-flex items-center">
                           <CheckCircleIcon className="h-4 w-4 mr-1" />
                           {userData.subscription.status}
                         </p>
                       </div>
                       {userData.subscription.nextBilling && <div>
-                        <p className="text-sm text-gray-500">Next Billing</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Next Billing</p>
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
-                          <p className="text-gray-900">
+                          <p className="text-gray-900 dark:text-gray-100">
                             {userData.subscription.nextBilling}
                           </p>
                         </div>
@@ -378,11 +378,11 @@ const Dashboard = () => {
                       {isPaid && (
                         <div>
                           {isCancelled ? (
-                            <span className="inline-flex items-center px-4 py-2 rounded-md font-medium bg-gray-100 text-gray-500">
+                            <span className="inline-flex items-center px-4 py-2 rounded-md font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
                               Subscription Cancelled
                             </span>
                           ) : (
-                            <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
+                            <button className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-md font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" onClick={() => setShowCancelModal(true)}>
                               Cancel Subscription
                             </button>
                           )}
@@ -390,7 +390,7 @@ const Dashboard = () => {
                       )}
                     </div>
                     <div className="mt-6">
-                      <h4 className="text-md font-medium text-gray-900 mb-4">
+                      <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
                         Recent Activity
                       </h4>
                       <div className="space-y-2">
@@ -400,12 +400,12 @@ const Dashboard = () => {
                           </div>
                         ) : activities.length > 0 ? (
                           activities.map((activity) => (
-                            <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                                activity.action_type === 'email_sync' ? 'bg-blue-100' :
-                                activity.action_type === 'unsubscribe' ? 'bg-green-100' :
-                                activity.action_type === 'delete' ? 'bg-red-100' :
-                                'bg-purple-100'
+                                activity.action_type === 'email_sync' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                                activity.action_type === 'unsubscribe' ? 'bg-green-100 dark:bg-green-900/30' :
+                                activity.action_type === 'delete' ? 'bg-red-100 dark:bg-red-900/30' :
+                                'bg-purple-100 dark:bg-purple-900/30'
                               }`}>
                                 {activity.action_type === 'email_sync' ? (
                                   <RefreshCwIcon className="h-4 w-4 text-blue-600" />
@@ -418,13 +418,13 @@ const Dashboard = () => {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-gray-900">{activity.description}</p>
-                                <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(activity.created_at)}</p>
+                                <p className="text-sm text-gray-900 dark:text-gray-100">{activity.description}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatRelativeTime(activity.created_at)}</p>
                               </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-sm text-gray-500 text-center py-4">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                             No recent activity
                           </p>
                         )}
@@ -435,48 +435,48 @@ const Dashboard = () => {
               </div>}
             {/* Email Accounts Tab (formerly My Emails) */}
             {activeTab === 'myemails' && <div>
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Connected Email Accounts
                     </h3>
                   </div>
                   <div className="p-6">
                     <div className="space-y-6">
                       {connectedEmails.map((emailAccount, index) => (
-                        <div key={index} className="bg-gray-50 rounded-lg p-6 border border-gray-100">
+                        <div key={index} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border border-gray-100 dark:border-gray-800">
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                             <div className="mb-4 md:mb-0">
                               <div className="flex items-center">
                                 <InboxIcon className="h-5 w-5 text-purple-600 mr-2" />
-                                <h4 className="text-lg font-medium text-gray-900">
+                                <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                                   {emailAccount.email}
                                 </h4>
                               </div>
-                              <p className="text-sm text-gray-500 mt-1">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                 Provider: {emailAccount.provider} | Last synced: {formatDateTime(emailAccount.lastSynced)}
                               </p>
                             </div>
-                            <button className="bg-red-50 text-red-600 px-3 py-1 rounded text-sm font-medium hover:bg-red-100 transition-colors flex items-center" onClick={() => handleDisconnectEmail(emailAccount)}>
+                            <button className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1 rounded text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center" onClick={() => handleDisconnectEmail(emailAccount)}>
                               <TrashIcon className="h-3 w-3 mr-1" />
                               Disconnect
                             </button>
                           </div>
                           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                              <p className="text-sm text-gray-500">Total Emails</p>
-                              <p className="text-xl font-bold text-gray-900">
+                            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm">
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Total Emails</p>
+                              <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                                 {emailAccount.totalEmails.toLocaleString()}
                               </p>
                             </div>
-                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                              <p className="text-sm text-gray-500">Processed</p>
+                            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm">
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Processed</p>
                               <p className="text-xl font-bold text-purple-600">
                                 {emailAccount.processedEmails.toLocaleString()}
                               </p>
                             </div>
-                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                              <p className="text-sm text-gray-500">Unsubscribed</p>
+                            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm">
+                              <p className="text-sm text-gray-500 dark:text-gray-400">Unsubscribed</p>
                               <p className="text-xl font-bold text-green-600">
                                 {emailAccount.unsubscribed.toLocaleString()}
                               </p>
@@ -488,13 +488,13 @@ const Dashboard = () => {
                       {/* Add New Email Account Card */}
                       <button
                         onClick={handleConnectNewEmail}
-                        className="w-full bg-gray-50 rounded-lg p-6 border-2 border-dashed border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all duration-200 cursor-pointer group"
+                        className="w-full bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950 transition-all duration-200 cursor-pointer group"
                       >
                         <div className="flex flex-col items-center justify-center py-8">
-                          <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-purple-100 flex items-center justify-center mb-4 transition-colors">
+                          <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 group-hover:bg-purple-100 dark:group-hover:bg-purple-900 flex items-center justify-center mb-4 transition-colors">
                             <PlusIcon className="h-6 w-6 text-gray-400 group-hover:text-purple-600 transition-colors" />
                           </div>
-                          <h4 className="text-lg font-medium text-gray-500 group-hover:text-purple-600 transition-colors">
+                          <h4 className="text-lg font-medium text-gray-500 dark:text-gray-400 group-hover:text-purple-600 transition-colors">
                             Add Email Account
                           </h4>
                           <p className="text-sm text-gray-400 mt-1">
@@ -508,57 +508,57 @@ const Dashboard = () => {
               </div>}
             {/* Subscription Tab */}
             {activeTab === 'subscription' && <div>
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Current Subscription
                     </h3>
                   </div>
                   <div className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-gray-200">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
                       <div>
-                        <p className="text-sm text-gray-500">Current Plan</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current Plan</p>
                         <p className="text-lg font-medium text-purple-600">
                           {userData.subscription.plan}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Status</p>
-                        <p className="text-sm font-medium bg-green-100 text-green-800 px-2 py-1 rounded-full inline-flex items-center">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                        <p className="text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full inline-flex items-center">
                           <CheckCircleIcon className="h-4 w-4 mr-1" />
                           {userData.subscription.status}
                         </p>
                       </div>
                       {userData.subscription.nextBilling && <div>
-                        <p className="text-sm text-gray-500">Next Billing</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Next Billing</p>
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
-                          <p className="text-gray-900">
+                          <p className="text-gray-900 dark:text-gray-100">
                             {userData.subscription.nextBilling}
                           </p>
                         </div>
                       </div>}
                       <div>
-                        <button className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition-colors" onClick={() => setShowCancelModal(true)}>
+                        <button className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-md font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" onClick={() => setShowCancelModal(true)}>
                           Cancel Subscription
                         </button>
                       </div>
                     </div>
                     <div className="mt-6">
-                      <h4 className="text-md font-medium text-gray-900 mb-4">
+                      <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
                         Plan Features
                       </h4>
                       <ul className="space-y-3">
                         {userData.subscription.features?.map((feature, index) => (
                           <li key={index} className="flex items-start">
                             <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                            <span className="ml-3 text-gray-700">{feature}</span>
+                            <span className="ml-3 text-gray-700 dark:text-gray-300">{feature}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
                     <div className="mt-8">
-                      <h4 className="text-md font-medium text-gray-900 mb-4">
+                      <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-4">
                         Available Plans
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -579,7 +579,7 @@ const Dashboard = () => {
                               className={`rounded-lg p-4 relative ${
                                 isCurrent
                                   ? 'border-2 border-purple-400'
-                                  : 'border border-gray-200 hover:border-purple-400 cursor-pointer transition-colors'
+                                  : 'border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 cursor-pointer transition-colors'
                               }`}
                               onClick={() => !isCurrent && handlePlanSwitch(plan.id)}
                             >
@@ -593,8 +593,8 @@ const Dashboard = () => {
                                   Upgrade
                                 </div>
                               )}
-                              <h5 className="font-medium text-gray-900">{plan.name}</h5>
-                              <p className="text-gray-500 text-sm">{plan.price}</p>
+                              <h5 className="font-medium text-gray-900 dark:text-gray-100">{plan.name}</h5>
+                              <p className="text-gray-500 dark:text-gray-400 text-sm">{plan.price}</p>
                             </div>
                           );
                         })}
@@ -605,19 +605,19 @@ const Dashboard = () => {
               </div>}
             {/* Payment History Tab */}
             {activeTab === 'payments' && <div>
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Payment History
                     </h3>
                   </div>
                   <div className="p-6">
                     <div className="text-center py-12">
                       <FileTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                         No Payment History
                       </h3>
-                      <p className="text-gray-500">
+                      <p className="text-gray-500 dark:text-gray-400">
                         Your payment history will appear here
                       </p>
                     </div>
@@ -626,78 +626,78 @@ const Dashboard = () => {
               </div>}
             {/* Settings Tab */}
             {activeTab === 'settings' && <div>
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Account Settings
                     </h3>
                   </div>
                   <div className="p-6">
                     <div className="space-y-6">
                       {settingsError && (
-                        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                          <p className="text-sm text-red-700">{settingsError}</p>
+                        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md p-3">
+                          <p className="text-sm text-red-700 dark:text-red-400">{settingsError}</p>
                         </div>
                       )}
                       {settingsSuccess && (
-                        <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                          <p className="text-sm text-green-700">{settingsSuccess}</p>
+                        <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md p-3">
+                          <p className="text-sm text-green-700 dark:text-green-400">{settingsSuccess}</p>
                         </div>
                       )}
                       <div>
-                        <h4 className="text-md font-medium text-gray-900 mb-2">
+                        <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Personal Information
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               First Name
                             </label>
-                            <input type="text" id="firstName" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={settingsFirstName} onChange={e => setSettingsFirstName(e.target.value)} />
+                            <input type="text" id="firstName" className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-800 dark:text-gray-100" value={settingsFirstName} onChange={e => setSettingsFirstName(e.target.value)} />
                           </div>
                           <div>
-                            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Last Name
                             </label>
-                            <input type="text" id="lastName" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={settingsLastName} onChange={e => setSettingsLastName(e.target.value)} />
+                            <input type="text" id="lastName" className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-800 dark:text-gray-100" value={settingsLastName} onChange={e => setSettingsLastName(e.target.value)} />
                           </div>
                         </div>
                         <div className="mt-4">
-                          <label htmlFor="settingsEmail" className="block text-sm font-medium text-gray-700">
+                          <label htmlFor="settingsEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                             Email
                           </label>
-                          <input type="email" id="settingsEmail" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 text-gray-500 cursor-not-allowed" value={userData.email} disabled />
+                          <input type="email" id="settingsEmail" className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed" value={userData.email} disabled />
                           <p className="mt-1 text-xs text-gray-400">Email cannot be changed</p>
                         </div>
                       </div>
                       <div>
-                        <h4 className="text-md font-medium text-gray-900 mb-2">
+                        <h4 className="text-md font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Change Password
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Current Password
                             </label>
-                            <input type="password" id="currentPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                            <input type="password" id="currentPassword" className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-800 dark:text-gray-100" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
                           </div>
                           <div>
-                            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               New Password
                             </label>
-                            <input type="password" id="newPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                            <input type="password" id="newPassword" className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-800 dark:text-gray-100" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                           </div>
                           <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                               Confirm New Password
                             </label>
-                            <input type="password" id="confirmPassword" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+                            <input type="password" id="confirmPassword" className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-800 dark:text-gray-100" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
                           </div>
                         </div>
                       </div>
-                      <div className="pt-5 border-t border-gray-200">
+                      <div className="pt-5 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex justify-end">
-                          <button type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-500" onClick={() => {
+                          <button type="button" className="bg-white dark:bg-gray-800 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500" onClick={() => {
                             setSettingsFirstName(user?.firstName || '');
                             setSettingsLastName(user?.lastName || '');
                             setCurrentPassword('');
@@ -716,30 +716,30 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="mt-6 bg-white rounded-lg shadow overflow-hidden">
-                  <div className="px-6 py-5 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">
+                <div className="mt-6 bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+                  <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Danger Zone
                     </h3>
                   </div>
                   <div className="p-6">
-                    <div className="bg-red-50 border border-red-100 rounded-md p-4">
+                    <div className="bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-md p-4">
                       <div className="flex">
                         <div className="flex-shrink-0">
                           <AlertCircleIcon className="h-5 w-5 text-red-400" />
                         </div>
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800">
+                          <h3 className="text-sm font-medium text-red-800 dark:text-red-400">
                             Delete Account
                           </h3>
-                          <div className="mt-2 text-sm text-red-700">
+                          <div className="mt-2 text-sm text-red-700 dark:text-red-400">
                             <p>
                               Once you delete your account, there is no going
                               back. Please be certain.
                             </p>
                           </div>
                           <div className="mt-4">
-                            <button type="button" className="inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" onClick={() => setShowDeleteModal(true)}>
+                            <button type="button" className="inline-flex items-center justify-center px-4 py-2 border border-transparent font-medium rounded-md text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" onClick={() => setShowDeleteModal(true)}>
                               Delete Account
                             </button>
                           </div>
@@ -755,25 +755,25 @@ const Dashboard = () => {
       {/* Cancel Subscription Modal */}
       {showCancelModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !cancelLoading && setShowCancelModal(false)}></div>
-          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
+          <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => !cancelLoading && setShowCancelModal(false)} disabled={cancelLoading}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => !cancelLoading && setShowCancelModal(false)} disabled={cancelLoading}>
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
             <div className="p-6">
               <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                   Cancel Your Subscription?
                 </h3>
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                   Are you sure you want to cancel your subscription? You'll lose
                   access to all Pro features at the end of your current billing
                   period.
                 </p>
                 {cancelError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{cancelError}</p>
+                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md">
+                    <p className="text-sm text-red-600 dark:text-red-400">{cancelError}</p>
                   </div>
                 )}
               </div>
@@ -803,7 +803,7 @@ const Dashboard = () => {
                     'Yes, Cancel Subscription'
                   )}
                 </button>
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm disabled:opacity-50" onClick={() => setShowCancelModal(false)} disabled={cancelLoading}>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm disabled:opacity-50" onClick={() => setShowCancelModal(false)} disabled={cancelLoading}>
                   No, Keep My Subscription
                 </button>
               </div>
@@ -813,19 +813,19 @@ const Dashboard = () => {
       {/* Email Limit Modal */}
       {showEmailLimitModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowEmailLimitModal(false)}></div>
-          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
+          <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => setShowEmailLimitModal(false)}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => setShowEmailLimitModal(false)}>
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
             <div className="p-6">
               <div className="text-center">
                 <AlertCircleIcon className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                   Email Account Limit Reached
                 </h3>
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                   Your current plan allows for a maximum of{' '}
                   {userData.subscription.emailLimit} email accounts. Upgrade
                   your plan to connect more email accounts.
@@ -838,7 +838,7 @@ const Dashboard = () => {
             }}>
                   Upgrade My Plan
                 </button>
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => setShowEmailLimitModal(false)}>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => setShowEmailLimitModal(false)}>
                   Not Now
                 </button>
               </div>
@@ -848,19 +848,19 @@ const Dashboard = () => {
       {/* Disconnect Email Modal */}
       {showDisconnectModal && emailToDisconnect && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowDisconnectModal(false)}></div>
-          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
+          <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => setShowDisconnectModal(false)}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => setShowDisconnectModal(false)}>
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
             <div className="p-6">
               <div className="text-center">
                 <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                   Disconnect Email Account
                 </h3>
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                   Are you sure you want to disconnect{' '}
                   <span className="font-medium">{emailToDisconnect.email}</span>
                   ? This will remove all data associated with this email
@@ -871,7 +871,7 @@ const Dashboard = () => {
                 <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm" onClick={confirmDisconnectEmail}>
                   Yes, Disconnect
                 </button>
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => setShowDisconnectModal(false)}>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => setShowDisconnectModal(false)}>
                   Cancel
                 </button>
               </div>
@@ -882,38 +882,38 @@ const Dashboard = () => {
       {/* Delete Account Modal */}
       {showDeleteModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !deleteLoading && setShowDeleteModal(false)}></div>
-          <div className="relative bg-white rounded-lg max-w-md w-full mx-4 shadow-xl">
+          <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500" onClick={() => !deleteLoading && setShowDeleteModal(false)} disabled={deleteLoading}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => !deleteLoading && setShowDeleteModal(false)} disabled={deleteLoading}>
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
             <div className="p-6">
               <div className="text-center">
                 <AlertCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Delete Your Account
                 </h3>
-                <p className="text-sm text-gray-500 mb-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   This action is permanent and cannot be undone. All your data, including connected email accounts, sender lists, and cleanup history will be permanently deleted.
                 </p>
                 {deleteError && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
-                    <p className="text-sm text-red-700">{deleteError}</p>
+                  <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-md p-3 mb-4">
+                    <p className="text-sm text-red-700 dark:text-red-400">{deleteError}</p>
                   </div>
                 )}
                 <div className="text-left mb-4">
-                  <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Enter your password to confirm
                   </label>
-                  <input type="password" id="deletePassword" className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Your password" />
+                  <input type="password" id="deletePassword" className="block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-gray-100" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Your password" />
                 </div>
               </div>
               <div className="mt-5 sm:mt-6 flex flex-col space-y-3">
                 <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50" onClick={handleDeleteAccount} disabled={deleteLoading || !deletePassword}>
                   {deleteLoading ? 'Deleting...' : 'Permanently Delete Account'}
                 </button>
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(null); }} disabled={deleteLoading}>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(null); }} disabled={deleteLoading}>
                   Cancel
                 </button>
               </div>

@@ -112,22 +112,22 @@ const OAuthCallback = () => {
   }, [searchParams, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
       <div className="text-center">
         {error ? (
           <>
-            <div className="text-red-500 text-lg mb-2">{error}</div>
+            <div className="text-red-500 dark:text-red-400 text-lg mb-2">{error}</div>
             <a
               href="/login"
-              className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              className="inline-block mt-4 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600"
             >
               Back to Login
             </a>
           </>
         ) : (
           <>
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            <p className="mt-4 text-gray-600">Completing sign in...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Completing sign in...</p>
           </>
         )}
       </div>

@@ -86,14 +86,14 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
       {/* Strength bar */}
       <div className="mb-2">
         <div className="flex justify-between items-center mb-1">
-          <span className="text-sm text-gray-600">Password strength:</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">Password strength:</span>
           {strengthInfo.label && (
             <span className={`text-sm font-medium ${strengthInfo.textColor}`}>
               {strengthInfo.label}
             </span>
           )}
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
           <div
             className={`h-2 rounded-full transition-all duration-300 ${strengthInfo.color}`}
             style={{ width: `${strength}%` }}
@@ -119,7 +119,7 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
               </svg>
             ) : (
               <svg
-                className="h-4 w-4 text-gray-300 mr-2"
+                className="h-4 w-4 text-gray-300 dark:text-gray-600 mr-2"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -130,7 +130,7 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
                 />
               </svg>
             )}
-            <span className={rule.valid ? 'text-gray-700' : 'text-gray-400'}>
+            <span className={rule.valid ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'}>
               {rule.label}
             </span>
           </div>

@@ -81,19 +81,19 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-950 px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-xl p-8">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+              <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Invalid Reset Link</h2>
-            <p className="text-gray-600 mb-6">{message}</p>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Invalid Reset Link</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
             <Link
               to="/forgot-password"
-              className="inline-block bg-purple-600 text-white py-2 px-6 rounded-md hover:bg-purple-700 transition-colors"
+              className="inline-block bg-purple-600 dark:bg-purple-500 text-white py-2 px-6 rounded-md hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
             >
               Request New Reset Link
             </Link>
@@ -105,17 +105,17 @@ export default function ResetPassword() {
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-950 px-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-xl p-8">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+              <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Password Reset!</h2>
-            <p className="text-gray-600 mb-4">{message}</p>
-            <p className="text-sm text-gray-500">Redirecting to login...</p>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">Password Reset!</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Redirecting to login...</p>
           </div>
         </div>
       </div>
@@ -123,29 +123,29 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-950 px-4">
+      <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-xl p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Reset Password</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">Reset Password</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Enter your new password below.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {status === 'error' && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
               <div className="flex items-start">
-                <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-red-700 text-sm">{message}</p>
+                <p className="text-red-700 dark:text-red-400 text-sm">{message}</p>
               </div>
             </div>
           )}
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               New Password
             </label>
             <input
@@ -155,14 +155,14 @@ export default function ResetPassword() {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="Enter new password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
               disabled={loading}
             />
             {password && <PasswordStrength password={password} />}
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Confirm New Password
             </label>
             <input
@@ -172,14 +172,14 @@ export default function ResetPassword() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               placeholder="Confirm new password"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-400"
               disabled={loading}
             />
             {confirmPassword && password !== confirmPassword && (
-              <p className="mt-2 text-sm text-red-600">Passwords do not match</p>
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">Passwords do not match</p>
             )}
             {confirmPassword && password === confirmPassword && (
-              <p className="mt-2 text-sm text-green-600 flex items-center">
+              <p className="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center">
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -191,7 +191,7 @@ export default function ResetPassword() {
           <button
             type="submit"
             disabled={loading || password !== confirmPassword}
-            className="w-full bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 transition-colors disabled:bg-purple-300 disabled:cursor-not-allowed font-medium"
+            className="w-full bg-purple-600 dark:bg-purple-500 text-white py-3 px-4 rounded-md hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:bg-purple-300 dark:disabled:bg-purple-800 disabled:cursor-not-allowed font-medium"
           >
             {loading ? (
               <span className="flex items-center justify-center">
@@ -210,7 +210,7 @@ export default function ResetPassword() {
         <div className="mt-6 text-center">
           <Link
             to="/login"
-            className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+            className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 text-sm font-medium"
           >
             ← Back to Login
           </Link>

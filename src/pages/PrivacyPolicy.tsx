@@ -2,14 +2,14 @@ import React, { Children } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpenIcon, ChevronRightIcon, ShieldIcon, LockIcon } from 'lucide-react';
 const PrivacyPolicy = () => {
-  return <div className="w-full bg-white">
+  return <div className="w-full bg-white dark:bg-gray-900">
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">
               Privacy Policy
             </h1>
-            <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Last Updated:{' '}
               {new Date().toLocaleDateString('en-US', {
               month: 'long',
@@ -20,14 +20,14 @@ const PrivacyPolicy = () => {
           </div>
         </div>
       </section>
-      <section className="py-12 bg-gray-50">
+      <section className="py-12 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white p-8 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">
             <div className="flex items-center justify-center mb-8">
-              <div className="p-3 bg-indigo-100 rounded-full">
-                <ShieldIcon className="h-8 w-8 text-indigo-600" />
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-full">
+                <ShieldIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
               </div>
-              <h2 className="ml-3 text-xl font-bold text-gray-900">
+              <h2 className="ml-3 text-xl font-bold text-gray-900 dark:text-gray-100">
                 Your Privacy is Our Priority
               </h2>
             </div>
@@ -65,13 +65,13 @@ const PrivacyPolicy = () => {
                 <li>Email content (only temporarily during processing)</li>
                 <li>Subscription information</li>
               </ul>
-              <div className="bg-green-50 border border-green-100 rounded-md p-4 my-6 flex items-start">
-                <LockIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+              <div className="bg-green-50 dark:bg-green-900/30 border border-green-100 dark:border-green-800 rounded-md p-4 my-6 flex items-start">
+                <LockIcon className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5 flex-shrink-0" />
                 <div className="ml-3">
-                  <h4 className="text-sm font-medium text-green-800">
+                  <h4 className="text-sm font-medium text-green-800 dark:text-green-400">
                     No Email Content Storage
                   </h4>
-                  <p className="mt-1 text-sm text-green-700">
+                  <p className="mt-1 text-sm text-green-700 dark:text-green-400">
                     We do not store your email bodies or attachments. We retain
                     only sender metadata (names, addresses, dates, subject lines)
                     to power your dashboard and cleanup tools.
@@ -179,13 +179,13 @@ const PrivacyPolicy = () => {
                 contact us at privacy@cleaninbox.com.
               </p>
             </div>
-            <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
-                <Link to="/terms-of-service" className="text-indigo-600 hover:text-indigo-800 flex items-center">
+                <Link to="/terms-of-service" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center">
                   <BookOpenIcon className="h-5 w-5 mr-2" />
                   Terms of Service
                 </Link>
-                <Link to="/" className="text-indigo-600 hover:text-indigo-800 flex items-center">
+                <Link to="/" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center">
                   Return to Home
                   <ChevronRightIcon className="h-5 w-5 ml-1" />
                 </Link>

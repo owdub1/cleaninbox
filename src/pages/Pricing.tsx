@@ -39,27 +39,27 @@ const Pricing = () => {
     features: ['Process up to 3,000 emails', 'Connect 1 email account', 'Standard unsubscribe speed', 'One-time payment', 'Basic analytics', 'Valid for 30 days'],
     cta: 'Buy Now'
   };
-  return <div className="w-full bg-white text-gray-900">
+  return <div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
               Simple, Transparent Pricing
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Choose the plan that works best for your email cleanup needs
             </p>
             {/* Billing toggle */}
             <div className="mt-10 flex justify-center items-center">
-              <span className={`mr-3 ${billingCycle === 'monthly' ? 'text-gray-900' : 'text-gray-500'}`}>
+              <span className={`mr-3 ${billingCycle === 'monthly' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
                 Monthly
               </span>
               <button onClick={toggleBillingCycle} className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600">
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${billingCycle === 'annual' ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
-              <span className={`ml-3 flex items-center ${billingCycle === 'annual' ? 'text-gray-900' : 'text-gray-500'}`}>
+              <span className={`ml-3 flex items-center ${billingCycle === 'annual' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
                 Annual
-                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-300">
                   Save 20%
                 </span>
               </span>
@@ -136,13 +136,13 @@ const Pricing = () => {
         </div>
       </section>
       {/* FAQ Section */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Frequently Asked Questions
             </h2>
-            <p className="mt-4 text-xl text-gray-600">
+            <p className="mt-4 text-xl text-gray-600 dark:text-gray-400">
               Everything you need to know about our pricing and plans
             </p>
           </div>
@@ -162,11 +162,11 @@ const Pricing = () => {
           }, {
             question: 'What payment methods do you accept?',
             answer: 'We accept all major credit cards through Stripe.'
-          }].map((faq, index) => <div key={index} className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-                <h3 className="text-lg font-medium text-gray-900">
+          }].map((faq, index) => <div key={index} className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                   {faq.question}
                 </h3>
-                <p className="mt-2 text-gray-600">{faq.answer}</p>
+                <p className="mt-2 text-gray-600 dark:text-gray-400">{faq.answer}</p>
               </div>)}
           </div>
         </div>
@@ -181,7 +181,7 @@ const Pricing = () => {
             Join thousands of users who have decluttered their inboxes and
             reclaimed their time.
           </p>
-          <Link to="/email-cleanup" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-md font-medium hover:bg-indigo-50 transition-colors">
+          <Link to="/email-cleanup" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-md font-medium hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-colors">
             Clean My Inbox Now
           </Link>
           <div className="mt-6 flex items-center justify-center text-indigo-100">

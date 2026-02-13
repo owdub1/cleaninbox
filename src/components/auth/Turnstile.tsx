@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTheme } from '../../context/ThemeContext';
 
 /**
  * Cloudflare Turnstile CAPTCHA Component
@@ -32,9 +33,10 @@ export default function Turnstile({
   onVerify,
   onError,
   onExpire,
-  theme = 'auto',
+  theme: themeProp = 'auto',
   size = 'normal'
 }: TurnstileProps) {
+  const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
 
@@ -73,7 +75,7 @@ export default function Turnstile({
     // Render new widget
     widgetId.current = window.turnstile.render(containerRef.current, {
       sitekey: SITE_KEY,
-      theme: theme,
+      theme: themeProp === 'auto' ? theme : themeProp,
       size: size,
       callback: (token: string) => {
         onVerify(token);

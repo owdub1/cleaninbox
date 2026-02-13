@@ -2,14 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpenIcon, ChevronRightIcon } from 'lucide-react';
 const TermsOfService = () => {
-  return <div className="w-full bg-white">
+  return <div className="w-full bg-white dark:bg-gray-900">
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">
               Terms of Service
             </h1>
-            <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Last Updated:{' '}
               {new Date().toLocaleDateString('en-US', {
               month: 'long',
@@ -20,9 +20,9 @@ const TermsOfService = () => {
           </div>
         </div>
       </section>
-      <section className="py-12 bg-gray-50">
+      <section className="py-12 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white p-8 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">
             <div className="prose max-w-none">
               <h2 className="text-xl font-semibold mb-4">1. Introduction</h2>
               <p className="mb-4">
@@ -47,7 +47,7 @@ const TermsOfService = () => {
               </h2>
               <p className="mb-4">
                 Please refer to our{' '}
-                <Link to="/privacy-policy" className="text-indigo-600 hover:text-indigo-800">
+                <Link to="/privacy-policy" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
                   Privacy Policy
                 </Link>{' '}
                 for information on how we collect, use, and disclose information
@@ -124,13 +124,13 @@ const TermsOfService = () => {
                 at support@cleaninbox.com.
               </p>
             </div>
-            <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
-                <Link to="/privacy-policy" className="text-indigo-600 hover:text-indigo-800 flex items-center">
+                <Link to="/privacy-policy" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center">
                   <BookOpenIcon className="h-5 w-5 mr-2" />
                   Privacy Policy
                 </Link>
-                <Link to="/" className="text-indigo-600 hover:text-indigo-800 flex items-center">
+                <Link to="/" className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center">
                   Return to Home
                   <ChevronRightIcon className="h-5 w-5 ml-1" />
                 </Link>
