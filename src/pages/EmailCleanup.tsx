@@ -560,10 +560,6 @@ const EmailCleanup = () => {
   useEffect(() => {
     const result = handleOAuthCallback();
     if (result.success && result.email) {
-      setNotification({
-        type: 'success',
-        message: `Successfully connected ${result.email}! Syncing your emails...`
-      });
       clearCallbackParams();
       // Trigger sync after connection
       syncEmails(result.email);
@@ -661,8 +657,7 @@ const EmailCleanup = () => {
         // Clear cached email lists and collapse dropdowns so UI reflects fresh data
         setSenderEmails({});
         setExpandedSenders([]);
-        const message = repair ? 'Data repaired successfully!' : (fullSync ? 'Full sync completed!' : 'Emails synced successfully!');
-        setNotification({ type: 'success', message });
+        // Success - no banner needed
       } else if (result.limitReached) {
         // Show sync limit message with upgrade suggestion
         const message = result.upgradeMessage
@@ -717,10 +712,6 @@ const EmailCleanup = () => {
             if (!hasPaidPlan) {
               setFreeActionsUsed(prev => prev + actionSenders.length);
             }
-            setNotification({
-              type: 'success',
-              message: `Successfully unsubscribed from ${actionSenders.length} sender(s)`
-            });
             fetchSenders();
             setSelectedSenderKeys([]);
           } else if (result?.linkExpired) {
@@ -729,10 +720,6 @@ const EmailCleanup = () => {
               message: result.message || 'This unsubscribe link has expired or is no longer valid.'
             });
           } else if (result?.requiresManualAction) {
-            setNotification({
-              type: 'success',
-              message: result.message || 'Please complete the unsubscribe manually'
-            });
             if (result.unsubscribeLink) {
               window.open(result.unsubscribeLink, '_blank');
             }
@@ -959,8 +946,7 @@ const EmailCleanup = () => {
     });
     setUndoActions(prev => prev.filter(a => a.id !== actionId));
 
-    const actionWord = pendingDeletion.action === 'archive' ? 'Archive' : 'Deletion';
-    setNotification({ type: 'success', message: `${actionWord} cancelled` });
+    // Undo successful - no banner needed
   };
 
   // Select all visible senders
