@@ -138,9 +138,9 @@ const Dashboard = () => {
     if (emailToDisconnect) {
       try {
         await removeEmailAccount(emailToDisconnect.id);
-        // The useDashboardData hook will automatically refresh and update connectedEmails
         setShowDisconnectModal(false);
         setEmailToDisconnect(null);
+        await refetchDashboard();
       } catch (error: any) {
         alert('Failed to disconnect email account: ' + error.message);
       }
