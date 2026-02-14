@@ -2046,7 +2046,7 @@ const EmailCleanup = () => {
                     </p>
                   </div>
                 ) : (
-                  filterPendingBulkDeletions(filterAndSortSenders(unsubscribableSenders, { by: 'date', direction: 'desc' })).map(sender => (
+                  filterPendingBulkDeletions(filterAndSortSenders(unsubscribableSenders)).map(sender => (
                     <div key={sender.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                       <div className="px-5 py-4 flex items-center justify-between">
                         <button
