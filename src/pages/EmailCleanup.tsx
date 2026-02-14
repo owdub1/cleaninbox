@@ -430,7 +430,7 @@ const EmailCleanup = () => {
   const [expandedPeriods, setExpandedPeriods] = useState<string[]>(['Today', 'Yesterday']); // Time periods expanded by default
   const [expandedSenders, setExpandedSenders] = useState<string[]>([]); // For Unsubscribe view
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('count');
+  const [sortBy, setSortBy] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
   // Use composite keys (name|||email) for selection to differentiate senders with same email but different names
   const [selectedSenderKeys, setSelectedSenderKeys] = useState<string[]>([]);
