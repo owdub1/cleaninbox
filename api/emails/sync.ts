@@ -449,7 +449,6 @@ async function performIncrementalSync(
   const affectedSenders = new Set<string>();
   let syncMethod = 'history';
   let newHistoryId: string | undefined;
-  const debugLog: string[] = [];
 
   // Try History API first if we have a stored historyId
   if (storedHistoryId) {
@@ -469,12 +468,12 @@ async function performIncrementalSync(
         const deletedMessageIds = historyChanges.deletedMessageIds;
 
         console.log(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
-        debugLog.push(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
+
 
         // Process added messages
         if (addedMessageIds.length > 0) {
           const result = await processNewMessages(
-            accessToken, accountId, userEmail, addedMessageIds, affectedSenders, debugLog
+            accessToken, accountId, userEmail, addedMessageIds, affectedSenders
           );
           addedCount = result.addedCount;
         }
@@ -546,11 +545,11 @@ async function performIncrementalSync(
 
       const newMessageIds = gmailMessageIds.filter(id => !existingIds.has(id));
       console.log(`Timestamp sync: ${newMessageIds.length} new emails to add`);
-      debugLog.push(`Timestamp sync: ${gmailMessageIds.length} total, ${newMessageIds.length} new`);
+
 
       if (newMessageIds.length > 0) {
         const result = await processNewMessages(
-          accessToken, accountId, userEmail, newMessageIds, affectedSenders, debugLog
+          accessToken, accountId, userEmail, newMessageIds, affectedSenders
         );
         addedCount = result.addedCount;
       }
@@ -572,25 +571,25 @@ async function performIncrementalSync(
 
   // Post-sync completeness check
   const completenessResult = await verifyCompletenessAndSync(
-    accessToken, accountId, userEmail, affectedSenders, debugLog
+    accessToken, accountId, userEmail, affectedSenders
   );
   addedCount += completenessResult.addedCount;
-  debugLog.push(`Completeness: complete=${completenessResult.complete}, missing=${completenessResult.missingCount}, added=${completenessResult.addedCount}`);
+
 
   // ENFORCEMENT: If completeness check failed, escalate to recovery sync automatically
   if (!completenessResult.complete) {
     console.log(`Completeness check failed with ${completenessResult.missingCount} missing emails - escalating to recovery sync`);
-    debugLog.push(`Recovery sync triggered`);
+
 
     // Perform a scoped recovery sync to catch any missing emails
     const recoveryResult = await performRecoverySync(
-      accessToken, accountId, userEmail, affectedSenders, debugLog
+      accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += recoveryResult.addedCount;
 
     // Final verification - if still incomplete, this is a critical failure
     const finalCheck = await verifyCompletenessAndSync(
-      accessToken, accountId, userEmail, affectedSenders, debugLog
+      accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += finalCheck.addedCount;
 
@@ -617,7 +616,7 @@ async function performIncrementalSync(
   // Reconcile stale sender stats: find senders whose email_count doesn't match actual emails
   const reconciledCount = await reconcileSenderStats(userId, accountId);
   if (reconciledCount > 0) {
-    debugLog.push(`Reconciled ${reconciledCount} stale sender(s)`);
+
   }
 
   // Update account with new sync time and historyId
@@ -656,8 +655,7 @@ async function performIncrementalSync(
       ? `Sync incomplete - ${completenessResult.missingCount} emails could not be synced`
       : (addedCount > 0 || deletedCount > 0 ? description : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
-    syncMethod,
-    debug: debugLog
+    syncMethod
   });
 }
 
@@ -669,15 +667,13 @@ async function processNewMessages(
   accountId: string,
   userEmail: string,
   messageIds: string[],
-  affectedSenders: Set<string>,
-  debugLog?: string[]
+  affectedSenders: Set<string>
 ): Promise<{ addedCount: number }> {
   let addedCount = 0;
 
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
 
-  debugLog?.push(`processNewMessages: ${messageIds.length} IDs in, ${messages.length} fetched`);
 
   // Track senders that need unsubscribe info restored
   const sendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
@@ -687,7 +683,7 @@ async function processNewMessages(
     // Skip spam/trash, but also skip sent/drafts to only get inbox emails
     if (labels.includes('SPAM') || labels.includes('TRASH') ||
         labels.includes('SENT') || labels.includes('DRAFT')) {
-      debugLog?.push(`SKIP labels: ${labels.join(',')} | id:${msg.id}`);
+
       continue;
     }
 
@@ -699,7 +695,7 @@ async function processNewMessages(
 
     const { senderEmail, senderName } = parseSender(fromHeader);
     if (senderEmail === userEmail || !senderEmail) {
-      debugLog?.push(`SKIP sender: "${senderEmail}" matches user or empty | from:"${fromHeader}"`);
+
       continue;
     }
 
@@ -740,10 +736,10 @@ async function processNewMessages(
     if (!error) {
       addedCount++;
       affectedSenders.add(`${senderEmail}|||${senderName}`);
-      debugLog?.push(`ADD: ${senderEmail} | "${subjectHeader?.substring(0, 40)}"`);
+
     } else if (error.code !== '23505') {
       // Log non-duplicate errors
-      debugLog?.push(`ERR: ${senderEmail} | ${error.message}`);
+
     }
   }
 
@@ -778,8 +774,7 @@ async function performRecoverySync(
   accessToken: string,
   accountId: string,
   userEmail: string,
-  affectedSenders: Set<string>,
-  debugLog?: string[]
+  affectedSenders: Set<string>
 ): Promise<{ addedCount: number }> {
   console.log('Recovery sync: Fetching all recent emails to catch missed messages...');
 
@@ -829,9 +824,9 @@ async function performRecoverySync(
   }
 
   // Fetch and add all missing emails
-  debugLog?.push(`Recovery: ${missingIds.length} missing of ${gmailIds.length}`);
+
   const result = await processNewMessages(
-    accessToken, accountId, userEmail, missingIds, affectedSenders, debugLog
+    accessToken, accountId, userEmail, missingIds, affectedSenders
   );
 
   console.log(`Recovery sync: Added ${result.addedCount} missing emails`);
@@ -894,8 +889,7 @@ async function verifyCompletenessAndSync(
   accessToken: string,
   accountId: string,
   userEmail: string,
-  affectedSenders: Set<string>,
-  debugLog?: string[]
+  affectedSenders: Set<string>
 ): Promise<{ addedCount: number; complete: boolean; missingCount: number }> {
   console.log('Verifying sync completeness: checking Gmail\'s newest emails exist locally...');
 
@@ -929,11 +923,11 @@ async function verifyCompletenessAndSync(
   }
 
   console.log(`Completeness check: ${missingIds.length} emails missing, attempting to add...`);
-  debugLog?.push(`Completeness: ${missingIds.length} missing of ${gmailIds.length} checked`);
+
 
   // Attempt to add the missing emails
   const result = await processNewMessages(
-    accessToken, accountId, userEmail, missingIds, affectedSenders, debugLog
+    accessToken, accountId, userEmail, missingIds, affectedSenders
   );
 
   console.log(`Completeness check: Added ${result.addedCount} of ${missingIds.length} missing emails`);
