@@ -172,6 +172,13 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       const data = await response.json();
 
+      // Temporary: log sync debug info to browser console
+      if (data.debug) {
+        console.log('=== SYNC DEBUG ===');
+        data.debug.forEach((line: string) => console.log(line));
+        console.log('==================');
+      }
+
       if (!response.ok) {
         // Handle sync limit reached (429)
         if (response.status === 429 && data.code === 'SYNC_LIMIT_REACHED') {
