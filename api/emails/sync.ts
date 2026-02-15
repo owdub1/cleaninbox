@@ -449,7 +449,6 @@ async function performIncrementalSync(
   const affectedSenders = new Set<string>();
   let syncMethod = 'history';
   let newHistoryId: string | undefined;
-  const debug: string[] = []; // TEMPORARY: diagnostic info returned in response
 
   // Try History API first if we have a stored historyId
   if (storedHistoryId) {
@@ -469,7 +468,6 @@ async function performIncrementalSync(
         const deletedMessageIds = historyChanges.deletedMessageIds;
 
         console.log(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
-        debug.push(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
 
         // Process added messages
         if (addedMessageIds.length > 0) {
@@ -571,22 +569,17 @@ async function performIncrementalSync(
   }
 
   // Post-sync completeness check
-  debug.push(`Completeness check starting. affectedSenders so far: ${affectedSenders.size}`);
   const completenessResult = await verifyCompletenessAndSync(
     accessToken, accountId, userEmail, affectedSenders
   );
   addedCount += completenessResult.addedCount;
-  debug.push(`Completeness: complete=${completenessResult.complete}, missing=${completenessResult.missingCount}, added=${completenessResult.addedCount}`);
 
   // ENFORCEMENT: If completeness check failed, escalate to recovery sync automatically
   if (!completenessResult.complete) {
-    debug.push(`Recovery sync triggered for ${completenessResult.missingCount} missing emails`);
-
     const recoveryResult = await performRecoverySync(
       accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += recoveryResult.addedCount;
-    debug.push(`Recovery added ${recoveryResult.addedCount} emails`);
 
     const finalCheck = await verifyCompletenessAndSync(
       accessToken, accountId, userEmail, affectedSenders
@@ -595,15 +588,12 @@ async function performIncrementalSync(
 
     if (!finalCheck.complete) {
       syncMethod = 'recovery-failed';
-      debug.push(`CRITICAL: ${finalCheck.missingCount} still missing after recovery`);
     } else {
       syncMethod = 'recovery';
-      debug.push('Recovery succeeded');
     }
   }
 
   // Recalculate sender stats for affected senders
-  debug.push(`Recalculating stats for ${affectedSenders.size} affected senders`);
   if (affectedSenders.size > 0) {
     const senderKeys = Array.from(affectedSenders);
     for (const key of senderKeys) {
@@ -614,7 +604,6 @@ async function performIncrementalSync(
 
   // Lightweight orphaned sender check
   const orphanedFixed = await fixOrphanedSenders(userId, accountId);
-  debug.push(`Orphaned senders fixed: ${orphanedFixed}`);
 
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
@@ -643,43 +632,6 @@ async function performIncrementalSync(
     }
   });
 
-  // TEMPORARY: Direct DB diagnostic - check actual data state
-  const { count: dbEmailCount } = await supabase
-    .from('emails')
-    .select('*', { count: 'exact', head: true })
-    .eq('email_account_id', accountId);
-
-  const { count: dbSenderCount } = await supabase
-    .from('email_senders')
-    .select('*', { count: 'exact', head: true })
-    .eq('email_account_id', accountId);
-
-  // Check for chess.com specifically
-  const { data: chessEmails } = await supabase
-    .from('emails')
-    .select('gmail_message_id, sender_email, sender_name, received_at')
-    .eq('email_account_id', accountId)
-    .ilike('sender_email', '%chess%');
-
-  const { data: chessSenders } = await supabase
-    .from('email_senders')
-    .select('sender_email, sender_name, email_count')
-    .eq('email_account_id', accountId)
-    .ilike('sender_email', '%chess%');
-
-  // Check most recent 5 emails in DB
-  const { data: recentDbEmails } = await supabase
-    .from('emails')
-    .select('sender_email, sender_name, received_at, subject')
-    .eq('email_account_id', accountId)
-    .order('received_at', { ascending: false })
-    .limit(5);
-
-  debug.push(`DB state: ${dbEmailCount} emails, ${dbSenderCount} senders`);
-  debug.push(`Chess in emails: ${JSON.stringify(chessEmails)}`);
-  debug.push(`Chess in senders: ${JSON.stringify(chessSenders)}`);
-  debug.push(`5 most recent emails: ${JSON.stringify(recentDbEmails?.map(e => ({ from: e.sender_email, date: e.received_at, subj: e.subject?.substring(0, 40) })))}`);
-
   return res.status(200).json({
     success: !syncMethod.includes('failed'),
     totalSenders: affectedSenders.size,
@@ -689,8 +641,7 @@ async function performIncrementalSync(
       ? `Sync incomplete - ${completenessResult.missingCount} emails could not be synced`
       : (addedCount > 0 || deletedCount > 0 ? description : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
-    syncMethod,
-    debug // TEMPORARY: diagnostic info
+    syncMethod
   });
 }
 

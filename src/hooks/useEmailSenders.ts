@@ -124,10 +124,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         throw new Error((data as any).error || 'Failed to fetch senders');
       }
 
-      // TEMPORARY DEBUG: log senders API response
-      const chessMatch = data.senders?.filter((s: any) => s.email?.includes('chess') || s.name?.toLowerCase().includes('chess'));
-      console.log(`[SENDERS DEBUG] Total: ${data.senders?.length}, Chess match: ${JSON.stringify(chessMatch)}`);
-
       setSenders(data.senders);
       setPagination(data.pagination);
 
@@ -174,18 +170,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         body: JSON.stringify({ email, maxMessages, fullSync, repair }),
       });
 
-      // TEMPORARY DEBUG: log raw response status
-      console.log('[SYNC DEBUG] status:', response.status, response.statusText);
-
-      let data: any;
-      try {
-        data = await response.json();
-        console.log('[SYNC DEBUG] response:', JSON.stringify(data, null, 2));
-      } catch (parseErr) {
-        const text = await response.text().catch(() => '(empty)');
-        console.error('[SYNC DEBUG] Failed to parse JSON. Raw response:', text);
-        throw new Error(`Sync failed with status ${response.status}`);
-      }
+      const data = await response.json();
 
       if (!response.ok) {
         // Handle sync limit reached (429)
