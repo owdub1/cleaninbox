@@ -180,8 +180,8 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
               {/* Divider */}
               <div className="border-t border-gray-100 dark:border-gray-800 my-4" />
 
-              {/* Email body */}
-              <div className="prose prose-sm max-w-none">
+              {/* Email body - always white background since HTML emails are designed for light backgrounds */}
+              <div className="prose prose-sm max-w-none bg-white rounded-lg p-4">
                 {email.bodyHtml ? (
                   <div
                     className="email-content"
@@ -193,11 +193,11 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                       fontFamily: 'inherit',
                       fontSize: '14px',
                       lineHeight: '1.6',
-                      color: theme === 'dark' ? '#d1d5db' : '#374151',
+                      color: '#374151',
                     }}
                   />
                 ) : email.body ? (
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700 dark:text-gray-300">
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">
                     {email.body}
                   </pre>
                 ) : (
