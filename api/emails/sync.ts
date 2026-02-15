@@ -730,10 +730,11 @@ async function processNewMessages(
     if (!error) {
       addedCount++;
       affectedSenders.add(`${senderEmail}|||${senderName}`);
-
-    } else if (error.code !== '23505') {
-      // Log non-duplicate errors
-
+    } else if (error.code === '23505') {
+      // Duplicate email already in DB - still track sender for stats recalculation.
+      // This fixes orphaned emails from previous timed-out syncs where the email
+      // was inserted but the sender row was never created.
+      affectedSenders.add(`${senderEmail}|||${senderName}`);
     }
   }
 
