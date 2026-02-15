@@ -22,6 +22,11 @@ import gmailConnect from './api/gmail/connect.js';
 import gmailCallback from './api/gmail/callback.js';
 import gmailDisconnect from './api/gmail/disconnect.js';
 
+// Outlook OAuth routes
+import outlookConnect from './api/outlook/connect.js';
+import outlookCallback from './api/outlook/callback.js';
+import outlookDisconnect from './api/outlook/disconnect.js';
+
 // Email routes
 import emailsSync from './api/emails/sync.js';
 import emailsSenders from './api/emails/senders.js';
@@ -127,6 +132,11 @@ app.get('/api/auth/oauth/callback', wrapHandler(googleOAuthCallback));
 app.get('/api/gmail/connect', wrapHandler(gmailConnect));
 app.get('/api/gmail/callback', wrapHandler(gmailCallback));
 app.post('/api/gmail/disconnect', wrapHandler(gmailDisconnect));
+
+// Outlook OAuth routes
+app.get('/api/outlook/connect', wrapHandler(outlookConnect));
+app.get('/api/outlook/callback', wrapHandler(outlookCallback));
+app.post('/api/outlook/disconnect', wrapHandler(outlookDisconnect));
 
 // Email routes
 app.post('/api/emails/sync', wrapHandler(emailsSync));
