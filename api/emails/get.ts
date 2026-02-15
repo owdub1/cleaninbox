@@ -8,10 +8,18 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
+import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { getMessage } from '../lib/gmail-api.js';
+import { getFullMessage } from '../lib/outlook-api.js';
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 const limiter = rateLimit(RateLimitPresets.RELAXED);
 
@@ -129,7 +137,49 @@ export default async function handler(
   }
 
   try {
-    // Get valid access token
+    // Detect provider from email account
+    const { data: account } = await supabase
+      .from('email_accounts')
+      .select('provider, gmail_email, outlook_email')
+      .eq('user_id', user.userId)
+      .eq('email', accountEmail)
+      .single();
+
+    const isOutlook = account?.provider === 'Outlook';
+
+    if (isOutlook) {
+      // Outlook: fetch from Graph API
+      const { accessToken } = await getValidOutlookAccessToken(
+        user.userId,
+        account.outlook_email || accountEmail
+      );
+
+      const msg = await getFullMessage(accessToken, messageId);
+
+      const fromAddr = msg.from?.emailAddress;
+      const toAddrs = (msg.toRecipients || [])
+        .map((r: any) => r.emailAddress?.address)
+        .filter(Boolean)
+        .join(', ');
+
+      const email: FullEmailMessage = {
+        id: msg.id,
+        threadId: msg.conversationId || msg.id,
+        subject: msg.subject || '(No Subject)',
+        from: fromAddr ? `${fromAddr.name || ''} <${fromAddr.address}>`.trim() : '',
+        to: toAddrs,
+        date: msg.receivedDateTime ? new Date(msg.receivedDateTime).toISOString() : '',
+        snippet: msg.bodyPreview || '',
+        body: msg.body?.contentType === 'text' ? msg.body.content || '' : '',
+        bodyHtml: msg.body?.contentType === 'html' ? msg.body.content || '' : '',
+        isUnread: !msg.isRead,
+        labels: [],
+      };
+
+      return res.status(200).json({ email });
+    }
+
+    // Gmail: existing behavior
     const { accessToken } = await getValidAccessToken(user.userId, accountEmail);
 
     // Fetch the full message

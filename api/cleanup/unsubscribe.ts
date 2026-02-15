@@ -13,7 +13,9 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
+import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { sendMessage } from '../lib/gmail-api.js';
+import { sendMessage as outlookSendMessage } from '../lib/outlook-api.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -156,7 +158,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status')
+      .select('id, gmail_email, outlook_email, provider, connection_status')
       .eq('user_id', user.userId)
       .eq('email', accountEmail)
       .single();
@@ -199,19 +201,22 @@ export default async function handler(
       });
     }
 
-    // Get access token for Gmail API (needed for mailto unsubscribe)
+    // Get access token (needed for mailto unsubscribe)
+    const isOutlook = account.provider === 'Outlook';
     let accessToken: string | null = null;
     try {
-      const tokenResult = await getValidAccessToken(user.userId, account.gmail_email || accountEmail);
+      const tokenResult = isOutlook
+        ? await getValidOutlookAccessToken(user.userId, account.outlook_email || accountEmail)
+        : await getValidAccessToken(user.userId, account.gmail_email || accountEmail);
       accessToken = tokenResult.accessToken;
     } catch (tokenError: any) {
-      console.warn('Could not get Gmail access token for mailto unsubscribe:', tokenError.message);
+      console.warn('Could not get access token for mailto unsubscribe:', tokenError.message);
     }
 
-    // Handle mailto: links - send unsubscribe email via Gmail API
+    // Handle mailto: links - send unsubscribe email via email API
     if (linkToUse.startsWith('mailto:') && accessToken) {
       try {
-        const mailtoResult = await sendMailtoUnsubscribe(linkToUse, accessToken);
+        const mailtoResult = await sendMailtoUnsubscribe(linkToUse, accessToken, isOutlook);
         if (mailtoResult.success) {
           // Log success and update stats (same as HTTP One-Click success path)
           await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
@@ -272,7 +277,7 @@ export default async function handler(
       const fallbackMailto = mailtoLink || (linkToUse.startsWith('mailto:') ? linkToUse : null);
       if (fallbackMailto && accessToken) {
         try {
-          const mailtoResult = await sendMailtoUnsubscribe(fallbackMailto, accessToken);
+          const mailtoResult = await sendMailtoUnsubscribe(fallbackMailto, accessToken, isOutlook);
           if (mailtoResult.success) {
             await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
             return res.status(200).json({
@@ -354,7 +359,8 @@ export default async function handler(
  */
 async function sendMailtoUnsubscribe(
   mailtoLink: string,
-  accessToken: string
+  accessToken: string,
+  isOutlook: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Parse mailto link: mailto:address?subject=X&body=Y
@@ -374,7 +380,12 @@ async function sendMailtoUnsubscribe(
       if (params.get('body')) body = params.get('body')!;
     }
 
-    await sendMessage(accessToken, decodeURIComponent(address), subject, body);
+    const decodedAddress = decodeURIComponent(address);
+    if (isOutlook) {
+      await outlookSendMessage(accessToken, decodedAddress, subject, body);
+    } else {
+      await sendMessage(accessToken, decodedAddress, subject, body);
+    }
     return { success: true };
   } catch (error: any) {
     console.error('Failed to send mailto unsubscribe:', error.message);

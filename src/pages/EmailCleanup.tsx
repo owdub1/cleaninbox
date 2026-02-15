@@ -501,9 +501,9 @@ const EmailCleanup = () => {
   const hasFreeTries = freeActionsRemaining > 0;
   const hasPaidPlan = isPaid;
 
-  // Get all connected Gmail accounts
+  // Get all connected email accounts (Gmail + Outlook)
   const connectedGmailAccounts = emailAccounts?.filter(
-    (acc: any) => acc.provider === 'Gmail' && acc.connection_status === 'connected'
+    (acc: any) => (acc.provider === 'Gmail' || acc.provider === 'Outlook') && acc.connection_status === 'connected'
   ) || [];
 
   // Set initial selected account when accounts load
@@ -513,14 +513,14 @@ const EmailCleanup = () => {
     }
   }, [connectedGmailAccounts, selectedAccountEmail]);
 
-  // Get the currently selected Gmail account
+  // Get the currently selected email account
   const connectedGmailAccount = selectedAccountEmail
     ? emailAccounts?.find((acc: any) => acc.email === selectedAccountEmail && acc.connection_status === 'connected')
     : connectedGmailAccounts[0];
 
-  // Get any Gmail account (may need reconnection)
+  // Get any email account (may need reconnection)
   const anyGmailAccount = emailAccounts?.find(
-    (acc: any) => acc.provider === 'Gmail' || acc.email?.includes('gmail')
+    (acc: any) => acc.provider === 'Gmail' || acc.provider === 'Outlook' || acc.email?.includes('gmail')
   );
 
   // Debug: log email accounts status
@@ -1751,8 +1751,8 @@ const EmailCleanup = () => {
                   {connectedGmailAccount
                     ? 'Click "Sync Emails" to fetch your email senders.'
                     : anyGmailAccount
-                    ? 'Your Gmail may need to be reconnected. Try syncing or reconnect in Dashboard.'
-                    : 'Connect your Gmail account to get started.'}
+                    ? 'Your email account may need to be reconnected. Try syncing or reconnect in Dashboard.'
+                    : 'Connect your email account to get started.'}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {(connectedGmailAccount || anyGmailAccount) && (
@@ -1770,7 +1770,7 @@ const EmailCleanup = () => {
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                   >
                     <Mail className="w-4 h-4" />
-                    {connectedGmailAccount ? 'Reconnect Gmail' : 'Connect Gmail'}
+                    {connectedGmailAccount ? 'Reconnect Email' : 'Connect Email'}
                   </button>
                 </div>
               </div>

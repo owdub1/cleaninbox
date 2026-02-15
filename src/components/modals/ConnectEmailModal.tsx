@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Mail, Shield, Zap, Lock } from 'lucide-react';
 import { useGmailConnection } from '../../hooks/useGmailConnection';
+import { useOutlookConnection } from '../../hooks/useOutlookConnection';
 
 interface ConnectEmailModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function ConnectEmailModal({
   const [error, setError] = useState('');
 
   const { connectGmail, loading: gmailLoading, error: gmailError } = useGmailConnection();
+  const { connectOutlook, loading: outlookLoading, error: outlookError } = useOutlookConnection();
 
   // Clear error when modal closes
   useEffect(() => {
@@ -35,12 +37,11 @@ export default function ConnectEmailModal({
     }
   }, [isOpen]);
 
-  // Show Gmail error
+  // Show Gmail/Outlook error
   useEffect(() => {
-    if (gmailError) {
-      setError(gmailError);
-    }
-  }, [gmailError]);
+    if (gmailError) setError(gmailError);
+    if (outlookError) setError(outlookError);
+  }, [gmailError, outlookError]);
 
   if (!isOpen) return null;
 
@@ -54,6 +55,19 @@ export default function ConnectEmailModal({
     const authUrl = await connectGmail();
     if (authUrl) {
       // Redirect to Google OAuth
+      window.location.href = authUrl;
+    }
+  };
+
+  const handleOutlookConnect = async () => {
+    if (currentCount >= emailLimit) {
+      setError(`You've reached your email account limit (${emailLimit} account${emailLimit > 1 ? 's' : ''}). Upgrade to Pro to connect up to 10 accounts.`);
+      return;
+    }
+
+    setError('');
+    const authUrl = await connectOutlook();
+    if (authUrl) {
       window.location.href = authUrl;
     }
   };
@@ -83,7 +97,7 @@ export default function ConnectEmailModal({
     }
   };
 
-  const isLoading = loading || gmailLoading;
+  const isLoading = loading || gmailLoading || outlookLoading;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -150,18 +164,20 @@ export default function ConnectEmailModal({
             </span>
           </button>
 
-          {/* Coming Soon: Other Providers */}
+          {/* Other Providers */}
           <div className="mt-4 flex gap-3">
             <button
-              disabled
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 cursor-not-allowed"
+              onClick={handleOutlookConnect}
+              disabled={isLoading || currentCount >= emailLimit}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               {/* Outlook Icon - 4 squares */}
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#0078D4" d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/>
               </svg>
-              <span className="text-sm font-medium">Outlook</span>
-              <span className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded-full">Soon</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                {outlookLoading ? 'Connecting...' : 'Outlook'}
+              </span>
             </button>
             <button
               disabled

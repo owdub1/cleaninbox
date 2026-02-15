@@ -12,7 +12,9 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
+import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { trashMessage } from '../lib/gmail-api.js';
+import { trashMessage as outlookTrashMessage } from '../lib/outlook-api.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -63,7 +65,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status')
+      .select('id, gmail_email, outlook_email, provider, connection_status')
       .eq('user_id', user.userId)
       .eq('email', accountEmail)
       .single();
@@ -77,19 +79,23 @@ export default async function handler(
 
     if (account.connection_status !== 'connected') {
       return res.status(400).json({
-        error: 'Gmail account is not connected',
+        error: 'Email account is not connected',
         code: 'NOT_CONNECTED'
       });
     }
 
-    // Get valid access token
-    const { accessToken } = await getValidAccessToken(
-      user.userId,
-      account.gmail_email || accountEmail
-    );
+    // Get valid access token based on provider
+    const isOutlook = account.provider === 'Outlook';
+    const { accessToken } = isOutlook
+      ? await getValidOutlookAccessToken(user.userId, account.outlook_email || accountEmail)
+      : await getValidAccessToken(user.userId, account.gmail_email || accountEmail);
 
-    // Trash the message in Gmail
-    await trashMessage(accessToken, messageId);
+    // Trash the message
+    if (isOutlook) {
+      await outlookTrashMessage(accessToken, messageId);
+    } else {
+      await trashMessage(accessToken, messageId);
+    }
 
     // Delete from local emails table
     const { error: deleteError } = await supabase
@@ -180,9 +186,9 @@ export default async function handler(
     console.error('Delete single email error:', error);
 
     // Handle token errors
-    if (error.message.includes('Gmail not connected')) {
+    if (error.message.includes('not connected')) {
       return res.status(401).json({
-        error: 'Gmail connection expired. Please reconnect.',
+        error: 'Email connection expired. Please reconnect.',
         code: 'TOKEN_EXPIRED'
       });
     }

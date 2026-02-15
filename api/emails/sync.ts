@@ -29,7 +29,9 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
+import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { listMessages, batchGetMessages, getProfile, getHistoryChanges } from '../lib/gmail-api.js';
+import { performOutlookFullSync, performOutlookIncrementalSync } from './outlook-sync.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
@@ -74,7 +76,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, connection_status, last_synced, total_emails, history_id')
+      .select('id, gmail_email, outlook_email, provider, connection_status, last_synced, total_emails, history_id, delta_link')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -119,6 +121,61 @@ export default async function handler(
       }
     }
 
+    // ==================== PROVIDER ROUTING ====================
+    const provider = account.provider || 'Gmail';
+
+    if (provider === 'Outlook') {
+      // Route to Outlook sync
+      let outlookAccessToken: string;
+      try {
+        const tokenResult = await getValidOutlookAccessToken(
+          user.userId,
+          account.outlook_email || email
+        );
+        outlookAccessToken = tokenResult.accessToken;
+
+        if (account.connection_status !== 'connected') {
+          await supabase
+            .from('email_accounts')
+            .update({ connection_status: 'connected', updated_at: new Date().toISOString() })
+            .eq('id', account.id);
+        }
+      } catch (tokenError: any) {
+        console.error('Outlook token error:', tokenError.message);
+        await supabase
+          .from('email_accounts')
+          .update({ connection_status: 'expired', updated_at: new Date().toISOString() })
+          .eq('id', account.id);
+
+        return res.status(400).json({
+          error: `Outlook connection error: ${tokenError.message}. Please reconnect your Outlook account.`,
+          code: 'TOKEN_ERROR'
+        });
+      }
+
+      if (repair) {
+        console.log(`Repair mode: recalculating sender stats for ${email}`);
+        return await performRepairSync(res, user.userId, account.id, email);
+      }
+
+      const isFirstSync = !account.last_synced;
+      const isStaleSync = account.last_synced &&
+        (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
+      const isFullSync = isFirstSync || isStaleSync || fullSync;
+
+      const outlookUserEmail = (account.outlook_email || email).toLowerCase();
+
+      if (isFullSync) {
+        return await performOutlookFullSync(res, user.userId, account.id, outlookAccessToken, outlookUserEmail, planLimits.emailProcessingLimit, email);
+      } else {
+        return await performOutlookIncrementalSync(
+          res, user.userId, account.id, outlookAccessToken, outlookUserEmail,
+          email, account.last_synced, account.delta_link
+        );
+      }
+    }
+
+    // ==================== GMAIL SYNC (default) ====================
     // Get valid access token
     let accessToken: string;
     try {
