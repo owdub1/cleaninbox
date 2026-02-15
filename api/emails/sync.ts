@@ -613,6 +613,14 @@ async function performIncrementalSync(
     }
   }
 
+  // Lightweight orphaned sender check: find recent emails whose sender has no email_senders row.
+  // This catches cases where a previous sync inserted emails but timed out before creating sender rows.
+  // Only checks the 200 most recent emails (not a full table scan) so it's fast.
+  const orphanedFixed = await fixOrphanedSenders(userId, accountId);
+  if (orphanedFixed > 0) {
+    console.log(`Fixed ${orphanedFixed} orphaned sender(s) missing from email_senders`);
+  }
+
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
   await supabase
@@ -863,6 +871,61 @@ async function processDeletedMessages(
 
   console.log(`Deleted ${deletedCount} emails from DB based on History API`);
   return { deletedCount };
+}
+
+/**
+ * Post-sync completeness verification with enforcement
+ *
+ * GUARANTEES:
+/**
+ * Fix orphaned senders: emails exist in DB but sender row is missing from email_senders.
+ * Only checks the 200 most recent emails — lightweight, not a full table scan.
+ */
+async function fixOrphanedSenders(
+  userId: string,
+  accountId: string
+): Promise<number> {
+  // Get senders from the 200 most recent emails
+  const { data: recentEmails } = await supabase
+    .from('emails')
+    .select('sender_email, sender_name')
+    .eq('email_account_id', accountId)
+    .order('received_at', { ascending: false })
+    .limit(200);
+
+  if (!recentEmails || recentEmails.length === 0) return 0;
+
+  // Get unique senders from recent emails
+  const uniqueSenders = new Map<string, { email: string; name: string }>();
+  for (const e of recentEmails) {
+    const key = `${e.sender_email}|||${e.sender_name}`;
+    if (!uniqueSenders.has(key)) {
+      uniqueSenders.set(key, { email: e.sender_email, name: e.sender_name });
+    }
+  }
+
+  // Check which of these senders have email_senders rows
+  const senderEmails = [...new Set(recentEmails.map(e => e.sender_email))];
+  const { data: existingSenders } = await supabase
+    .from('email_senders')
+    .select('sender_email, sender_name')
+    .eq('email_account_id', accountId)
+    .in('sender_email', senderEmails);
+
+  const existingSet = new Set(
+    (existingSenders || []).map(s => `${s.sender_email}|||${s.sender_name}`)
+  );
+
+  // Recalculate stats only for senders that are truly missing
+  let fixedCount = 0;
+  for (const [key, sender] of uniqueSenders) {
+    if (!existingSet.has(key)) {
+      await recalculateSenderStats(userId, accountId, sender.email, sender.name);
+      fixedCount++;
+    }
+  }
+
+  return fixedCount;
 }
 
 /**
