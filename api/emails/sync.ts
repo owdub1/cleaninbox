@@ -613,12 +613,6 @@ async function performIncrementalSync(
     }
   }
 
-  // Reconcile stale sender stats: find senders whose email_count doesn't match actual emails
-  const reconciledCount = await reconcileSenderStats(userId, accountId);
-  if (reconciledCount > 0) {
-
-  }
-
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
   await supabase
@@ -949,67 +943,6 @@ async function verifyCompletenessAndSync(
 
   console.log('Completeness check: Verified all of Gmail\'s newest emails now exist locally ✓');
   return { addedCount: result.addedCount, complete: true, missingCount: 0 };
-}
-
-/**
- * Reconcile sender stats: find and fix senders whose email_count doesn't match actual emails.
- * This catches cases where emails exist in the DB but sender stats are stale
- * (e.g., after a partial sync, or when completeness check adds emails without updating senders).
- */
-async function reconcileSenderStats(
-  userId: string,
-  accountId: string
-): Promise<number> {
-  // Get actual email counts per sender from the emails table
-  const { data: actualCounts } = await supabase
-    .from('emails')
-    .select('sender_email, sender_name')
-    .eq('email_account_id', accountId);
-
-  if (!actualCounts || actualCounts.length === 0) return 0;
-
-  // Build actual counts map
-  const countsMap = new Map<string, number>();
-  for (const row of actualCounts) {
-    const key = `${row.sender_email}|||${row.sender_name}`;
-    countsMap.set(key, (countsMap.get(key) || 0) + 1);
-  }
-
-  // Get current sender stats
-  const { data: senders } = await supabase
-    .from('email_senders')
-    .select('id, sender_email, sender_name, email_count')
-    .eq('email_account_id', accountId);
-
-  const existingSenders = new Set<string>();
-  let reconciledCount = 0;
-
-  // Fix senders with wrong counts
-  for (const sender of (senders || [])) {
-    const key = `${sender.sender_email}|||${sender.sender_name}`;
-    existingSenders.add(key);
-    const actualCount = countsMap.get(key) || 0;
-
-    if (sender.email_count !== actualCount) {
-      await recalculateSenderStats(userId, accountId, sender.sender_email, sender.sender_name);
-      reconciledCount++;
-    }
-  }
-
-  // Create sender records for emails that have no sender entry
-  for (const [key, count] of countsMap) {
-    if (!existingSenders.has(key) && count > 0) {
-      const [senderEmail, senderName] = key.split('|||');
-      await recalculateSenderStats(userId, accountId, senderEmail, senderName);
-      reconciledCount++;
-    }
-  }
-
-  if (reconciledCount > 0) {
-    console.log(`Reconciled ${reconciledCount} sender(s) with stale stats`);
-  }
-
-  return reconciledCount;
 }
 
 /**
