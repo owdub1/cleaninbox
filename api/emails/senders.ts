@@ -68,29 +68,21 @@ export default async function handler(
   } = req.query;
 
   try {
-    // Build query
-    let query = supabase
-      .from('email_senders')
-      .select(`
-        id,
-        sender_email,
-        sender_name,
-        email_count,
-        unread_count,
-        first_email_date,
-        last_email_date,
-        unsubscribe_link,
-        mailto_unsubscribe_link,
-        has_unsubscribe,
-        has_one_click_unsubscribe,
-        is_newsletter,
-        is_promotional,
-        email_account_id,
-        email_accounts!inner(email, connection_status)
-      `)
-      .eq('user_id', user.userId);
+    // Apply sorting
+    const sortColumn = sortBy === 'name' ? 'sender_name' :
+                       sortBy === 'date' ? 'last_email_date' :
+                       'email_count';
+    const ascending = sortDirection === 'asc';
 
-    // Filter by specific email account
+    // Supabase/PostgREST has a default max of 1000 rows per request.
+    // Paginate internally to fetch all requested senders.
+    const requestedLimit = parseInt(limit as string);
+    const startOffset = parseInt(offset as string);
+    const PAGE_SIZE = 1000;
+    let senders: any[] = [];
+
+    // Cache account ID lookup (used in each page query)
+    let accountId: string | null = null;
     if (email && typeof email === 'string') {
       const { data: accountData } = await supabase
         .from('email_accounts')
@@ -98,41 +90,43 @@ export default async function handler(
         .eq('user_id', user.userId)
         .eq('email', email)
         .single();
-
-      if (accountData) {
-        query = query.eq('email_account_id', accountData.id);
-      }
+      accountId = accountData?.id || null;
     }
 
-    // Apply filters
-    if (filter === 'newsletter') {
-      query = query.eq('is_newsletter', true);
-    } else if (filter === 'promotional') {
-      query = query.eq('is_promotional', true);
-    } else if (filter === 'unsubscribable') {
-      query = query.eq('has_unsubscribe', true);
-    }
+    const searchTerm = (search && typeof search === 'string' && search.trim())
+      ? search.trim().toLowerCase() : null;
 
-    // Apply search filter - searches both sender_email and sender_name
-    if (search && typeof search === 'string' && search.trim()) {
-      const searchTerm = search.trim().toLowerCase();
-      query = query.or(`sender_email.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%`);
-    }
+    for (let page = 0; page * PAGE_SIZE < requestedLimit; page++) {
+      const pageStart = startOffset + page * PAGE_SIZE;
+      const pageEnd = Math.min(pageStart + PAGE_SIZE - 1, startOffset + requestedLimit - 1);
 
-    // Apply sorting
-    const sortColumn = sortBy === 'name' ? 'sender_name' :
-                       sortBy === 'date' ? 'last_email_date' :
-                       'email_count';
-    const ascending = sortDirection === 'asc';
+      // Rebuild query for each page (Supabase query builder is mutable)
+      let pageQuery = supabase
+        .from('email_senders')
+        .select(`
+          id, sender_email, sender_name, email_count, unread_count,
+          first_email_date, last_email_date, unsubscribe_link,
+          mailto_unsubscribe_link, has_unsubscribe, has_one_click_unsubscribe,
+          is_newsletter, is_promotional, email_account_id,
+          email_accounts!inner(email, connection_status)
+        `)
+        .eq('user_id', user.userId);
 
-    query = query
-      .order(sortColumn, { ascending })
-      .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+      if (accountId) pageQuery = pageQuery.eq('email_account_id', accountId);
+      if (filter === 'newsletter') pageQuery = pageQuery.eq('is_newsletter', true);
+      else if (filter === 'promotional') pageQuery = pageQuery.eq('is_promotional', true);
+      else if (filter === 'unsubscribable') pageQuery = pageQuery.eq('has_unsubscribe', true);
+      if (searchTerm) pageQuery = pageQuery.or(`sender_email.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%`);
 
-    const { data: senders, error } = await query;
+      pageQuery = pageQuery.order(sortColumn, { ascending }).range(pageStart, pageEnd);
 
-    if (error) {
-      throw error;
+      const { data, error } = await pageQuery;
+      if (error) throw error;
+
+      senders.push(...(data || []));
+
+      // If we got fewer rows than requested, no more pages
+      if (!data || data.length < PAGE_SIZE) break;
     }
 
     // Build a map of email -> list of names to identify senders with multiple names
