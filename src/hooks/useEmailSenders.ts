@@ -170,10 +170,18 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         body: JSON.stringify({ email, maxMessages, fullSync, repair }),
       });
 
-      const data = await response.json();
+      // TEMPORARY DEBUG: log raw response status
+      console.log('[SYNC DEBUG] status:', response.status, response.statusText);
 
-      // TEMPORARY DEBUG: log sync response to browser console
-      console.log('[SYNC DEBUG]', JSON.stringify(data, null, 2));
+      let data: any;
+      try {
+        data = await response.json();
+        console.log('[SYNC DEBUG] response:', JSON.stringify(data, null, 2));
+      } catch (parseErr) {
+        const text = await response.text().catch(() => '(empty)');
+        console.error('[SYNC DEBUG] Failed to parse JSON. Raw response:', text);
+        throw new Error(`Sync failed with status ${response.status}`);
+      }
 
       if (!response.ok) {
         // Handle sync limit reached (429)
