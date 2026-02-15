@@ -61,7 +61,7 @@ export default async function handler(
     email, // Filter by specific email account
     sortBy = 'count', // 'count', 'name', 'date'
     sortDirection = 'desc',
-    limit = '2000', // Increased from 500 to ensure all senders are returned
+    limit, // Optional: cap number of senders returned. Omit to fetch all.
     offset = '0',
     filter, // 'newsletter', 'promotional', 'unsubscribable'
     search // Search term to filter senders by email or name
@@ -75,8 +75,8 @@ export default async function handler(
     const ascending = sortDirection === 'asc';
 
     // Supabase/PostgREST has a default max of 1000 rows per request.
-    // Paginate internally to fetch all requested senders.
-    const requestedLimit = parseInt(limit as string);
+    // Paginate internally in 1000-row chunks to fetch all senders.
+    const requestedLimit = limit ? parseInt(limit as string) : Infinity;
     const startOffset = parseInt(offset as string);
     const PAGE_SIZE = 1000;
     let senders: any[] = [];
@@ -96,9 +96,11 @@ export default async function handler(
     const searchTerm = (search && typeof search === 'string' && search.trim())
       ? search.trim().toLowerCase() : null;
 
-    for (let page = 0; page * PAGE_SIZE < requestedLimit; page++) {
+    for (let page = 0; requestedLimit === Infinity || page * PAGE_SIZE < requestedLimit; page++) {
       const pageStart = startOffset + page * PAGE_SIZE;
-      const pageEnd = Math.min(pageStart + PAGE_SIZE - 1, startOffset + requestedLimit - 1);
+      const pageEnd = requestedLimit === Infinity
+        ? pageStart + PAGE_SIZE - 1
+        : Math.min(pageStart + PAGE_SIZE - 1, startOffset + requestedLimit - 1);
 
       // Rebuild query for each page (Supabase query builder is mutable)
       let pageQuery = supabase
@@ -184,7 +186,7 @@ export default async function handler(
       senders: response,
       pagination: {
         total: totalCount || response.length,
-        limit: parseInt(limit as string),
+        limit: limit ? parseInt(limit as string) : response.length,
         offset: parseInt(offset as string)
       }
     });
