@@ -643,6 +643,43 @@ async function performIncrementalSync(
     }
   });
 
+  // TEMPORARY: Direct DB diagnostic - check actual data state
+  const { count: dbEmailCount } = await supabase
+    .from('emails')
+    .select('*', { count: 'exact', head: true })
+    .eq('email_account_id', accountId);
+
+  const { count: dbSenderCount } = await supabase
+    .from('email_senders')
+    .select('*', { count: 'exact', head: true })
+    .eq('email_account_id', accountId);
+
+  // Check for chess.com specifically
+  const { data: chessEmails } = await supabase
+    .from('emails')
+    .select('gmail_message_id, sender_email, sender_name, received_at')
+    .eq('email_account_id', accountId)
+    .ilike('sender_email', '%chess%');
+
+  const { data: chessSenders } = await supabase
+    .from('email_senders')
+    .select('sender_email, sender_name, email_count')
+    .eq('email_account_id', accountId)
+    .ilike('sender_email', '%chess%');
+
+  // Check most recent 5 emails in DB
+  const { data: recentDbEmails } = await supabase
+    .from('emails')
+    .select('sender_email, sender_name, received_at, subject')
+    .eq('email_account_id', accountId)
+    .order('received_at', { ascending: false })
+    .limit(5);
+
+  debug.push(`DB state: ${dbEmailCount} emails, ${dbSenderCount} senders`);
+  debug.push(`Chess in emails: ${JSON.stringify(chessEmails)}`);
+  debug.push(`Chess in senders: ${JSON.stringify(chessSenders)}`);
+  debug.push(`5 most recent emails: ${JSON.stringify(recentDbEmails?.map(e => ({ from: e.sender_email, date: e.received_at, subj: e.subject?.substring(0, 40) })))}`);
+
   return res.status(200).json({
     success: !syncMethod.includes('failed'),
     totalSenders: affectedSenders.size,

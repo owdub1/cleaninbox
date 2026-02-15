@@ -124,6 +124,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         throw new Error((data as any).error || 'Failed to fetch senders');
       }
 
+      // TEMPORARY DEBUG: log senders API response
+      const chessMatch = data.senders?.filter((s: any) => s.email?.includes('chess') || s.name?.toLowerCase().includes('chess'));
+      console.log(`[SENDERS DEBUG] Total: ${data.senders?.length}, Chess match: ${JSON.stringify(chessMatch)}`);
+
       setSenders(data.senders);
       setPagination(data.pagination);
 
