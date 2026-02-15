@@ -449,6 +449,7 @@ async function performIncrementalSync(
   const affectedSenders = new Set<string>();
   let syncMethod = 'history';
   let newHistoryId: string | undefined;
+  const debug: string[] = []; // TEMPORARY: diagnostic info returned in response
 
   // Try History API first if we have a stored historyId
   if (storedHistoryId) {
@@ -468,7 +469,7 @@ async function performIncrementalSync(
         const deletedMessageIds = historyChanges.deletedMessageIds;
 
         console.log(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
-
+        debug.push(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
 
         // Process added messages
         if (addedMessageIds.length > 0) {
@@ -570,42 +571,40 @@ async function performIncrementalSync(
   }
 
   // Post-sync completeness check
+  debug.push(`Completeness check starting. affectedSenders so far: ${affectedSenders.size}`);
   const completenessResult = await verifyCompletenessAndSync(
     accessToken, accountId, userEmail, affectedSenders
   );
   addedCount += completenessResult.addedCount;
-
+  debug.push(`Completeness: complete=${completenessResult.complete}, missing=${completenessResult.missingCount}, added=${completenessResult.addedCount}`);
 
   // ENFORCEMENT: If completeness check failed, escalate to recovery sync automatically
   if (!completenessResult.complete) {
-    console.log(`Completeness check failed with ${completenessResult.missingCount} missing emails - escalating to recovery sync`);
+    debug.push(`Recovery sync triggered for ${completenessResult.missingCount} missing emails`);
 
-
-    // Perform a scoped recovery sync to catch any missing emails
     const recoveryResult = await performRecoverySync(
       accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += recoveryResult.addedCount;
+    debug.push(`Recovery added ${recoveryResult.addedCount} emails`);
 
-    // Final verification - if still incomplete, this is a critical failure
     const finalCheck = await verifyCompletenessAndSync(
       accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += finalCheck.addedCount;
 
     if (!finalCheck.complete) {
-      console.error(`CRITICAL: Recovery sync failed - ${finalCheck.missingCount} emails still missing`);
-      // Still update last_synced to prevent infinite loops, but log the failure
       syncMethod = 'recovery-failed';
+      debug.push(`CRITICAL: ${finalCheck.missingCount} still missing after recovery`);
     } else {
-      console.log('Recovery sync succeeded - all emails now synced ✓');
       syncMethod = 'recovery';
+      debug.push('Recovery succeeded');
     }
   }
 
   // Recalculate sender stats for affected senders
+  debug.push(`Recalculating stats for ${affectedSenders.size} affected senders`);
   if (affectedSenders.size > 0) {
-    console.log(`Incremental sync: recalculating stats for ${affectedSenders.size} senders`);
     const senderKeys = Array.from(affectedSenders);
     for (const key of senderKeys) {
       const [senderEmail, senderName] = key.split('|||');
@@ -613,13 +612,9 @@ async function performIncrementalSync(
     }
   }
 
-  // Lightweight orphaned sender check: find recent emails whose sender has no email_senders row.
-  // This catches cases where a previous sync inserted emails but timed out before creating sender rows.
-  // Only checks the 200 most recent emails (not a full table scan) so it's fast.
+  // Lightweight orphaned sender check
   const orphanedFixed = await fixOrphanedSenders(userId, accountId);
-  if (orphanedFixed > 0) {
-    console.log(`Fixed ${orphanedFixed} orphaned sender(s) missing from email_senders`);
-  }
+  debug.push(`Orphaned senders fixed: ${orphanedFixed}`);
 
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
@@ -657,7 +652,8 @@ async function performIncrementalSync(
       ? `Sync incomplete - ${completenessResult.missingCount} emails could not be synced`
       : (addedCount > 0 || deletedCount > 0 ? description : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
-    syncMethod
+    syncMethod,
+    debug // TEMPORARY: diagnostic info
   });
 }
 
