@@ -571,17 +571,21 @@ function extractUnsubscribeLink(message: GmailMessage): string | undefined {
   // Parse List-Unsubscribe header - can contain mailto: and/or http(s): URLs
   // Format: <mailto:unsubscribe@example.com>, <https://example.com/unsubscribe>
 
-  // Prefer HTTPS links over mailto
+  // Prefer HTTPS links in angle brackets (RFC 2369 standard)
   const httpMatch = listUnsubscribe.match(/<(https?:\/\/[^>]+)>/);
-  if (httpMatch) {
-    return httpMatch[1];
-  }
+  if (httpMatch) return httpMatch[1];
 
-  // Fall back to mailto
+  // Fallback: bare URL without angle brackets (some senders like Chess.com)
+  const httpMatchBare = listUnsubscribe.match(/(https?:\/\/\S+)/);
+  if (httpMatchBare) return httpMatchBare[1];
+
+  // Mailto in angle brackets
   const mailtoMatch = listUnsubscribe.match(/<(mailto:[^>]+)>/);
-  if (mailtoMatch) {
-    return mailtoMatch[1];
-  }
+  if (mailtoMatch) return mailtoMatch[1];
+
+  // Fallback: bare mailto
+  const mailtoBare = listUnsubscribe.match(/(mailto:\S+)/);
+  if (mailtoBare) return mailtoBare[1];
 
   return undefined;
 }
@@ -593,8 +597,13 @@ function extractMailtoUnsubscribeLink(message: GmailMessage): string | undefined
   const listUnsubscribe = getHeader(message, 'List-Unsubscribe');
   if (!listUnsubscribe) return undefined;
 
+  // Mailto in angle brackets (RFC 2369 standard)
   const mailtoMatch = listUnsubscribe.match(/<(mailto:[^>]+)>/);
-  return mailtoMatch ? mailtoMatch[1] : undefined;
+  if (mailtoMatch) return mailtoMatch[1];
+
+  // Fallback: bare mailto without angle brackets
+  const mailtoBare = listUnsubscribe.match(/(mailto:\S+)/);
+  return mailtoBare ? mailtoBare[1] : undefined;
 }
 
 /**

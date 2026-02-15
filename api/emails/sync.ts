@@ -1093,12 +1093,21 @@ function parseSender(fromHeader: string): { senderEmail: string; senderName: str
 function extractUnsubscribeLink(header: string): string | null {
   if (!header) return null;
 
-  // Prefer HTTPS links over mailto
+  // Prefer HTTPS links in angle brackets (RFC 2369 standard)
   const httpMatch = header.match(/<(https?:\/\/[^>]+)>/);
   if (httpMatch) return httpMatch[1];
 
+  // Fallback: bare URL without angle brackets (some senders like Chess.com)
+  const httpMatchBare = header.match(/(https?:\/\/\S+)/);
+  if (httpMatchBare) return httpMatchBare[1];
+
+  // Mailto in angle brackets
   const mailtoMatch = header.match(/<(mailto:[^>]+)>/);
   if (mailtoMatch) return mailtoMatch[1];
+
+  // Fallback: bare mailto
+  const mailtoBare = header.match(/(mailto:\S+)/);
+  if (mailtoBare) return mailtoBare[1];
 
   return null;
 }
@@ -1109,8 +1118,13 @@ function extractUnsubscribeLink(header: string): string | null {
 function extractMailtoUnsubscribeLink(header: string): string | null {
   if (!header) return null;
 
+  // Mailto in angle brackets (RFC 2369 standard)
   const mailtoMatch = header.match(/<(mailto:[^>]+)>/);
-  return mailtoMatch ? mailtoMatch[1] : null;
+  if (mailtoMatch) return mailtoMatch[1];
+
+  // Fallback: bare mailto without angle brackets
+  const mailtoBare = header.match(/(mailto:\S+)/);
+  return mailtoBare ? mailtoBare[1] : null;
 }
 
 /**
