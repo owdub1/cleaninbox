@@ -251,6 +251,11 @@ export const useCleanupActions = () => {
 
       const data = await response.json();
 
+      // Log unsubscribe debug info to console
+      if (data.debug) {
+        console.log('[Unsubscribe Debug]', senderEmail, data.debug);
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to unsubscribe');
       }

@@ -32,10 +32,32 @@ const limiter = rateLimit({
  * @param url - The unsubscribe URL
  * @param supportsOneClick - Whether the sender supports RFC 8058 One-Click unsubscribe
  */
+interface HttpUnsubscribeResult {
+  success: boolean;
+  requiresManualAction?: boolean;
+  linkExpired?: boolean;
+  error?: string;
+  debug?: {
+    url: string;
+    method: string;
+    supportsOneClick: boolean;
+    responseStatus?: number;
+    responseUrl?: string;
+    responseBodySnippet?: string;
+    redirected?: boolean;
+  };
+}
+
 async function httpUnsubscribe(
   url: string,
   supportsOneClick: boolean
-): Promise<{ success: boolean; requiresManualAction?: boolean; linkExpired?: boolean; error?: string }> {
+): Promise<HttpUnsubscribeResult> {
+  const debug: HttpUnsubscribeResult['debug'] = {
+    url,
+    method: supportsOneClick ? 'POST (One-Click)' : 'manual',
+    supportsOneClick,
+  };
+
   try {
     if (supportsOneClick) {
       // RFC 8058 One-Click: POST with List-Unsubscribe=One-Click body
@@ -45,7 +67,6 @@ async function httpUnsubscribe(
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'User-Agent': 'CleanInbox/1.0 (Unsubscribe Bot)',
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: 'List-Unsubscribe=One-Click',
@@ -54,35 +75,46 @@ async function httpUnsubscribe(
       });
       clearTimeout(timeout);
 
+      // Capture debug info
+      debug.responseStatus = response.status;
+      debug.responseUrl = response.url;
+      debug.redirected = response.redirected;
+
+      // Read response body to check if it's a real confirmation or a "please confirm" page
+      const responseBody = await response.text();
+      debug.responseBodySnippet = responseBody.substring(0, 500);
+
       if (response.ok) {
-        return { success: true };
+        return { success: true, debug };
       }
 
       // Expired/dead link detection
       if (response.status === 404 || response.status === 410) {
-        return { success: false, linkExpired: true, error: 'This unsubscribe link has expired or is no longer valid.' };
+        return { success: false, linkExpired: true, error: 'This unsubscribe link has expired or is no longer valid.', debug };
       }
 
       return {
         success: false,
-        error: `Unsubscribe request failed with status ${response.status}`
+        error: `Unsubscribe request failed with status ${response.status}`,
+        debug
       };
     } else {
       // No One-Click support: the link needs to be opened in a browser for the user to complete manually
-      return { success: false, requiresManualAction: true };
+      return { success: false, requiresManualAction: true, debug };
     }
   } catch (error: any) {
     // Timeout - the unsubscribe URL took too long to respond
     if (error.name === 'AbortError') {
-      return { success: false, error: 'Unsubscribe request timed out. The server took too long to respond.' };
+      return { success: false, error: 'Unsubscribe request timed out. The server took too long to respond.', debug };
     }
     // DNS failure or network error - likely a dead/expired link
     if (error.cause?.code === 'ENOTFOUND' || error.message?.includes('ENOTFOUND')) {
-      return { success: false, linkExpired: true, error: 'This unsubscribe link is no longer valid (domain not found).' };
+      return { success: false, linkExpired: true, error: 'This unsubscribe link is no longer valid (domain not found).', debug };
     }
     return {
       success: false,
-      error: error.message || 'Failed to reach unsubscribe URL'
+      error: error.message || 'Failed to reach unsubscribe URL',
+      debug
     };
   }
 }
@@ -228,7 +260,8 @@ export default async function handler(
         success: false,
         linkExpired: true,
         error: result.error,
-        message: result.error || 'This unsubscribe link has expired.'
+        message: result.error || 'This unsubscribe link has expired.',
+        debug: result.debug
       });
     }
 
@@ -269,7 +302,8 @@ export default async function handler(
         success: false,
         requiresManualAction: true,
         unsubscribeLink: linkToUse,
-        message: 'This sender doesn\'t support automatic unsubscribe. Opening the unsubscribe page for you to complete manually.'
+        message: 'This sender doesn\'t support automatic unsubscribe. Opening the unsubscribe page for you to complete manually.',
+        debug: result.debug
       });
     }
 
@@ -291,7 +325,8 @@ export default async function handler(
       await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
       return res.status(200).json({
         success: true,
-        message: `Successfully unsubscribed from ${senderEmail}`
+        message: `Successfully unsubscribed from ${senderEmail}`,
+        debug: result.debug
       });
     }
 
@@ -301,7 +336,8 @@ export default async function handler(
       requiresManualAction: true,
       unsubscribeLink: linkToUse,
       error: result.error,
-      message: 'Automatic unsubscribe failed. Please try the unsubscribe link manually.'
+      message: 'Automatic unsubscribe failed. Please try the unsubscribe link manually.',
+      debug: result.debug
     });
 
   } catch (error: any) {
