@@ -140,7 +140,7 @@ export default async function handler(
     // Detect provider from email account
     const { data: account } = await supabase
       .from('email_accounts')
-      .select('provider, gmail_email, outlook_email')
+      .select('provider, gmail_email')
       .eq('user_id', user.userId)
       .eq('email', accountEmail)
       .single();
@@ -151,7 +151,7 @@ export default async function handler(
       // Outlook: fetch from Graph API
       const { accessToken } = await getValidOutlookAccessToken(
         user.userId,
-        account.outlook_email || accountEmail
+        accountEmail
       );
 
       const msg = await getFullMessage(accessToken, messageId);

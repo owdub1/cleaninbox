@@ -65,7 +65,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, outlook_email, provider, connection_status')
+      .select('id, gmail_email, provider, connection_status')
       .eq('user_id', user.userId)
       .eq('email', accountEmail)
       .single();
@@ -87,7 +87,7 @@ export default async function handler(
     // Get valid access token based on provider
     const isOutlook = account.provider === 'Outlook';
     const { accessToken } = isOutlook
-      ? await getValidOutlookAccessToken(user.userId, account.outlook_email || accountEmail)
+      ? await getValidOutlookAccessToken(user.userId, accountEmail)
       : await getValidAccessToken(user.userId, account.gmail_email || accountEmail);
 
     // Trash the message

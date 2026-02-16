@@ -46,7 +46,7 @@ export default async function handler(
     // Verify the email account belongs to this user
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, outlook_email')
+      .select('id')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -59,7 +59,7 @@ export default async function handler(
     }
 
     // Delete OAuth tokens
-    await deleteOutlookOAuthTokens(user.userId, account.outlook_email || email);
+    await deleteOutlookOAuthTokens(user.userId, email);
 
     // Update email account status
     await supabase
