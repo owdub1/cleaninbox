@@ -76,7 +76,7 @@ export default async function handler(
     // Get email account
     const { data: account, error: accountError } = await supabase
       .from('email_accounts')
-      .select('id, gmail_email, outlook_email, provider, connection_status, last_synced, total_emails, history_id, delta_link')
+      .select('id, gmail_email, provider, connection_status, last_synced, total_emails, history_id, delta_link')
       .eq('user_id', user.userId)
       .eq('email', email)
       .single();
@@ -130,7 +130,7 @@ export default async function handler(
       try {
         const tokenResult = await getValidOutlookAccessToken(
           user.userId,
-          account.outlook_email || email
+          email
         );
         outlookAccessToken = tokenResult.accessToken;
 
@@ -163,7 +163,7 @@ export default async function handler(
         (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
       const isFullSync = isFirstSync || isStaleSync || fullSync;
 
-      const outlookUserEmail = (account.outlook_email || email).toLowerCase();
+      const outlookUserEmail = email.toLowerCase();
 
       if (isFullSync) {
         return await performOutlookFullSync(res, user.userId, account.id, outlookAccessToken, outlookUserEmail, planLimits.emailProcessingLimit, email);
