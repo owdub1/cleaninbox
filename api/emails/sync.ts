@@ -506,6 +506,8 @@ async function performIncrementalSync(
   const affectedSenders = new Set<string>();
   let syncMethod = 'history';
   let newHistoryId: string | undefined;
+  // Collect unsubscribe info from all processNewMessages calls to apply AFTER sender rows are created
+  const allSendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
 
   // Try History API first if we have a stored historyId
   if (storedHistoryId) {
@@ -532,6 +534,7 @@ async function performIncrementalSync(
             accessToken, accountId, userEmail, addedMessageIds, affectedSenders
           );
           addedCount = result.addedCount;
+          for (const [k, v] of result.sendersWithUnsubscribe) allSendersWithUnsubscribe.set(k, v);
         }
 
         // Process deleted messages
@@ -608,6 +611,7 @@ async function performIncrementalSync(
           accessToken, accountId, userEmail, newMessageIds, affectedSenders
         );
         addedCount = result.addedCount;
+        for (const [k, v] of result.sendersWithUnsubscribe) allSendersWithUnsubscribe.set(k, v);
       }
     }
 
@@ -630,6 +634,7 @@ async function performIncrementalSync(
     accessToken, accountId, userEmail, affectedSenders
   );
   addedCount += completenessResult.addedCount;
+  for (const [k, v] of completenessResult.sendersWithUnsubscribe) allSendersWithUnsubscribe.set(k, v);
 
   // ENFORCEMENT: If completeness check failed, escalate to recovery sync automatically
   if (!completenessResult.complete) {
@@ -637,11 +642,13 @@ async function performIncrementalSync(
       accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += recoveryResult.addedCount;
+    for (const [k, v] of recoveryResult.sendersWithUnsubscribe) allSendersWithUnsubscribe.set(k, v);
 
     const finalCheck = await verifyCompletenessAndSync(
       accessToken, accountId, userEmail, affectedSenders
     );
     addedCount += finalCheck.addedCount;
+    for (const [k, v] of finalCheck.sendersWithUnsubscribe) allSendersWithUnsubscribe.set(k, v);
 
     if (!finalCheck.complete) {
       syncMethod = 'recovery-failed';
@@ -650,13 +657,30 @@ async function performIncrementalSync(
     }
   }
 
-  // Recalculate sender stats for affected senders
+  // Recalculate sender stats for affected senders (creates rows for new senders)
   if (affectedSenders.size > 0) {
     const senderKeys = Array.from(affectedSenders);
     for (const key of senderKeys) {
       const [senderEmail, senderName] = key.split('|||');
       await recalculateSenderStats(userId, accountId, senderEmail, senderName);
     }
+  }
+
+  // Apply unsubscribe info AFTER recalculateSenderStats has created/updated sender rows
+  for (const [key, info] of allSendersWithUnsubscribe) {
+    const [senderEmail, senderName] = key.split('|||');
+    await supabase
+      .from('email_senders')
+      .update({
+        has_unsubscribe: true,
+        unsubscribe_link: info.unsubscribeLink,
+        ...(info.mailtoLink && { mailto_unsubscribe_link: info.mailtoLink }),
+        has_one_click_unsubscribe: info.hasOneClick,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('email_account_id', accountId)
+      .eq('sender_email', senderEmail)
+      .eq('sender_name', senderName);
   }
 
   // Lightweight orphaned sender check
@@ -711,7 +735,7 @@ async function processNewMessages(
   userEmail: string,
   messageIds: string[],
   affectedSenders: Set<string>
-): Promise<{ addedCount: number }> {
+): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
   let addedCount = 0;
 
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
@@ -787,24 +811,7 @@ async function processNewMessages(
     }
   }
 
-  // Restore has_unsubscribe for senders whose new emails have unsubscribe headers
-  for (const [key, info] of sendersWithUnsubscribe) {
-    const [senderEmail, senderName] = key.split('|||');
-    await supabase
-      .from('email_senders')
-      .update({
-        has_unsubscribe: true,
-        unsubscribe_link: info.unsubscribeLink,
-        ...(info.mailtoLink && { mailto_unsubscribe_link: info.mailtoLink }),
-        has_one_click_unsubscribe: info.hasOneClick,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('email_account_id', accountId)
-      .eq('sender_email', senderEmail)
-      .eq('sender_name', senderName);
-  }
-
-  return { addedCount };
+  return { addedCount, sendersWithUnsubscribe };
 }
 
 /**
@@ -819,7 +826,7 @@ async function performRecoverySync(
   accountId: string,
   userEmail: string,
   affectedSenders: Set<string>
-): Promise<{ addedCount: number }> {
+): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
   console.log('Recovery sync: Fetching all recent emails to catch missed messages...');
 
   // Fetch a large number of recent emails to ensure completeness
@@ -864,7 +871,7 @@ async function performRecoverySync(
   console.log(`Recovery sync: ${missingIds.length} emails missing from local DB`);
 
   if (missingIds.length === 0) {
-    return { addedCount: 0 };
+    return { addedCount: 0, sendersWithUnsubscribe: new Map() };
   }
 
   // Fetch and add all missing emails
@@ -874,7 +881,7 @@ async function performRecoverySync(
   );
 
   console.log(`Recovery sync: Added ${result.addedCount} missing emails`);
-  return { addedCount: result.addedCount };
+  return { addedCount: result.addedCount, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
 }
 
 /**
@@ -989,7 +996,7 @@ async function verifyCompletenessAndSync(
   accountId: string,
   userEmail: string,
   affectedSenders: Set<string>
-): Promise<{ addedCount: number; complete: boolean; missingCount: number }> {
+): Promise<{ addedCount: number; complete: boolean; missingCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
   console.log('Verifying sync completeness: checking Gmail\'s newest emails exist locally...');
 
   // Ask Gmail for its newest emails, then verify we have ALL of them
@@ -1001,7 +1008,7 @@ async function verifyCompletenessAndSync(
 
   if (!response.messages || response.messages.length === 0) {
     console.log('Completeness check: No messages in Gmail');
-    return { addedCount: 0, complete: true, missingCount: 0 };
+    return { addedCount: 0, complete: true, missingCount: 0, sendersWithUnsubscribe: new Map() };
   }
 
   const gmailIds = response.messages.map(m => m.id);
@@ -1018,7 +1025,7 @@ async function verifyCompletenessAndSync(
 
   if (missingIds.length === 0) {
     console.log('Completeness check: All of Gmail\'s newest emails exist locally ✓');
-    return { addedCount: 0, complete: true, missingCount: 0 };
+    return { addedCount: 0, complete: true, missingCount: 0, sendersWithUnsubscribe: new Map() };
   }
 
   console.log(`Completeness check: ${missingIds.length} emails missing, attempting to add...`);
@@ -1043,11 +1050,11 @@ async function verifyCompletenessAndSync(
 
   if (stillMissing.length > 0) {
     console.error(`Completeness check FAILED: ${stillMissing.length} emails still missing after attempted add`);
-    return { addedCount: result.addedCount, complete: false, missingCount: stillMissing.length };
+    return { addedCount: result.addedCount, complete: false, missingCount: stillMissing.length, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
   }
 
   console.log('Completeness check: Verified all of Gmail\'s newest emails now exist locally ✓');
-  return { addedCount: result.addedCount, complete: true, missingCount: 0 };
+  return { addedCount: result.addedCount, complete: true, missingCount: 0, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
 }
 
 /**

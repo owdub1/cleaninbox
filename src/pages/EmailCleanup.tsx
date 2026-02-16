@@ -660,10 +660,11 @@ const EmailCleanup = () => {
           : sendersError || 'Sync limit reached.';
         setNotification({ type: 'error', message });
       } else {
-        setNotification({ type: 'error', message: 'Failed to sync emails. Your Gmail may need to be reconnected.' });
+        const provider = accountToSync.provider === 'Outlook' ? 'Outlook' : 'Gmail';
+        setNotification({ type: 'error', message: `Failed to sync emails. Your ${provider} may need to be reconnected.` });
       }
     } else {
-      setNotification({ type: 'error', message: 'No Gmail account found. Please connect your Gmail first.' });
+      setNotification({ type: 'error', message: 'No email account found. Please connect your email first.' });
     }
   };
 

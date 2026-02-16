@@ -248,6 +248,8 @@ export async function performOutlookIncrementalSync(
   const affectedSenders = new Set<string>();
   let syncMethod = 'delta';
   let newDeltaLink: string | undefined;
+  // Collect unsubscribe info from all new messages to apply AFTER sender rows are created
+  let allSendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
 
   if (storedDeltaLink) {
     console.log('Outlook incremental sync: using delta query');
@@ -268,6 +270,7 @@ export async function performOutlookIncrementalSync(
           messagesWithHeaders, accountId, userEmail, affectedSenders
         );
         addedCount = result.addedCount;
+        allSendersWithUnsubscribe = result.sendersWithUnsubscribe;
       }
 
       // Process removed messages
@@ -340,6 +343,7 @@ export async function performOutlookIncrementalSync(
           messagesWithHeaders, accountId, userEmail, affectedSenders
         );
         addedCount = result.addedCount;
+        allSendersWithUnsubscribe = result.sendersWithUnsubscribe;
       }
     }
 
@@ -351,13 +355,30 @@ export async function performOutlookIncrementalSync(
     }
   }
 
-  // Recalculate sender stats for affected senders
+  // Recalculate sender stats for affected senders (creates rows for new senders)
   if (affectedSenders.size > 0) {
     const senderKeys = Array.from(affectedSenders);
     for (const key of senderKeys) {
       const [senderEmail, senderName] = key.split('|||');
       await recalculateSenderStats(userId, accountId, senderEmail, senderName);
     }
+  }
+
+  // Apply unsubscribe info AFTER recalculateSenderStats has created/updated sender rows
+  for (const [key, info] of allSendersWithUnsubscribe) {
+    const [senderEmail, senderName] = key.split('|||');
+    await supabase
+      .from('email_senders')
+      .update({
+        has_unsubscribe: true,
+        unsubscribe_link: info.unsubscribeLink,
+        ...(info.mailtoLink && { mailto_unsubscribe_link: info.mailtoLink }),
+        has_one_click_unsubscribe: info.hasOneClick,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('email_account_id', accountId)
+      .eq('sender_email', senderEmail)
+      .eq('sender_name', senderName);
   }
 
   // Update account
@@ -406,7 +427,7 @@ async function processOutlookNewMessages(
   accountId: string,
   userEmail: string,
   affectedSenders: Set<string>
-): Promise<{ addedCount: number }> {
+): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
   let addedCount = 0;
 
   const sendersWithUnsubscribe = new Map<string, {
@@ -466,24 +487,7 @@ async function processOutlookNewMessages(
     }
   }
 
-  // Restore has_unsubscribe for senders
-  for (const [key, info] of sendersWithUnsubscribe) {
-    const [senderEmail, senderName] = key.split('|||');
-    await supabase
-      .from('email_senders')
-      .update({
-        has_unsubscribe: true,
-        unsubscribe_link: info.unsubscribeLink,
-        ...(info.mailtoLink && { mailto_unsubscribe_link: info.mailtoLink }),
-        has_one_click_unsubscribe: info.hasOneClick,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('email_account_id', accountId)
-      .eq('sender_email', senderEmail)
-      .eq('sender_name', senderName);
-  }
-
-  return { addedCount };
+  return { addedCount, sendersWithUnsubscribe };
 }
 
 /**
