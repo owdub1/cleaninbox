@@ -93,10 +93,8 @@ export default async function handler(
         .from('email_accounts')
         .update({
           provider: 'Outlook',
-          outlook_email: profile.email,
           connection_status: 'connected',
-          last_synced: null,  // Reset so first sync is a full sync
-          delta_link: null,   // Reset delta link
+          last_synced: null,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingAccount.id);
@@ -109,7 +107,6 @@ export default async function handler(
           user_id: userId,
           email: profile.email,
           provider: 'Outlook',
-          outlook_email: profile.email,
           connection_status: 'connected',
           last_synced: null,
           total_emails: 0,
