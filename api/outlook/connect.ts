@@ -41,7 +41,14 @@ export default async function handler(
     if (error.message.includes('not configured')) {
       return res.status(500).json({
         error: 'Outlook OAuth is not configured',
-        code: 'OUTLOOK_NOT_CONFIGURED'
+        code: 'OUTLOOK_NOT_CONFIGURED',
+        debug: {
+          hasClientId: !!process.env.OUTLOOK_CLIENT_ID,
+          hasClientSecret: !!process.env.OUTLOOK_CLIENT_SECRET,
+          hasEncryptionKey: !!process.env.OUTLOOK_TOKEN_ENCRYPTION_KEY,
+          hasApiUrl: !!process.env.API_URL,
+          errorMessage: error.message
+        }
       });
     }
 
