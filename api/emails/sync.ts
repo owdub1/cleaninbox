@@ -82,21 +82,9 @@ export default async function handler(
       .single();
 
     if (accountError || !account) {
-      // Debug: list all accounts for this user
-      const { data: allAccounts } = await supabase
-        .from('email_accounts')
-        .select('id, email, provider, connection_status')
-        .eq('user_id', user.userId);
-
       return res.status(404).json({
         error: 'Email account not found',
-        code: 'ACCOUNT_NOT_FOUND',
-        debug: {
-          searchedEmail: email,
-          userId: user.userId,
-          accountError: accountError?.message,
-          existingAccounts: allAccounts
-        }
+        code: 'ACCOUNT_NOT_FOUND'
       });
     }
 
