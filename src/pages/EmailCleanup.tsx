@@ -679,7 +679,8 @@ const EmailCleanup = () => {
         setNotification({ type: 'error', message });
       } else {
         const provider = accountToSync.provider === 'Outlook' ? 'Outlook' : 'Gmail';
-        setNotification({ type: 'error', message: `Failed to sync emails. Your ${provider} may need to be reconnected.` });
+        const errorDetail = sendersError && sendersError !== 'Authentication required' ? sendersError : `Your ${provider} may need to be reconnected.`;
+        setNotification({ type: 'error', message: `Failed to sync emails. ${errorDetail}` });
       }
     } else {
       setNotification({ type: 'error', message: 'No email account found. Please connect your email first.' });

@@ -258,7 +258,8 @@ export default async function handler(
 
     return res.status(500).json({
       error: 'Failed to sync emails',
-      code: 'SYNC_ERROR'
+      code: 'SYNC_ERROR',
+      message: error.message
     });
   }
 }
