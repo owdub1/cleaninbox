@@ -516,18 +516,26 @@ const EmailCleanup = () => {
 
   // Track free trial usage (only for free users) - persisted to localStorage per user
   const freeActionsStorageKey = user?.id ? `cleaninbox_free_actions_${user.id}` : null;
-  const [freeActionsUsed, setFreeActionsUsed] = useState(() => {
-    if (!freeActionsStorageKey) return 0;
-    const stored = localStorage.getItem(freeActionsStorageKey);
-    return stored ? parseInt(stored, 10) : 0;
-  });
+  const [freeActionsUsed, setFreeActionsUsed] = useState(0);
+  const [freeActionsLoaded, setFreeActionsLoaded] = useState(false);
 
-  // Persist free actions to localStorage whenever it changes
+  // Load free actions from localStorage once user ID is available
   useEffect(() => {
-    if (freeActionsStorageKey) {
+    if (freeActionsStorageKey && !freeActionsLoaded) {
+      const stored = localStorage.getItem(freeActionsStorageKey);
+      if (stored) {
+        setFreeActionsUsed(parseInt(stored, 10));
+      }
+      setFreeActionsLoaded(true);
+    }
+  }, [freeActionsStorageKey, freeActionsLoaded]);
+
+  // Persist free actions to localStorage whenever it changes (only after initial load)
+  useEffect(() => {
+    if (freeActionsStorageKey && freeActionsLoaded) {
       localStorage.setItem(freeActionsStorageKey, String(freeActionsUsed));
     }
-  }, [freeActionsUsed, freeActionsStorageKey]);
+  }, [freeActionsUsed, freeActionsStorageKey, freeActionsLoaded]);
 
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
