@@ -514,8 +514,21 @@ const EmailCleanup = () => {
   // Cleanup actions hook
   const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
-  // Track free trial usage (only for free users)
-  const [freeActionsUsed, setFreeActionsUsed] = useState(0);
+  // Track free trial usage (only for free users) - persisted to localStorage per user
+  const freeActionsStorageKey = user?.id ? `cleaninbox_free_actions_${user.id}` : null;
+  const [freeActionsUsed, setFreeActionsUsed] = useState(() => {
+    if (!freeActionsStorageKey) return 0;
+    const stored = localStorage.getItem(freeActionsStorageKey);
+    return stored ? parseInt(stored, 10) : 0;
+  });
+
+  // Persist free actions to localStorage whenever it changes
+  useEffect(() => {
+    if (freeActionsStorageKey) {
+      localStorage.setItem(freeActionsStorageKey, String(freeActionsUsed));
+    }
+  }, [freeActionsUsed, freeActionsStorageKey]);
+
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
   const hasPaidPlan = isPaid;
@@ -645,7 +658,7 @@ const EmailCleanup = () => {
 
   const handleToolSelect = (toolId: string) => {
     if (!hasPaidPlan && toolId !== 'delete') {
-      setShowUpgradeModal(true);
+      navigate('/checkout');
       return;
     }
     setSelectedTool(toolId);
