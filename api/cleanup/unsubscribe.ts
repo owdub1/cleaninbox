@@ -16,6 +16,7 @@ import { getValidAccessToken } from '../lib/gmail.js';
 import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { sendMessage } from '../lib/gmail-api.js';
 import { sendMessage as outlookSendMessage } from '../lib/outlook-api.js';
+import { isUserPaid, getFreeTrialUsage, tryIncrementFreeTrialUsage, FREE_TRIAL_LIMIT } from '../lib/free-trial.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -170,6 +171,19 @@ export default async function handler(
       });
     }
 
+    // Free trial enforcement (read-only check; increment only on success)
+    const paid = await isUserPaid(supabase, user.userId);
+    if (!paid) {
+      const used = await getFreeTrialUsage(supabase, user.email);
+      if (used >= FREE_TRIAL_LIMIT) {
+        return res.status(403).json({
+          error: 'Free trial limit reached. Upgrade for unlimited cleanup.',
+          code: 'FREE_TRIAL_EXCEEDED',
+          freeTrialRemaining: 0,
+        });
+      }
+    }
+
     // Get unsubscribe link and one-click flag from cache if not provided
     let linkToUse = unsubscribeLink;
     let supportsOneClick = hasOneClickUnsubscribe ?? false;
@@ -220,9 +234,16 @@ export default async function handler(
         if (mailtoResult.success) {
           // Log success and update stats (same as HTTP One-Click success path)
           await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
+          // Increment free trial on success
+          let freeTrialRemaining: number | undefined;
+          if (!paid) {
+            const trialResult = await tryIncrementFreeTrialUsage(supabase, user.email, 1);
+            freeTrialRemaining = Math.max(0, trialResult.limit - trialResult.actions_used);
+          }
           return res.status(200).json({
             success: true,
-            message: `Successfully sent unsubscribe email for ${senderEmail}`
+            message: `Successfully sent unsubscribe email for ${senderEmail}`,
+            ...(freeTrialRemaining !== undefined && { freeTrialRemaining }),
           });
         }
         // If mailto send failed, fall through to manual action
@@ -280,9 +301,16 @@ export default async function handler(
           const mailtoResult = await sendMailtoUnsubscribe(fallbackMailto, accessToken, isOutlook);
           if (mailtoResult.success) {
             await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
+            // Increment free trial on success
+            let freeTrialRemaining: number | undefined;
+            if (!paid) {
+              const trialResult = await tryIncrementFreeTrialUsage(supabase, user.email, 1);
+              freeTrialRemaining = Math.max(0, trialResult.limit - trialResult.actions_used);
+            }
             return res.status(200).json({
               success: true,
-              message: `Successfully sent unsubscribe email for ${senderEmail}`
+              message: `Successfully sent unsubscribe email for ${senderEmail}`,
+              ...(freeTrialRemaining !== undefined && { freeTrialRemaining }),
             });
           }
         } catch (mailtoError: any) {
@@ -328,9 +356,16 @@ export default async function handler(
 
     if (result.success) {
       await logSuccessfulUnsubscribe(user.userId, account.id, senderEmail);
+      // Increment free trial on success
+      let freeTrialRemaining: number | undefined;
+      if (!paid) {
+        const trialResult = await tryIncrementFreeTrialUsage(supabase, user.email, 1);
+        freeTrialRemaining = Math.max(0, trialResult.limit - trialResult.actions_used);
+      }
       return res.status(200).json({
         success: true,
         message: `Successfully unsubscribed from ${senderEmail}`,
+        ...(freeTrialRemaining !== undefined && { freeTrialRemaining }),
         debug: result.debug
       });
     }

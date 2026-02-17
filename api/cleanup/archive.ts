@@ -16,6 +16,7 @@ import { getValidAccessToken } from '../lib/gmail.js';
 import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { batchArchiveMessages, archiveEmailsFromSender } from '../lib/gmail-api.js';
 import { batchArchiveMessages as outlookBatchArchiveMessages } from '../lib/outlook-api.js';
+import { checkFreeTrialOrPaid } from '../lib/free-trial.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -94,6 +95,32 @@ export default async function handler(
         error: 'Email account is not connected',
         code: 'NOT_CONNECTED'
       });
+    }
+
+    // Free trial enforcement: count emails first, then check limit
+    let freeTrialRemaining: number | undefined;
+    {
+      let totalEmailCount = 0;
+      for (const senderEmail of senderEmails) {
+        const { count } = await supabase
+          .from('emails')
+          .select('*', { count: 'exact', head: true })
+          .eq('email_account_id', account.id)
+          .eq('sender_email', senderEmail);
+        totalEmailCount += count || 0;
+      }
+
+      const trialCheck = await checkFreeTrialOrPaid(supabase, user.userId, user.email, totalEmailCount);
+      if (!trialCheck.isPaid) {
+        freeTrialRemaining = trialCheck.remaining;
+      }
+      if (!trialCheck.allowed) {
+        return res.status(403).json({
+          error: `Free trial limit reached. You have ${trialCheck.remaining} actions remaining but this requires ${totalEmailCount}.`,
+          code: 'FREE_TRIAL_EXCEEDED',
+          freeTrialRemaining: trialCheck.remaining,
+        });
+      }
     }
 
     // Get valid access token based on provider
@@ -240,7 +267,8 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       totalArchived,
-      results
+      results,
+      ...(freeTrialRemaining !== undefined && { freeTrialRemaining }),
     });
 
   } catch (error: any) {

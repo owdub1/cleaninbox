@@ -15,6 +15,7 @@ import { getValidAccessToken } from '../lib/gmail.js';
 import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { trashMessage } from '../lib/gmail-api.js';
 import { trashMessage as outlookTrashMessage } from '../lib/outlook-api.js';
+import { checkFreeTrialOrPaid } from '../lib/free-trial.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -82,6 +83,22 @@ export default async function handler(
         error: 'Email account is not connected',
         code: 'NOT_CONNECTED'
       });
+    }
+
+    // Free trial enforcement (1 email = 1 action)
+    let freeTrialRemaining: number | undefined;
+    {
+      const trialCheck = await checkFreeTrialOrPaid(supabase, user.userId, user.email, 1);
+      if (!trialCheck.isPaid) {
+        freeTrialRemaining = trialCheck.remaining;
+      }
+      if (!trialCheck.allowed) {
+        return res.status(403).json({
+          error: 'Free trial limit reached. Upgrade for unlimited cleanup.',
+          code: 'FREE_TRIAL_EXCEEDED',
+          freeTrialRemaining: trialCheck.remaining,
+        });
+      }
     }
 
     // Get valid access token based on provider
@@ -179,7 +196,8 @@ export default async function handler(
     return res.status(200).json({
       success: true,
       messageId,
-      message: 'Email moved to trash'
+      message: 'Email moved to trash',
+      ...(freeTrialRemaining !== undefined && { freeTrialRemaining }),
     });
 
   } catch (error: any) {

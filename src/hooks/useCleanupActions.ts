@@ -18,6 +18,7 @@ interface DeleteResult {
     success: boolean;
     error?: string;
   }>;
+  freeTrialRemaining?: number;
 }
 
 interface ArchiveResult {
@@ -29,6 +30,7 @@ interface ArchiveResult {
     success: boolean;
     error?: string;
   }>;
+  freeTrialRemaining?: number;
 }
 
 interface UnsubscribeResult {
@@ -38,12 +40,24 @@ interface UnsubscribeResult {
   unsubscribeLink?: string;
   message?: string;
   error?: string;
+  freeTrialRemaining?: number;
 }
 
 interface DeleteSingleResult {
   success: boolean;
   messageId: string;
   message?: string;
+  freeTrialRemaining?: number;
+}
+
+export class CleanupError extends Error {
+  code: string;
+  freeTrialRemaining?: number;
+  constructor(message: string, code: string, freeTrialRemaining?: number) {
+    super(message);
+    this.code = code;
+    this.freeTrialRemaining = freeTrialRemaining;
+  }
 }
 
 export const useCleanupActions = () => {
@@ -84,7 +98,11 @@ export const useCleanupActions = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete email');
+        throw new CleanupError(
+          data.error || 'Failed to delete email',
+          data.code || 'UNKNOWN',
+          data.freeTrialRemaining
+        );
       }
 
       return data as DeleteSingleResult;
@@ -144,7 +162,11 @@ export const useCleanupActions = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete emails');
+        throw new CleanupError(
+          data.error || 'Failed to delete emails',
+          data.code || 'UNKNOWN',
+          data.freeTrialRemaining
+        );
       }
 
       return data as DeleteResult;
@@ -204,7 +226,11 @@ export const useCleanupActions = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to archive emails');
+        throw new CleanupError(
+          data.error || 'Failed to archive emails',
+          data.code || 'UNKNOWN',
+          data.freeTrialRemaining
+        );
       }
 
       return data as ArchiveResult;
@@ -257,7 +283,11 @@ export const useCleanupActions = () => {
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to unsubscribe');
+        throw new CleanupError(
+          data.error || 'Failed to unsubscribe',
+          data.code || 'UNKNOWN',
+          data.freeTrialRemaining
+        );
       }
 
       return data as UnsubscribeResult;

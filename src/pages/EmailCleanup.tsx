@@ -35,13 +35,14 @@ import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useGmailConnection } from '../hooks/useGmailConnection';
 import { useEmailSenders, Sender, EmailMessage } from '../hooks/useEmailSenders';
-import { useCleanupActions } from '../hooks/useCleanupActions';
+import { useCleanupActions, CleanupError } from '../hooks/useCleanupActions';
 import { useOutlookConnection } from '../hooks/useOutlookConnection';
 import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
 import EmailViewModal from '../components/email/EmailViewModal';
+import { API_URL } from '../lib/api';
 
-// Free trial limit
+// Free trial limit (must match server-side FREE_TRIAL_LIMIT)
 const FREE_TRIAL_LIMIT = 5;
 
 // Cleanup tool definitions - 4 focused tools
@@ -514,28 +515,32 @@ const EmailCleanup = () => {
   // Cleanup actions hook
   const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
-  // Track free trial usage (only for free users) - persisted to localStorage per user
-  const freeActionsStorageKey = user?.id ? `cleaninbox_free_actions_${user.id}` : null;
+  // Track free trial usage (server-side, fetched on mount)
   const [freeActionsUsed, setFreeActionsUsed] = useState(0);
   const [freeActionsLoaded, setFreeActionsLoaded] = useState(false);
 
-  // Load free actions from localStorage once user ID is available
+  // Fetch free trial usage from server
   useEffect(() => {
-    if (freeActionsStorageKey && !freeActionsLoaded) {
-      const stored = localStorage.getItem(freeActionsStorageKey);
-      if (stored) {
-        setFreeActionsUsed(parseInt(stored, 10));
-      }
-      setFreeActionsLoaded(true);
-    }
-  }, [freeActionsStorageKey, freeActionsLoaded]);
+    const token = localStorage.getItem('auth_token');
+    if (!token || freeActionsLoaded) return;
 
-  // Persist free actions to localStorage whenever it changes (only after initial load)
-  useEffect(() => {
-    if (freeActionsStorageKey && freeActionsLoaded) {
-      localStorage.setItem(freeActionsStorageKey, String(freeActionsUsed));
-    }
-  }, [freeActionsUsed, freeActionsStorageKey, freeActionsLoaded]);
+    fetch(`${API_URL}/api/user/free-actions`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.isPaid) {
+          // Paid users: set used to 0 so hasFreeTries is always true
+          setFreeActionsUsed(0);
+        } else {
+          setFreeActionsUsed(data.used ?? 0);
+        }
+        setFreeActionsLoaded(true);
+      })
+      .catch(() => {
+        setFreeActionsLoaded(true);
+      });
+  }, [freeActionsLoaded]);
 
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
@@ -759,8 +764,9 @@ const EmailCleanup = () => {
           );
 
           if (result?.success) {
-            if (!hasPaidPlan) {
-              setFreeActionsUsed(prev => prev + 1);
+            // Sync free trial from server response
+            if (result.freeTrialRemaining !== undefined && !hasPaidPlan) {
+              setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
             }
             fetchSenders();
             setSelectedSenderKeys([]);
@@ -776,7 +782,14 @@ const EmailCleanup = () => {
           }
         }
       } catch (error: any) {
-        setNotification({ type: 'error', message: error.message || 'Action failed' });
+        if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
+          if (error.freeTrialRemaining !== undefined) {
+            setFreeActionsUsed(FREE_TRIAL_LIMIT - error.freeTrialRemaining);
+          }
+          setShowUpgradeModal(true);
+        } else {
+          setNotification({ type: 'error', message: error.message || 'Action failed' });
+        }
       }
       setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
       return;
@@ -846,17 +859,18 @@ const EmailCleanup = () => {
     }
 
     try {
+      let result: any = null;
       if (pending.type === 'single' && pending.email && pending.senderEmail) {
-        await deleteSingleEmail(
+        result = await deleteSingleEmail(
           connectedGmailAccount.email,
           pending.email.id,
           pending.senderEmail
         );
       } else if (pending.type === 'bulk' && pending.senderEmails && pending.senderNames) {
         if (pending.action === 'delete') {
-          await deleteEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
+          result = await deleteEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
         } else if (pending.action === 'archive') {
-          await archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
+          result = await archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
         }
         // Remove senders from local state (no refetch needed - already filtered visually)
         if (pending.senders) {
@@ -871,9 +885,21 @@ const EmailCleanup = () => {
           });
         }
       }
+      // Sync free trial remaining from server response
+      if (result?.freeTrialRemaining !== undefined && !hasPaidPlan) {
+        setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
+      }
     } catch (error) {
       console.error('Failed to execute pending deletion:', error);
-      setNotification({ type: 'error', message: 'Failed to complete action' });
+      // Handle free trial exceeded from server
+      if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
+        if (error.freeTrialRemaining !== undefined) {
+          setFreeActionsUsed(FREE_TRIAL_LIMIT - error.freeTrialRemaining);
+        }
+        setShowUpgradeModal(true);
+      } else {
+        setNotification({ type: 'error', message: 'Failed to complete action' });
+      }
       // On failure, refresh to restore correct state
       fetchSenders();
     }
