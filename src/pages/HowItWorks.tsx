@@ -178,35 +178,70 @@ const HowItWorks = () => {
                     <div className="divide-y divide-gray-200 dark:divide-gray-700">
                       {[{
                       name: 'Daily Newsletter',
+                      email: 'noreply@dailynews.com',
+                      initials: 'DN',
+                      color: 'bg-blue-500',
                       count: 43,
+                      newsletter: true,
                       selected: true
                     }, {
                       name: 'Shopping Promotions',
+                      email: 'deals@shoppromo.com',
+                      initials: 'SP',
+                      color: 'bg-orange-500',
                       count: 27,
+                      newsletter: false,
                       selected: true
                     }, {
                       name: 'Social Updates',
+                      email: 'notifications@social.com',
+                      initials: 'SU',
+                      color: 'bg-green-500',
                       count: 19,
+                      newsletter: false,
                       selected: false
                     }, {
                       name: 'Marketing Emails',
+                      email: 'hello@marketing.co',
+                      initials: 'ME',
+                      color: 'bg-purple-500',
                       count: 16,
+                      newsletter: true,
                       selected: true
                     }, {
                       name: 'Weekly Digest',
+                      email: 'digest@weekly.com',
+                      initials: 'WD',
+                      color: 'bg-indigo-500',
                       count: 12,
+                      newsletter: true,
                       selected: false
-                    }].map((sender, index) => <div key={index} className="flex items-center justify-between p-4">
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-gray-100">
-                              {sender.name}
+                    }].map((sender, index) => <div key={index} className="flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 ${sender.color} rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                              {sender.initials}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {sender.count} emails in the last 30 days
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                                  {sender.name}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                                  {sender.count} emails
+                                </span>
+                                {sender.newsletter && (
+                                  <span className="text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">
+                                    Newsletter
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                                {sender.email}
+                              </div>
                             </div>
                           </div>
-                          <button className={`px-3 py-1 rounded-full text-sm font-medium ${sender.selected ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
-                            {sender.selected ? 'Unsubscribe' : 'Keep'}
+                          <button className={`px-4 py-1.5 rounded-lg text-sm font-medium flex-shrink-0 ml-3 ${sender.selected ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}>
+                            Unsubscribe
                           </button>
                         </div>)}
                     </div>
