@@ -1173,7 +1173,8 @@ const EmailCleanup = () => {
 
   // Show onboarding funnel (skip for paid users who have connected email)
   // Don't show onboarding while data is still loading for authenticated users - avoids flash of "Connect Email" screen
-  const shouldShowOnboarding = !dashboardLoading && (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan));
+  // For unauthenticated users, skip the dashboardLoading check to avoid flash of cleanup tools
+  const shouldShowOnboarding = (!isAuthenticated || !dashboardLoading) && (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan));
   if (shouldShowOnboarding) {
     return (
       <div className="w-full min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-950 dark:to-gray-900">
