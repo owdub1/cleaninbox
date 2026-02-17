@@ -515,11 +515,24 @@ const EmailCleanup = () => {
   // Cleanup actions hook
   const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
 
-  // Track free trial usage (server-side, fetched on mount)
-  const [freeActionsUsed, setFreeActionsUsed] = useState(0);
+  // Track free trial usage (server-side enforced, sessionStorage for UI continuity)
+  const sessionKey = 'cleaninbox_free_actions_optimistic';
+  const [freeActionsUsed, setFreeActionsUsedRaw] = useState(() => {
+    const cached = sessionStorage.getItem(sessionKey);
+    return cached ? parseInt(cached, 10) : 0;
+  });
   const [freeActionsLoaded, setFreeActionsLoaded] = useState(false);
 
-  // Fetch free trial usage from server
+  // Wrapper that also persists to sessionStorage
+  const setFreeActionsUsed = (value: number | ((prev: number) => number)) => {
+    setFreeActionsUsedRaw(prev => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      sessionStorage.setItem(sessionKey, String(next));
+      return next;
+    });
+  };
+
+  // Fetch free trial usage from server (source of truth)
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (!token || freeActionsLoaded) return;
@@ -530,10 +543,13 @@ const EmailCleanup = () => {
       .then(r => r.json())
       .then(data => {
         if (data.isPaid) {
-          // Paid users: set used to 0 so hasFreeTries is always true
           setFreeActionsUsed(0);
         } else {
-          setFreeActionsUsed(data.used ?? 0);
+          // Take the max of server and sessionStorage to handle race conditions
+          // (unmount API calls may not have completed yet)
+          const serverUsed = data.used ?? 0;
+          const cachedUsed = parseInt(sessionStorage.getItem(sessionKey) || '0', 10);
+          setFreeActionsUsed(Math.max(serverUsed, cachedUsed));
         }
         setFreeActionsLoaded(true);
       })
