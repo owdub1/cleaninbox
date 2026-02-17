@@ -51,6 +51,7 @@ import activityLog from './api/activity/log.js';
 // User routes
 import userUpdateProfile from './api/user/update-profile.js';
 import userDeleteAccount from './api/user/delete-account.js';
+import userFreeActions from './api/user/free-actions.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -162,6 +163,7 @@ app.post('/api/activity/log', wrapHandler(activityLog));
 // User routes
 app.post('/api/user/update-profile', wrapHandler(userUpdateProfile));
 app.post('/api/user/delete-account', wrapHandler(userDeleteAccount));
+app.get('/api/user/free-actions', wrapHandler(userFreeActions));
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
