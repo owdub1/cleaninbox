@@ -35,6 +35,7 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { useGmailConnection } from '../hooks/useGmailConnection';
 import { useEmailSenders, Sender, EmailMessage } from '../hooks/useEmailSenders';
 import { useCleanupActions } from '../hooks/useCleanupActions';
+import { useOutlookConnection } from '../hooks/useOutlookConnection';
 import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
 import EmailViewModal from '../components/email/EmailViewModal';
@@ -449,6 +450,7 @@ const EmailCleanup = () => {
 
   // Gmail connection hooks
   const { handleOAuthCallback, clearCallbackParams, connectGmail } = useGmailConnection();
+  const { connectOutlook } = useOutlookConnection();
 
   // Handler to start Gmail OAuth flow
   const handleConnectGmail = async () => {
@@ -464,6 +466,22 @@ const EmailCleanup = () => {
     } catch (err: any) {
       console.error('Connect Gmail error:', err);
       setNotification({ type: 'error', message: err.message || 'Failed to connect Gmail' });
+    }
+  };
+
+  // Handler to start Outlook OAuth flow
+  const handleConnectOutlook = async () => {
+    console.log('Starting Outlook OAuth flow...');
+    try {
+      const authUrl = await connectOutlook();
+      if (authUrl) {
+        window.location.href = authUrl;
+      } else {
+        setNotification({ type: 'error', message: 'Failed to get Outlook authorization URL. Please try again.' });
+      }
+    } catch (err: any) {
+      console.error('Connect Outlook error:', err);
+      setNotification({ type: 'error', message: err.message || 'Failed to connect Outlook' });
     }
   };
 
@@ -1255,40 +1273,35 @@ const EmailCleanup = () => {
                   Connect Your Email
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                  Securely connect your email account so we can help you identify
-                  and clean up unwanted messages.
+                  Select your email provider to securely connect your account.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-lg mx-auto mb-8">
                   <button
-                    onClick={() => navigate('/dashboard?tab=myemails')}
-                    className="flex items-center justify-center p-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all"
+                    onClick={handleConnectGmail}
+                    className="flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg transition-all group"
                   >
-                    {/* Gmail Icon */}
-                    <svg className="w-8 h-8" viewBox="0 0 48 48">
+                    <svg className="w-10 h-10 mb-3" viewBox="0 0 48 48">
                       <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
                       <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z"/>
                       <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/>
                       <path fill="#c62828" d="M3,12.298V16.2l10,7.5V11.2L9.876,8.859C9.132,8.301,8.228,8,7.298,8h0C4.924,8,3,9.924,3,12.298z"/>
                       <path fill="#fbc02d" d="M45,12.298V16.2l-10,7.5V11.2l3.124-2.341C38.868,8.301,39.772,8,40.702,8h0 C43.076,8,45,9.924,45,12.298z"/>
                     </svg>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Gmail</span>
                   </button>
                   <button
-                    disabled
-                    className="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl opacity-50 cursor-not-allowed"
-                    title="Coming soon"
+                    onClick={handleConnectOutlook}
+                    className="flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg transition-all group"
                   >
-                    {/* Outlook Icon - 4 squares */}
-                    <svg className="w-8 h-8" viewBox="0 0 24 24">
+                    <svg className="w-10 h-10 mb-3" viewBox="0 0 24 24">
                       <path fill="#0078D4" d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/>
                     </svg>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Outlook</span>
                   </button>
-                  <button
-                    disabled
-                    className="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 rounded-xl opacity-50 cursor-not-allowed"
-                    title="Coming soon"
+                  <div
+                    className="flex flex-col items-center justify-center p-6 bg-gray-50 dark:bg-gray-800/50 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl opacity-60"
                   >
-                    {/* Yahoo Icon */}
-                    <svg className="w-8 h-8" viewBox="0 0 24 24">
+                    <svg className="w-10 h-10 mb-3" viewBox="0 0 24 24">
                       <defs>
                         <linearGradient id="yahooGradCleanup" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#7B5CC3"/>
@@ -1299,16 +1312,11 @@ const EmailCleanup = () => {
                       <path fill="#fff" d="M4 7.5L12 13L20 7.5V7C20 6.45 19.55 6 19 6H5C4.45 6 4 6.45 4 7V7.5Z"/>
                       <path fill="#fff" d="M4 9V17C4 17.55 4.45 18 5 18H19C19.55 18 20 17.55 20 17V9L12 14.5L4 9Z" opacity="0.8"/>
                     </svg>
-                  </button>
+                    <span className="text-sm font-medium text-gray-400 dark:text-gray-500">Yahoo</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-600 mt-1">Coming Soon</span>
+                  </div>
                 </div>
-                <button
-                  onClick={() => navigate('/dashboard?tab=myemails')}
-                  className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 dark:bg-indigo-500 text-white font-semibold rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
-                >
-                  Connect Email Account
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </button>
-                <div className="mt-8 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
                   <ShieldIcon className="w-4 h-4 mr-2 text-green-500" />
                   We use OAuth • Your password is never stored
                 </div>
