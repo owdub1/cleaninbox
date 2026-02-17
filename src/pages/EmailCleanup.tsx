@@ -1386,13 +1386,15 @@ const EmailCleanup = () => {
                   You're All Set! Start Cleaning
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                  Your email is connected and ready to go. You have <span className="font-bold text-indigo-600 dark:text-indigo-400">5 free cleanups</span> to try out the platform!
+                  Your email is connected and ready to go. You have <span className="font-bold text-indigo-600 dark:text-indigo-400">{freeActionsRemaining} free cleanups</span> to try out the platform!
                 </p>
 
                 {/* Free trial badge */}
                 <div className="inline-flex items-center bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full px-6 py-3 mb-8">
                   <Gift className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2" />
-                  <span className="text-amber-800 dark:text-amber-300 font-medium">5 Free Actions Included</span>
+                  <span className="text-amber-800 dark:text-amber-300 font-medium">
+                    {freeActionsUsed > 0 ? `${freeActionsRemaining} free actions left` : '5 Free Actions Included'}
+                  </span>
                 </div>
 
                 <button
