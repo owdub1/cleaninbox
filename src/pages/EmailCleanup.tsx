@@ -703,7 +703,7 @@ const EmailCleanup = () => {
     if (!hasPaidPlan) {
       const totalEmails = senderList.reduce((sum, s) => sum + s.emailCount, 0);
       if (totalEmails > freeActionsRemaining) {
-        setNotification({ type: 'error', message: `This would use ${totalEmails} actions but you only have ${freeActionsRemaining} remaining. Select fewer senders or upgrade.` });
+        setNotification({ type: 'error', message: `Not enough free actions. This requires ${totalEmails} but you have ${freeActionsRemaining} left. Upgrade for unlimited cleanup.` });
         return;
       }
     }
@@ -869,6 +869,12 @@ const EmailCleanup = () => {
   const handleDeleteSingleEmail = (email: EmailMessage, senderEmail: string, senderName: string) => {
     if (!connectedGmailAccount) return;
 
+    // Block if free user has no actions left
+    if (!hasPaidPlan && !hasFreeTries) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     const senderKey = `${senderName}|||${senderEmail}`;
 
     // Save current state for potential undo
@@ -922,6 +928,11 @@ const EmailCleanup = () => {
       messageIds: [email.id],
       timestamp: Date.now()
     }]);
+
+    // Increment free actions used (1 email = 1 action)
+    if (!hasPaidPlan) {
+      setFreeActionsUsed(prev => prev + 1);
+    }
   };
 
   // Handle undo action - true restoration (cancels pending API call)
@@ -958,6 +969,10 @@ const EmailCleanup = () => {
             sortedByDate[0].date
           );
         }
+      }
+      // Decrement free actions for single email undo
+      if (!hasPaidPlan) {
+        setFreeActionsUsed(prev => Math.max(0, prev - 1));
       }
     } else if (pendingDeletion.type === 'bulk') {
       // For bulk undo, senders are still in state (just filtered out by filterPendingBulkDeletions)
@@ -1469,7 +1484,7 @@ const EmailCleanup = () => {
                     {isLocked && (
                       <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-1">
                         <Lock className="w-3 h-3 text-white" />
-                        <span className="text-white text-xs font-semibold">Pro</span>
+                        <span className="text-white text-xs font-semibold">Upgrade</span>
                       </div>
                     )}
                     <div className="relative z-10">
