@@ -25,16 +25,9 @@ export default async function handler(
   if (!user) return;
 
   try {
-    const { password } = req.body || {};
+    const { password, confirmText } = req.body || {};
 
-    if (!password) {
-      return res.status(400).json({
-        error: 'Password is required to delete account',
-        code: 'MISSING_PASSWORD'
-      });
-    }
-
-    // Fetch user to verify password
+    // Fetch user to check auth method
     const { data: userData, error: fetchError } = await supabase
       .from('users')
       .select('password_hash')
@@ -48,12 +41,21 @@ export default async function handler(
       });
     }
 
-    // Verify password
-    const passwordValid = await comparePassword(password, userData.password_hash);
-    if (!passwordValid) {
-      return res.status(401).json({
-        error: 'Incorrect password',
-        code: 'INVALID_PASSWORD'
+    // Verify identity: accept password OR "DELETE" confirmation text
+    if (password && userData.password_hash) {
+      const passwordValid = await comparePassword(password, userData.password_hash);
+      if (!passwordValid) {
+        return res.status(401).json({
+          error: 'Incorrect password',
+          code: 'INVALID_PASSWORD'
+        });
+      }
+    } else if (confirmText === 'DELETE') {
+      // "Type DELETE to confirm" — works for all users
+    } else {
+      return res.status(400).json({
+        error: 'Please type DELETE to confirm account deletion',
+        code: 'MISSING_CONFIRM'
       });
     }
 

@@ -219,8 +219,8 @@ const Dashboard = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!deletePassword) {
-      setDeleteError('Password is required');
+    if (deletePassword !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm');
       return;
     }
 
@@ -233,7 +233,7 @@ const Dashboard = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ password: deletePassword })
+        body: JSON.stringify({ confirmText: 'DELETE' })
       });
 
       const data = await response.json();
@@ -904,13 +904,13 @@ const Dashboard = () => {
                 )}
                 <div className="text-left mb-4">
                   <label htmlFor="deletePassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Enter your password to confirm
+                    Type <span className="font-bold text-red-600 dark:text-red-400">DELETE</span> to confirm
                   </label>
-                  <input type="password" id="deletePassword" className="block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-gray-100" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Your password" />
+                  <input type="text" id="deletePassword" className="block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:text-gray-100" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="DELETE" />
                 </div>
               </div>
               <div className="mt-5 sm:mt-6 flex flex-col space-y-3">
-                <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50" onClick={handleDeleteAccount} disabled={deleteLoading || !deletePassword}>
+                <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm disabled:opacity-50" onClick={handleDeleteAccount} disabled={deleteLoading || deletePassword !== 'DELETE'}>
                   {deleteLoading ? 'Deleting...' : 'Permanently Delete Account'}
                 </button>
                 <button type="button" className="w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(null); }} disabled={deleteLoading}>
