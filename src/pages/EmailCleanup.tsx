@@ -28,7 +28,8 @@ import {
   Gift,
   RefreshCw,
   AlertCircle,
-  Undo2
+  Undo2,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -643,6 +644,10 @@ const EmailCleanup = () => {
   const currentStep = getCurrentStep();
 
   const handleToolSelect = (toolId: string) => {
+    if (!hasPaidPlan && toolId !== 'delete') {
+      setShowUpgradeModal(true);
+      return;
+    }
     setSelectedTool(toolId);
     setCurrentView('cleanup');
     // Default all tools to sort by last email date (newest first)
@@ -694,6 +699,15 @@ const EmailCleanup = () => {
       return;
     }
 
+    // Pre-check: block if total emails exceed remaining free actions
+    if (!hasPaidPlan) {
+      const totalEmails = senderList.reduce((sum, s) => sum + s.emailCount, 0);
+      if (totalEmails > freeActionsRemaining) {
+        setNotification({ type: 'error', message: `This would use ${totalEmails} actions but you only have ${freeActionsRemaining} remaining. Select fewer senders or upgrade.` });
+        return;
+      }
+    }
+
     setConfirmModal({
       isOpen: true,
       action,
@@ -725,7 +739,7 @@ const EmailCleanup = () => {
 
           if (result?.success) {
             if (!hasPaidPlan) {
-              setFreeActionsUsed(prev => prev + actionSenders.length);
+              setFreeActionsUsed(prev => prev + 1);
             }
             fetchSenders();
             setSelectedSenderKeys([]);
@@ -782,9 +796,10 @@ const EmailCleanup = () => {
       timestamp: Date.now()
     }]);
 
-    // Increment free actions used (will be decremented on undo if needed)
+    // Increment free actions used by total emails (will be decremented on undo if needed)
     if (!hasPaidPlan) {
-      setFreeActionsUsed(prev => prev + actionSenders.length);
+      const totalEmailsAffected = actionSenders.reduce((sum, s) => sum + s.emailCount, 0);
+      setFreeActionsUsed(prev => prev + totalEmailsAffected);
     }
 
     // Clear selection and close modal
@@ -947,9 +962,10 @@ const EmailCleanup = () => {
     } else if (pendingDeletion.type === 'bulk') {
       // For bulk undo, senders are still in state (just filtered out by filterPendingBulkDeletions)
       // Clearing pendingDeletion will make them reappear instantly
-      // Decrement free actions if they were incremented for this bulk action
+      // Decrement free actions by total emails if they were incremented for this bulk action
       if (!hasPaidPlan && pendingDeletion.senders) {
-        setFreeActionsUsed(prev => Math.max(0, prev - pendingDeletion.senders!.length));
+        const undoEmailCount = pendingDeletion.senders!.reduce((sum, s) => sum + s.emailCount, 0);
+        setFreeActionsUsed(prev => Math.max(0, prev - undoEmailCount));
       }
     }
 
@@ -1442,13 +1458,20 @@ const EmailCleanup = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               {cleanupTools.map((tool) => {
                 const IconComponent = tool.icon;
+                const isLocked = !hasPaidPlan && tool.id !== 'delete';
                 return (
                   <button
                     key={tool.id}
                     onClick={() => handleToolSelect(tool.id)}
-                    className="group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-xl"
+                    className={`group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-xl ${isLocked ? 'opacity-75' : ''}`}
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
+                    {isLocked && (
+                      <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2 py-1">
+                        <Lock className="w-3 h-3 text-white" />
+                        <span className="text-white text-xs font-semibold">Pro</span>
+                      </div>
+                    )}
                     <div className="relative z-10">
                       <div className="mb-4">
                         <div className="text-white">
