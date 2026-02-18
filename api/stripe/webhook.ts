@@ -120,6 +120,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       status: 'active',
       price: 19.99,
       period: 'monthly',
+      email_limit: 3,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
       next_billing_date: currentPeriodEnd,
