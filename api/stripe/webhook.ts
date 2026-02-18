@@ -78,7 +78,11 @@ export default async function handler(
     return res.status(200).json({ received: true });
   } catch (error: any) {
     console.error('Error processing webhook event:', error);
-    return res.status(500).json({ error: 'Webhook handler failed' });
+    return res.status(500).json({
+      error: 'Webhook handler failed',
+      detail: error.message,
+      eventType: event.type,
+    });
   }
 }
 
