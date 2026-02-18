@@ -97,8 +97,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const customerId = session.customer as string;
 
   // Fetch the subscription from Stripe to get period details
-  const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const currentPeriodEnd = new Date((stripeSubscription as any).current_period_end * 1000).toISOString();
+  const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+
+  // Handle different API versions — current_period_end may be a timestamp or ISO string
+  let currentPeriodEnd: string;
+  const periodEnd = stripeSubscription.current_period_end;
+  if (typeof periodEnd === 'number') {
+    currentPeriodEnd = new Date(periodEnd * 1000).toISOString();
+  } else if (typeof periodEnd === 'string') {
+    currentPeriodEnd = periodEnd;
+  } else {
+    // Fallback: 1 month from now
+    currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  }
 
   // Upsert subscription in Supabase
   const { error } = await supabase
@@ -254,7 +265,15 @@ async function updateSubscriptionStatus(userId: string, subscription: Stripe.Sub
   };
 
   const status = statusMap[subscription.status] || subscription.status;
-  const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000).toISOString();
+  const periodEnd = (subscription as any).current_period_end;
+  let currentPeriodEnd: string;
+  if (typeof periodEnd === 'number') {
+    currentPeriodEnd = new Date(periodEnd * 1000).toISOString();
+  } else if (typeof periodEnd === 'string') {
+    currentPeriodEnd = periodEnd;
+  } else {
+    currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  }
 
   const { error } = await supabase
     .from('subscriptions')
