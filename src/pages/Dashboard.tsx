@@ -48,6 +48,14 @@ const Dashboard = () => {
     }
   }, [searchParams, setSearchParams]);
 
+  const navigate = useNavigate();
+  const {
+    user,
+    token,
+    updateUser,
+    logout
+  } = useAuth();
+
   // Fetch invoices when Payment History tab is selected
   useEffect(() => {
     if (activeTab === 'payments' && !invoicesFetched && token) {
@@ -67,14 +75,6 @@ const Dashboard = () => {
         .finally(() => setInvoicesLoading(false));
     }
   }, [activeTab, invoicesFetched, token]);
-
-  const navigate = useNavigate();
-  const {
-    user,
-    token,
-    updateUser,
-    logout
-  } = useAuth();
 
   // Settings tab state
   const [settingsFirstName, setSettingsFirstName] = useState(user?.firstName || '');
