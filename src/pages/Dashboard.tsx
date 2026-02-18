@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CalendarIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, XIcon, FileTextIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, CreditCardIcon } from 'lucide-react';
+import { CalendarIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, XIcon, FileTextIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, CreditCardIcon, DownloadIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/api';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -25,6 +25,9 @@ const Dashboard = () => {
   const [connectedEmails, setConnectedEmails] = useState([]);
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesFetched, setInvoicesFetched] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Update connectedEmails when dbEmailAccounts changes
@@ -44,6 +47,26 @@ const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
+
+  // Fetch invoices when Payment History tab is selected
+  useEffect(() => {
+    if (activeTab === 'payments' && !invoicesFetched && token) {
+      setInvoicesLoading(true);
+      fetch(`${API_URL}/api/stripe/invoices`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          setInvoices(data.invoices || []);
+          setInvoicesFetched(true);
+        })
+        .catch(() => {
+          setInvoices([]);
+          setInvoicesFetched(true);
+        })
+        .finally(() => setInvoicesLoading(false));
+    }
+  }, [activeTab, invoicesFetched, token]);
 
   const navigate = useNavigate();
   const {
@@ -676,15 +699,85 @@ const Dashboard = () => {
                     </h3>
                   </div>
                   <div className="p-6">
-                    <div className="text-center py-12">
-                      <FileTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                        No Payment History
-                      </h3>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        Your payment history will appear here
-                      </p>
-                    </div>
+                    {invoicesLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                      </div>
+                    ) : invoices.length === 0 ? (
+                      <div className="text-center py-12">
+                        <FileTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                          No Payment History
+                        </h3>
+                        <p className="text-gray-500 dark:text-gray-400">
+                          Your payment history will appear here
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                          <thead>
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Invoice #</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Invoice</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {invoices.map((invoice) => (
+                              <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                  {new Date(invoice.created * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                  {invoice.number || '-'}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    invoice.status === 'paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                                    invoice.status === 'open' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                                    invoice.status === 'draft' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400' :
+                                    invoice.status === 'void' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' :
+                                    'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400'
+                                  }`}>
+                                    {invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-right">
+                                  {invoice.invoice_pdf ? (
+                                    <a
+                                      href={invoice.invoice_pdf}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
+                                    >
+                                      <DownloadIcon className="h-4 w-4 mr-1" />
+                                      PDF
+                                    </a>
+                                  ) : invoice.hosted_invoice_url ? (
+                                    <a
+                                      href={invoice.hosted_invoice_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
+                                    >
+                                      View
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm text-gray-400">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>}

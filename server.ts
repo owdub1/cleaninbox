@@ -48,6 +48,7 @@ import subscriptionCancel from './api/subscription/cancel.js';
 import stripeCreateCheckout from './api/stripe/create-checkout.js';
 import stripeWebhook from './api/stripe/webhook.js';
 import stripePortal from './api/stripe/portal.js';
+import stripeInvoices from './api/stripe/invoices.js';
 
 // Activity routes
 import activityGet from './api/activity/get.js';
@@ -167,6 +168,7 @@ app.post('/api/subscription/cancel', wrapHandler(subscriptionCancel));
 // Stripe routes (webhook registered above before express.json middleware)
 app.post('/api/stripe/create-checkout', wrapHandler(stripeCreateCheckout));
 app.post('/api/stripe/portal', wrapHandler(stripePortal));
+app.get('/api/stripe/invoices', wrapHandler(stripeInvoices));
 
 // Activity routes
 app.get('/api/activity/get', wrapHandler(activityGet));
