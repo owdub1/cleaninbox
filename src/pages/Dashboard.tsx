@@ -33,7 +33,8 @@ const Dashboard = () => {
   const {
     user,
     token,
-    updateUser
+    updateUser,
+    logout
   } = useAuth();
 
   // Settings tab state
@@ -241,7 +242,7 @@ const Dashboard = () => {
         throw new Error(data.error || 'Failed to delete account');
       }
 
-      localStorage.clear();
+      await logout();
       navigate('/');
     } catch (error: any) {
       setDeleteError(error.message);
