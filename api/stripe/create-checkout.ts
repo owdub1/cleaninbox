@@ -11,7 +11,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import jwt from 'jsonwebtoken';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 interface JWTPayload {
@@ -41,6 +40,10 @@ export default async function handler(
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-06-30.basil' as any,
+    });
 
     const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 
