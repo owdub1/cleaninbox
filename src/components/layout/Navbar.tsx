@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { MenuIcon, XIcon, MailIcon, UserIcon, LogOutIcon, MoonIcon, SunIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -12,6 +12,7 @@ const Navbar = () => {
     logout
   } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const handleUserMenuToggle = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
@@ -146,15 +147,17 @@ const Navbar = () => {
               </>}
           </div>
         </div>}
-      {/* Floating CTA button for desktop - positioned bottom right */}
-      <div className="hidden md:block fixed bottom-8 right-8 z-10">
-        <button
-          onClick={handleCleanInboxClick}
-          className="bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-3 rounded-full font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg flex items-center"
-        >
-          Clean My Inbox Now
-        </button>
-      </div>
+      {/* Floating CTA button for desktop - hidden on cleanup/dashboard pages */}
+      {!location.pathname.startsWith('/cleanup') && !location.pathname.startsWith('/dashboard') && (
+        <div className="hidden md:block fixed bottom-8 right-8 z-10">
+          <button
+            onClick={handleCleanInboxClick}
+            className="bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-3 rounded-full font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg flex items-center"
+          >
+            Clean My Inbox Now
+          </button>
+        </div>
+      )}
     </nav>;
 };
 export default Navbar;
