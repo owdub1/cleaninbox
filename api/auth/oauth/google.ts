@@ -14,9 +14,7 @@ import { rateLimit, RateLimitPresets } from '../../lib/rate-limiter.js';
 
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const API_URL = process.env.API_URL || process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : 'http://localhost:3001';
+const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
 
 // Minimal scopes for sign-in (just profile and email)
 const GOOGLE_AUTH_SCOPES = [

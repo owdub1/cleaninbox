@@ -22,10 +22,8 @@ const OUTLOOK_CLIENT_ID = process.env.OUTLOOK_CLIENT_ID;
 const OUTLOOK_CLIENT_SECRET = process.env.OUTLOOK_CLIENT_SECRET;
 const OUTLOOK_TOKEN_ENCRYPTION_KEY = process.env.OUTLOOK_TOKEN_ENCRYPTION_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const API_URL = process.env.API_URL || process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : 'http://localhost:3001';
-const APP_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
+const APP_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'https://cleaninbox.ca';
 
 // Microsoft OAuth scopes
 const OUTLOOK_SCOPES = [

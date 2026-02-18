@@ -23,10 +23,8 @@ const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this';
-const API_URL = process.env.API_URL || process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : 'http://localhost:3001';
-const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
+const APP_URL = process.env.VITE_APP_URL || 'https://cleaninbox.ca';
 
 const limiter = rateLimit(RateLimitPresets.STANDARD);
 

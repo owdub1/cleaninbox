@@ -22,12 +22,10 @@ const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const GMAIL_TOKEN_ENCRYPTION_KEY = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-// API_URL is where Google redirects to (Railway backend)
-const API_URL = process.env.API_URL || process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : 'http://localhost:3001';
-// APP_URL is where we redirect users after OAuth (Vercel frontend)
-const APP_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+// API_URL is where Google redirects to (backend)
+const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
+// APP_URL is where we redirect users after OAuth (frontend)
+const APP_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'https://cleaninbox.ca';
 
 // Gmail OAuth scopes
 const GMAIL_SCOPES = [

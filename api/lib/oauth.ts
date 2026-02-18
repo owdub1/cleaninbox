@@ -19,7 +19,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
-const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+const APP_URL = process.env.VITE_APP_URL || 'https://cleaninbox.ca';
 
 export interface OAuthProfile {
   id: string;

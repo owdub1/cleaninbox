@@ -4,10 +4,10 @@
  */
 
 // Get API URL from environment variable
-// Production: Uses Railway for API
+// Production: Uses Vercel deployment
 // Development: Falls back to localhost
 export const API_URL = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? 'https://cleaninbox-production.up.railway.app' : 'http://localhost:5173');
+  (import.meta.env.PROD ? 'https://cleaninbox.ca' : 'http://localhost:5173');
 
 /**
  * Helper function to make API calls with proper URL
