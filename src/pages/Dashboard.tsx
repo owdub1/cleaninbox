@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CalendarIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, XIcon, FileTextIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CalendarIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, XIcon, FileTextIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, CreditCardIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/api';
 import { useDashboardData } from '../hooks/useDashboardData';
@@ -23,11 +23,27 @@ const Dashboard = () => {
   const [showConnectEmailModal, setShowConnectEmailModal] = useState(false);
   const [emailToDisconnect, setEmailToDisconnect] = useState(null);
   const [connectedEmails, setConnectedEmails] = useState([]);
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Update connectedEmails when dbEmailAccounts changes
   useEffect(() => {
     setConnectedEmails(dbEmailAccounts);
   }, [dbEmailAccounts]);
+
+  // Show success toast when redirected from Stripe checkout
+  useEffect(() => {
+    if (searchParams.get('upgraded') === 'true') {
+      setShowUpgradeSuccess(true);
+      // Remove the query param from the URL
+      searchParams.delete('upgraded');
+      setSearchParams(searchParams, { replace: true });
+      // Auto-hide the toast after 8 seconds
+      const timer = setTimeout(() => setShowUpgradeSuccess(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
 
   const navigate = useNavigate();
   const {
@@ -131,6 +147,29 @@ const Dashboard = () => {
     await addEmailAccount(email, provider);
     // The useDashboardData hook will automatically refresh and update connectedEmails
   };
+  const handleManageBilling = async () => {
+    setBillingLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/stripe/portal`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to open billing portal');
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      alert(err.message || 'Failed to open billing portal');
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
   const handleDisconnectEmail = email => {
     setEmailToDisconnect(email);
     setShowDisconnectModal(true);
@@ -252,6 +291,20 @@ const Dashboard = () => {
   };
 
   return <div className="w-full bg-white dark:bg-gray-900">
+      {/* Upgrade Success Toast */}
+      {showUpgradeSuccess && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center max-w-md animate-in">
+          <CheckCircleIcon className="h-6 w-6 mr-3 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Welcome to Pro!</p>
+            <p className="text-sm text-green-100">Your subscription is now active. Enjoy unlimited features!</p>
+          </div>
+          <button onClick={() => setShowUpgradeSuccess(false)} className="ml-4 text-green-200 hover:text-white">
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -539,7 +592,17 @@ const Dashboard = () => {
                           </p>
                         </div>
                       </div>}
-                      <div>
+                      <div className="flex gap-2">
+                        {isPaid && (
+                          <button
+                            className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-4 py-2 rounded-md font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center disabled:opacity-50"
+                            onClick={handleManageBilling}
+                            disabled={billingLoading}
+                          >
+                            <CreditCardIcon className="h-4 w-4 mr-2" />
+                            {billingLoading ? 'Loading...' : 'Manage Billing'}
+                          </button>
+                        )}
                         <button className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-md font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" onClick={() => setShowCancelModal(true)}>
                           Cancel Subscription
                         </button>

@@ -44,6 +44,11 @@ import cleanupUnsubscribe from './api/cleanup/unsubscribe.js';
 import subscriptionGet from './api/subscription/get.js';
 import subscriptionCancel from './api/subscription/cancel.js';
 
+// Stripe routes
+import stripeCreateCheckout from './api/stripe/create-checkout.js';
+import stripeWebhook from './api/stripe/webhook.js';
+import stripePortal from './api/stripe/portal.js';
+
 // Activity routes
 import activityGet from './api/activity/get.js';
 import activityLog from './api/activity/log.js';
@@ -84,20 +89,6 @@ app.use(cors({
   credentials: true
 }));
 
-// Middleware
-app.use(express.json({ limit: '100kb' }));
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-// Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'cleaninbox-api'
-  });
-});
-
 // Wrapper to convert Vercel handlers to Express handlers
 const wrapHandler = (handler: any) => {
   return async (req: Request, res: Response) => {
@@ -114,6 +105,23 @@ const wrapHandler = (handler: any) => {
     }
   };
 };
+
+// Stripe webhook must be registered BEFORE express.json() to get the raw body
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), wrapHandler(stripeWebhook));
+
+// Middleware
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Health check endpoint
+app.get('/health', (req: Request, res: Response) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'cleaninbox-api'
+  });
+});
 
 // Auth routes
 app.post('/api/auth/signup', wrapHandler(signup));
@@ -155,6 +163,10 @@ app.post('/api/cleanup/unsubscribe', wrapHandler(cleanupUnsubscribe));
 // Subscription routes
 app.get('/api/subscription/get', wrapHandler(subscriptionGet));
 app.post('/api/subscription/cancel', wrapHandler(subscriptionCancel));
+
+// Stripe routes (webhook registered above before express.json middleware)
+app.post('/api/stripe/create-checkout', wrapHandler(stripeCreateCheckout));
+app.post('/api/stripe/portal', wrapHandler(stripePortal));
 
 // Activity routes
 app.get('/api/activity/get', wrapHandler(activityGet));
