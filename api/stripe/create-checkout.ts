@@ -41,19 +41,24 @@ export default async function handler(
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-      apiVersion: '2025-06-30.basil' as any,
-    });
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
     const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 
+    // Use inline price_data instead of a price ID to avoid API version mismatches
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      payment_method_types: ['card'],
       customer_email: decoded.email,
       line_items: [
         {
-          price: process.env.STRIPE_PRICE_ID!,
+          price_data: {
+            currency: 'cad',
+            product: 'prod_U01gpSRLbAMbUc',
+            recurring: {
+              interval: 'month',
+            },
+            unit_amount: 1999, // $19.99 in cents
+          },
           quantity: 1,
         },
       ],
@@ -78,8 +83,6 @@ export default async function handler(
     return res.status(500).json({
       error: 'Failed to create checkout session',
       detail: error.message,
-      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-      hasPriceId: !!process.env.STRIPE_PRICE_ID,
     });
   }
 }
