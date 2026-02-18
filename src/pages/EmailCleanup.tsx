@@ -163,13 +163,16 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
             <p className="text-indigo-900 dark:text-indigo-200 font-semibold mb-2">Pro Plan - $19.99/month</p>
             <ul className="text-sm text-indigo-700 dark:text-indigo-400 space-y-1">
               <li className="flex items-center justify-center">
-                <Check className="w-4 h-4 mr-2" /> Unlimited email cleanup
+                <Check className="w-4 h-4 mr-2" /> Unlimited cleanup
               </li>
               <li className="flex items-center justify-center">
-                <Check className="w-4 h-4 mr-2" /> 3 email accounts
+                <Check className="w-4 h-4 mr-2" /> 2 email accounts
               </li>
               <li className="flex items-center justify-center">
-                <Check className="w-4 h-4 mr-2" /> Hourly sync
+                <Check className="w-4 h-4 mr-2" /> Unlimited sync
+              </li>
+              <li className="flex items-center justify-center">
+                <Check className="w-4 h-4 mr-2" /> Unlock all tools
               </li>
             </ul>
           </div>
