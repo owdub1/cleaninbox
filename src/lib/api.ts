@@ -4,10 +4,10 @@
  */
 
 // Get API URL from environment variable
-// Production: Uses Vercel deployment
+// Production: Empty string (same origin - frontend and API on same Vercel project)
 // Development: Falls back to localhost
-export const API_URL = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? 'https://cleaninbox.ca' : 'http://localhost:5173');
+export const API_URL = import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? '' : 'http://localhost:5173');
 
 /**
  * Helper function to make API calls with proper URL
