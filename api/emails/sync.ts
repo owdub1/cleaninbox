@@ -215,7 +215,13 @@ export default async function handler(
     const isFirstSync = !account.last_synced;
     const isStaleSync = account.last_synced &&
       (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
-    const isFullSync = isFirstSync || isStaleSync || fullSync;
+    // Auto full sync if user upgraded and previous sync was capped by a lower plan limit
+    const previousPlanCaps = [100, 1000, 5000]; // free, basic, pro limits
+    const totalEmails = account.total_emails || 0;
+    const wasLimitedByPreviousPlan = totalEmails > 0 &&
+      totalEmails < planLimits.emailProcessingLimit &&
+      previousPlanCaps.includes(totalEmails);
+    const isFullSync = isFirstSync || isStaleSync || fullSync || wasLimitedByPreviousPlan;
 
     const userEmail = (account.gmail_email || email).toLowerCase();
     const syncType = isFullSync ? 'full' : 'incremental';
