@@ -37,7 +37,7 @@ interface AccountLockedEmailOptions {
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <noreply@cleaninbox.com>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <support@cleaninbox.ca>';
 
 /**
  * Send email using Resend API
@@ -136,7 +136,7 @@ export async function sendVerificationEmail({
 
   <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
     <p>CleanInbox - Taking control of your inbox</p>
-    <p>© 2024 CleanInbox. All rights reserved.</p>
+    <p>© 2026 CleanInbox. All rights reserved.</p>
   </div>
 </body>
 </html>
@@ -202,7 +202,7 @@ export async function sendPasswordResetEmail({
 
   <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
     <p>CleanInbox - Taking control of your inbox</p>
-    <p>© 2024 CleanInbox. All rights reserved.</p>
+    <p>© 2026 CleanInbox. All rights reserved.</p>
   </div>
 </body>
 </html>
@@ -270,7 +270,7 @@ export async function sendAccountLockedEmail({
 
   <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
     <p>CleanInbox - Taking control of your inbox</p>
-    <p>© 2024 CleanInbox. All rights reserved.</p>
+    <p>© 2026 CleanInbox. All rights reserved.</p>
   </div>
 </body>
 </html>
@@ -326,7 +326,7 @@ export async function sendPasswordChangedEmail(to: string, firstName: string): P
 
   <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 12px;">
     <p>CleanInbox - Taking control of your inbox</p>
-    <p>© 2024 CleanInbox. All rights reserved.</p>
+    <p>© 2026 CleanInbox. All rights reserved.</p>
   </div>
 </body>
 </html>
