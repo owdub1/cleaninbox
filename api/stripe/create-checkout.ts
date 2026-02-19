@@ -3,7 +3,7 @@
  *
  * POST /api/stripe/create-checkout
  *
- * Creates a Stripe Checkout Session for the Pro plan and returns the URL
+ * Creates a Stripe Checkout Session for the selected plan and returns the URL
  * for the frontend to redirect the user to.
  */
 
@@ -17,6 +17,15 @@ interface JWTPayload {
   userId: string;
   email: string;
 }
+
+// Price mapping in cents (CAD)
+const PLAN_PRICES: Record<string, { monthly: number; annual: number }> = {
+  basic:     { monthly: 799,  annual: 7668  }, // $7.99/mo or $6.39/mo * 12
+  pro:       { monthly: 1499, annual: 14388 }, // $14.99/mo or $11.99/mo * 12
+  unlimited: { monthly: 2499, annual: 23988 }, // $24.99/mo or $19.99/mo * 12
+};
+
+const ONETIME_PRICE = 1999; // $19.99 one-time
 
 export default async function handler(
   req: VercelRequest,
@@ -45,7 +54,46 @@ export default async function handler(
 
     const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
 
-    // Use inline price_data instead of a price ID to avoid API version mismatches
+    const { plan = 'pro', billing = 'monthly' } = req.body || {};
+
+    // Validate plan
+    if (plan === 'onetime') {
+      // One-time payment for Quick Clean
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        customer_email: decoded.email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'cad',
+              product: 'prod_U01gpSRLbAMbUc',
+              unit_amount: ONETIME_PRICE,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          user_id: decoded.userId,
+          plan: 'onetime',
+          billing: 'onetime',
+        },
+        success_url: `${frontendUrl}/dashboard?upgraded=true`,
+        cancel_url: `${frontendUrl}/pricing`,
+      });
+
+      return res.status(200).json({ url: session.url });
+    }
+
+    // Subscription plans
+    const planPrices = PLAN_PRICES[plan];
+    if (!planPrices) {
+      return res.status(400).json({ error: `Invalid plan: ${plan}` });
+    }
+
+    const isAnnual = billing === 'annual';
+    const interval: 'month' | 'year' = isAnnual ? 'year' : 'month';
+    const unitAmount = isAnnual ? planPrices.annual : planPrices.monthly;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer_email: decoded.email,
@@ -55,19 +103,23 @@ export default async function handler(
             currency: 'cad',
             product: 'prod_U01gpSRLbAMbUc',
             recurring: {
-              interval: 'month',
+              interval,
             },
-            unit_amount: 1999, // $19.99 in cents
+            unit_amount: unitAmount,
           },
           quantity: 1,
         },
       ],
       metadata: {
         user_id: decoded.userId,
+        plan,
+        billing,
       },
       subscription_data: {
         metadata: {
           user_id: decoded.userId,
+          plan,
+          billing,
         },
       },
       success_url: `${frontendUrl}/dashboard?upgraded=true`,

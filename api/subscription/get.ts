@@ -36,10 +36,10 @@ export const PLAN_LIMITS = {
   basic: {
     name: 'Basic',
     emailLimit: 2,
-    emailProcessingLimit: 1000,
+    emailProcessingLimit: 5000,
     syncIntervalMinutes: 240, // 4 hours - 6 syncs per day
     features: [
-      'Import up to 1,000 emails total',
+      'Import up to 5,000 emails total',
       'Connect up to 2 email accounts',
       'Sync every 4 hours',
       'Standard unsubscribe speed',
@@ -50,10 +50,10 @@ export const PLAN_LIMITS = {
   pro: {
     name: 'Pro',
     emailLimit: 3,
-    emailProcessingLimit: 5000,
+    emailProcessingLimit: 15000,
     syncIntervalMinutes: 60, // 1 hour - 24 syncs per day
     features: [
-      'Import up to 5,000 emails total',
+      'Import up to 15,000 emails total',
       'Connect up to 3 email accounts',
       'Sync every hour',
       'Faster unsubscribe speed',
@@ -77,6 +77,20 @@ export const PLAN_LIMITS = {
       'Scheduled cleanup',
       'Custom domain support',
       'Email cleanup service (since account creation)'
+    ]
+  },
+  onetime: {
+    name: 'Quick Clean',
+    emailLimit: 1,
+    emailProcessingLimit: 3000,
+    syncIntervalMinutes: 60,
+    features: [
+      'Process up to 3,000 emails',
+      'Connect 1 email account',
+      'Standard unsubscribe speed',
+      'One-time payment',
+      'Basic analytics',
+      'Valid for 30 days'
     ]
   }
 };

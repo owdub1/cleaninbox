@@ -650,9 +650,9 @@ const Dashboard = () => {
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {[
-                          { id: 'basic', name: 'Basic', price: '$9.99/month' },
-                          { id: 'pro', name: 'Pro', price: '$19.99/month' },
-                          { id: 'unlimited', name: 'Unlimited', price: '$39.99/month' }
+                          { id: 'basic', name: 'Basic', price: '$7.99/month' },
+                          { id: 'pro', name: 'Pro', price: '$14.99/month' },
+                          { id: 'unlimited', name: 'Unlimited', price: '$24.99/month' }
                         ].map((plan) => {
                           const isCurrent = subscription.plan.toLowerCase() === plan.id;
                           const isUpgrade = !isCurrent && (

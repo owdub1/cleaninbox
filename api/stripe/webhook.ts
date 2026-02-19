@@ -86,6 +86,21 @@ export default async function handler(
   }
 }
 
+// Plan details for webhook processing
+const PLAN_DETAILS: Record<string, { price: number; emailLimit: number; period: string }> = {
+  basic:     { price: 7.99,  emailLimit: 2, period: 'monthly' },
+  pro:       { price: 14.99, emailLimit: 3, period: 'monthly' },
+  unlimited: { price: 24.99, emailLimit: 5, period: 'monthly' },
+  onetime:   { price: 19.99, emailLimit: 1, period: 'onetime' },
+};
+
+// Annual prices (per month display price)
+const ANNUAL_PRICES: Record<string, number> = {
+  basic: 6.39,
+  pro: 11.99,
+  unlimited: 19.99,
+};
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.user_id;
   if (!userId) {
@@ -93,8 +108,58 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  const subscriptionId = session.subscription as string;
+  const plan = session.metadata?.plan || 'pro';
+  const billing = session.metadata?.billing || 'monthly';
   const customerId = session.customer as string;
+
+  const planInfo = PLAN_DETAILS[plan] || PLAN_DETAILS.pro;
+  const isAnnual = billing === 'annual';
+  const price = isAnnual ? (ANNUAL_PRICES[plan] || planInfo.price) : planInfo.price;
+  const period = plan === 'onetime' ? 'onetime' : (isAnnual ? 'annual' : 'monthly');
+
+  if (plan === 'onetime') {
+    // One-time payment: no Stripe subscription, 30-day access
+    const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { error } = await supabase
+      .from('subscriptions')
+      .upsert({
+        user_id: userId,
+        plan: 'onetime',
+        status: 'active',
+        price: planInfo.price,
+        period: 'onetime',
+        email_limit: planInfo.emailLimit,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: null,
+        next_billing_date: periodEnd,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id',
+      });
+
+    if (error) {
+      console.error('Error upserting onetime subscription:', error);
+      throw error;
+    }
+
+    await supabase
+      .from('activity_log')
+      .insert({
+        user_id: userId,
+        action_type: 'subscription_change',
+        description: 'Purchased Quick Clean (one-time)',
+        metadata: {
+          plan: 'onetime',
+          stripe_customer_id: customerId,
+        },
+      });
+
+    return;
+  }
+
+  // Subscription plans
+  const subscriptionId = session.subscription as string;
 
   // Fetch the subscription from Stripe to get period details
   const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
@@ -116,11 +181,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     .from('subscriptions')
     .upsert({
       user_id: userId,
-      plan: 'pro',
+      plan,
       status: 'active',
-      price: 19.99,
-      period: 'monthly',
-      email_limit: 3,
+      price,
+      period,
+      email_limit: planInfo.emailLimit,
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
       next_billing_date: currentPeriodEnd,
@@ -135,14 +200,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   // Log activity
+  const planName = plan.charAt(0).toUpperCase() + plan.slice(1);
   await supabase
     .from('activity_log')
     .insert({
       user_id: userId,
       action_type: 'subscription_change',
-      description: 'Upgraded to Pro plan',
+      description: `Upgraded to ${planName} plan${isAnnual ? ' (annual)' : ''}`,
       metadata: {
-        plan: 'pro',
+        plan,
+        billing,
         stripe_customer_id: customerId,
         stripe_subscription_id: subscriptionId,
       },
@@ -276,13 +343,29 @@ async function updateSubscriptionStatus(userId: string, subscription: Stripe.Sub
     currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   }
 
+  // Read plan from Stripe subscription metadata if available
+  const plan = subscription.metadata?.plan;
+  const billing = subscription.metadata?.billing;
+
+  const updateData: Record<string, any> = {
+    status,
+    next_billing_date: currentPeriodEnd,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Update plan details if metadata is present
+  if (plan && PLAN_DETAILS[plan]) {
+    const planInfo = PLAN_DETAILS[plan];
+    const isAnnual = billing === 'annual';
+    updateData.plan = plan;
+    updateData.price = isAnnual ? (ANNUAL_PRICES[plan] || planInfo.price) : planInfo.price;
+    updateData.period = isAnnual ? 'annual' : 'monthly';
+    updateData.email_limit = planInfo.emailLimit;
+  }
+
   const { error } = await supabase
     .from('subscriptions')
-    .update({
-      status,
-      next_billing_date: currentPeriodEnd,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('user_id', userId);
 
   if (error) {

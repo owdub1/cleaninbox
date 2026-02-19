@@ -25,7 +25,7 @@ const Checkout = () => {
     const billing = params.get('billing') || 'monthly';
 
     if (planId === 'onetime') {
-      const basePrice = 25;
+      const basePrice = 19.99;
       const finalPrice = `$${basePrice.toFixed(2)}`;
       setSelectedPlan({
         name: 'Quick Clean',
@@ -36,11 +36,11 @@ const Checkout = () => {
       return;
     }
 
-    let basePrice = '19.99';
+    let basePrice = '14.99';
     if (planId === 'basic') {
-      basePrice = '9.99';
+      basePrice = '7.99';
     } else if (planId === 'unlimited') {
-      basePrice = '39.99';
+      basePrice = '24.99';
     }
 
     const finalPrice = billing === 'annual' ? `$${(parseFloat(basePrice) * 0.8).toFixed(2)}` : `$${basePrice}`;
@@ -96,13 +96,21 @@ const Checkout = () => {
     setError('');
 
     try {
+      const params = new URLSearchParams(location.search);
+      const planId = params.get('plan') || 'pro';
+      const billingParam = params.get('billing') || 'monthly';
+
       const response = await fetch(`${API_URL}/api/stripe/create-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify({
+          plan: planId,
+          billing: billingParam,
+        })
       });
 
       const data = await response.json();

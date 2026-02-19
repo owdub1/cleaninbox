@@ -9,23 +9,23 @@ const Pricing = () => {
   const plans = [{
     name: 'Basic',
     description: 'For individuals with light email usage',
-    price: billingCycle === 'monthly' ? '$9.99' : '$7.99',
-    features: ['Import up to 1,000 emails total', 'Connect up to 2 email accounts', 'One-click unsubscribe', 'Email support', 'Sender statistics and email counts'],
+    price: billingCycle === 'monthly' ? '$7.99' : '$6.39',
+    features: ['Import up to 5,000 emails total', 'Connect up to 2 email accounts', 'One-click unsubscribe', 'Email support', 'Sender statistics and email counts'],
     notIncluded: [],
     popular: false,
     gradient: 'from-blue-500 to-cyan-500'
   }, {
     name: 'Pro',
     description: 'For professionals with moderate email volume',
-    price: billingCycle === 'monthly' ? '$19.99' : '$15.99',
-    features: ['Import up to 5,000 emails total', 'Connect up to 3 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
+    price: billingCycle === 'monthly' ? '$14.99' : '$11.99',
+    features: ['Import up to 15,000 emails total', 'Connect up to 3 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
     notIncluded: [],
     popular: true,
     gradient: 'from-orange-500 to-red-600'
   }, {
     name: 'Unlimited',
     description: 'For businesses with high email volume',
-    price: billingCycle === 'monthly' ? '$39.99' : '$31.99',
+    price: billingCycle === 'monthly' ? '$24.99' : '$19.99',
     features: ['Unlimited email importing', 'Connect up to 5 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
     notIncluded: [],
     popular: false,
@@ -35,7 +35,7 @@ const Pricing = () => {
   const quickClean = {
     name: 'Quick Clean',
     description: 'One-time cleanup service',
-    price: '$25.00',
+    price: '$19.99',
     features: ['Process up to 3,000 emails', 'Connect 1 email account', 'Standard unsubscribe speed', 'One-time payment', 'Basic analytics', 'Valid for 30 days'],
     cta: 'Buy Now'
   };
