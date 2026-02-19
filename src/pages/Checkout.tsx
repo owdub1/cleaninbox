@@ -9,7 +9,7 @@ const Checkout = () => {
   const { token } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState({
     name: 'Pro',
-    price: '$19.99',
+    price: '$14.99',
     billing: 'monthly'
   });
   const [discountCode, setDiscountCode] = useState('');

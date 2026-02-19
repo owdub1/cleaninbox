@@ -319,8 +319,8 @@ const Dashboard = () => {
         <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center max-w-md animate-in">
           <CheckCircleIcon className="h-6 w-6 mr-3 flex-shrink-0" />
           <div>
-            <p className="font-medium">Welcome to Pro!</p>
-            <p className="text-sm text-green-100">Your subscription is now active. Enjoy unlimited features!</p>
+            <p className="font-medium">Subscription Activated!</p>
+            <p className="text-sm text-green-100">Your subscription is now active. Enjoy your new plan!</p>
           </div>
           <button onClick={() => setShowUpgradeSuccess(false)} className="ml-4 text-green-200 hover:text-white">
             <XIcon className="h-5 w-5" />

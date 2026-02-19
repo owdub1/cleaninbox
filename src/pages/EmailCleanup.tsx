@@ -160,7 +160,7 @@ const UpgradeModal = ({ isOpen, onClose, onUpgrade }: { isOpen: boolean; onClose
           </p>
 
           <div className="bg-indigo-50 dark:bg-indigo-950 rounded-xl p-4 mb-6">
-            <p className="text-indigo-900 dark:text-indigo-200 font-semibold mb-2">Pro Plan - $19.99/month</p>
+            <p className="text-indigo-900 dark:text-indigo-200 font-semibold mb-2">Pro Plan - $14.99/month</p>
             <ul className="text-sm text-indigo-700 dark:text-indigo-400 space-y-1">
               <li className="flex items-center justify-center">
                 <Check className="w-4 h-4 mr-2" /> Unlimited cleanup
