@@ -63,7 +63,7 @@ const cleanupTools = [
   },
   {
     id: 'archive',
-    title: 'Delete Old Emails',
+    title: 'Bulk Delete Old Emails',
     description: 'Delete emails older than 30/60/90 days.',
     icon: Trash2,
     color: 'from-blue-400 to-indigo-400',
@@ -695,9 +695,15 @@ const EmailCleanup = () => {
     }
     setSelectedTool(toolId);
     setCurrentView('cleanup');
-    // Default all tools to sort by last email date (newest first)
-    setSortBy('date');
-    setSortDirection('desc');
+    if (toolId === 'archive') {
+      // Bulk Delete Old Emails: sort by oldest first, then most emails
+      setSortBy('date');
+      setSortDirection('asc');
+    } else {
+      // Default all other tools to sort by last email date (newest first)
+      setSortBy('date');
+      setSortDirection('desc');
+    }
   };
 
   const handleBackToTools = () => {
@@ -1147,9 +1153,12 @@ const EmailCleanup = () => {
           ? a.name.localeCompare(b.name)
           : b.name.localeCompare(a.name);
       } else if (effectiveSortBy === 'date') {
-        return effectiveDirection === 'asc'
+        const dateCompare = effectiveDirection === 'asc'
           ? new Date(a.lastEmailDate).getTime() - new Date(b.lastEmailDate).getTime()
           : new Date(b.lastEmailDate).getTime() - new Date(a.lastEmailDate).getTime();
+        // Secondary sort: most emails first (for Bulk Delete Old Emails)
+        if (dateCompare === 0) return b.emailCount - a.emailCount;
+        return dateCompare;
       } else {
         return effectiveDirection === 'asc' ? a.emailCount - b.emailCount : b.emailCount - a.emailCount;
       }
@@ -1598,7 +1607,7 @@ const EmailCleanup = () => {
                     <Trash2 className="w-6 h-6 text-white" />
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Delete old emails to keep your inbox clean.
+                    Bulk delete old emails to keep your inbox clean.
                   </p>
                 </div>
               </div>
