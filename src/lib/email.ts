@@ -37,7 +37,7 @@ interface AccountLockedEmailOptions {
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <support@cleaninbox.ca>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <noreply@cleaninbox.ca>';
 
 /**
  * Send email using Resend API
