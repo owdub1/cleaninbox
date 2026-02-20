@@ -99,8 +99,15 @@ export default async function handler(
     const planLimits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
     const syncIntervalMinutes = planLimits.syncIntervalMinutes;
 
-    // Check if enough time has passed since last sync
-    if (syncIntervalMinutes > 0 && account.last_synced) {
+    // Skip sync interval if user upgraded and previous sync was capped by a lower plan
+    const previousPlanCaps = [100, 1000, 5000]; // free, basic, pro limits
+    const totalEmails = account.total_emails || 0;
+    const wasLimitedByPreviousPlan = totalEmails > 0 &&
+      totalEmails < planLimits.emailProcessingLimit &&
+      previousPlanCaps.includes(totalEmails);
+
+    // Check if enough time has passed since last sync (skip if user just upgraded)
+    if (syncIntervalMinutes > 0 && account.last_synced && !wasLimitedByPreviousPlan) {
       const lastSyncTime = new Date(account.last_synced).getTime();
       const now = Date.now();
       const minutesSinceLastSync = (now - lastSyncTime) / (1000 * 60);
@@ -215,12 +222,7 @@ export default async function handler(
     const isFirstSync = !account.last_synced;
     const isStaleSync = account.last_synced &&
       (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
-    // Auto full sync if user upgraded and previous sync was capped by a lower plan limit
-    const previousPlanCaps = [100, 1000, 5000]; // free, basic, pro limits
-    const totalEmails = account.total_emails || 0;
-    const wasLimitedByPreviousPlan = totalEmails > 0 &&
-      totalEmails < planLimits.emailProcessingLimit &&
-      previousPlanCaps.includes(totalEmails);
+    // wasLimitedByPreviousPlan is computed above (before sync interval check)
     const isFullSync = isFirstSync || isStaleSync || fullSync || wasLimitedByPreviousPlan;
 
     const userEmail = (account.gmail_email || email).toLowerCase();
