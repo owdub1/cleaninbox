@@ -41,7 +41,7 @@ const supabase = createClient(
 
 const limiter = rateLimit({
   windowMs: 60 * 1000,
-  maxRequests: 10,
+  maxRequests: 30,
   message: 'Too many sync requests. Please wait before syncing again.'
 });
 
