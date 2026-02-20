@@ -67,29 +67,6 @@ export default async function handler(
       allInvoices.push(...invoices.data);
     }
 
-    // Also fetch one-time payments (checkout sessions with mode=payment)
-    for (const customer of customers.data) {
-      const charges = await stripe.charges.list({
-        customer: customer.id,
-        limit: 50,
-      });
-      // Add charges that aren't tied to an invoice (one-time payments)
-      for (const charge of charges.data) {
-        if (!(charge as any).invoice && charge.paid) {
-          allInvoices.push({
-            id: charge.id,
-            number: null,
-            amount_paid: charge.amount,
-            currency: charge.currency,
-            status: 'paid',
-            created: charge.created,
-            invoice_pdf: charge.receipt_url,
-            hosted_invoice_url: charge.receipt_url,
-          } as any);
-        }
-      }
-    }
-
     // Sort by date, newest first
     allInvoices.sort((a, b) => b.created - a.created);
 
