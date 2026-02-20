@@ -47,23 +47,53 @@ export default async function handler(
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
-    // Get the user's stripe_customer_id from subscriptions table
-    const { data: subscription, error: fetchError } = await supabase
-      .from('subscriptions')
-      .select('stripe_customer_id')
-      .eq('user_id', decoded.userId)
-      .single();
+    // Find all Stripe customers for this email to get complete payment history
+    const customers = await stripe.customers.list({
+      email: decoded.email,
+      limit: 10,
+    });
 
-    if (fetchError || !subscription?.stripe_customer_id) {
+    if (customers.data.length === 0) {
       return res.status(200).json({ invoices: [] });
     }
 
-    const invoices = await stripe.invoices.list({
-      customer: subscription.stripe_customer_id,
-      limit: 50,
-    });
+    // Fetch invoices from all customer records
+    const allInvoices: Stripe.Invoice[] = [];
+    for (const customer of customers.data) {
+      const invoices = await stripe.invoices.list({
+        customer: customer.id,
+        limit: 50,
+      });
+      allInvoices.push(...invoices.data);
+    }
 
-    const mapped = invoices.data.map((inv) => ({
+    // Also fetch one-time payments (checkout sessions with mode=payment)
+    for (const customer of customers.data) {
+      const charges = await stripe.charges.list({
+        customer: customer.id,
+        limit: 50,
+      });
+      // Add charges that aren't tied to an invoice (one-time payments)
+      for (const charge of charges.data) {
+        if (!charge.invoice && charge.paid) {
+          allInvoices.push({
+            id: charge.id,
+            number: null,
+            amount_paid: charge.amount,
+            currency: charge.currency,
+            status: 'paid',
+            created: charge.created,
+            invoice_pdf: charge.receipt_url,
+            hosted_invoice_url: charge.receipt_url,
+          } as any);
+        }
+      }
+    }
+
+    // Sort by date, newest first
+    allInvoices.sort((a, b) => b.created - a.created);
+
+    const mapped = allInvoices.map((inv) => ({
       id: inv.id,
       number: inv.number,
       amount_paid: inv.amount_paid,
