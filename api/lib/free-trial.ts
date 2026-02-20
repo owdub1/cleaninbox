@@ -62,13 +62,22 @@ export async function isUserPaid(
 ): Promise<boolean> {
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('plan, status')
+    .select('plan, status, next_billing_date, stripe_subscription_id')
     .eq('user_id', userId)
     .single();
 
-  return !!subscription &&
-    subscription.plan.toLowerCase() !== 'free' &&
-    (subscription.status === 'active' || subscription.status === 'trialing');
+  if (!subscription) return false;
+  if (subscription.plan.toLowerCase() === 'free') return false;
+  if (subscription.status !== 'active' && subscription.status !== 'trialing') return false;
+
+  // For plans without a Stripe subscription (e.g. onetime), check if expired
+  if (!subscription.stripe_subscription_id && subscription.next_billing_date) {
+    if (new Date(subscription.next_billing_date) < new Date()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -88,13 +97,20 @@ export async function checkFreeTrialOrPaid(
   // Check subscription status
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('plan, status')
+    .select('plan, status, next_billing_date, stripe_subscription_id')
     .eq('user_id', userId)
     .single();
 
-  const isPaid = !!subscription &&
+  let isPaid = !!subscription &&
     subscription.plan.toLowerCase() !== 'free' &&
     (subscription.status === 'active' || subscription.status === 'trialing');
+
+  // For plans without a Stripe subscription (e.g. onetime), check if expired
+  if (isPaid && subscription && !subscription.stripe_subscription_id && subscription.next_billing_date) {
+    if (new Date(subscription.next_billing_date) < new Date()) {
+      isPaid = false;
+    }
+  }
 
   if (isPaid) {
     return { isPaid: true, allowed: true, remaining: -1 };

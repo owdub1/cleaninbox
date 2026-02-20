@@ -5,13 +5,22 @@
  *
  * Creates a Stripe Checkout Session for the selected plan and returns the URL
  * for the frontend to redirect the user to.
+ *
+ * If the user already has an active Stripe subscription, it updates the
+ * existing subscription (upgrade/downgrade) instead of creating a new checkout.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 interface JWTPayload {
   userId: string;
@@ -94,9 +103,95 @@ export default async function handler(
     const interval: 'month' | 'year' = isAnnual ? 'year' : 'month';
     const unitAmount = isAnnual ? planPrices.annual : planPrices.monthly;
 
-    const session = await stripe.checkout.sessions.create({
+    // Check if user already has an active Stripe subscription
+    const { data: existingSub } = await supabase
+      .from('subscriptions')
+      .select('stripe_subscription_id, stripe_customer_id, plan, status')
+      .eq('user_id', decoded.userId)
+      .single();
+
+    if (existingSub?.stripe_subscription_id && existingSub.status === 'active') {
+      // User has an active Stripe subscription — update it instead of creating new checkout
+      const stripeSubscription = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
+
+      if (stripeSubscription.status === 'active' || stripeSubscription.status === 'trialing') {
+        // Get the current subscription item to replace
+        const currentItem = stripeSubscription.items.data[0];
+
+        // Create a new price for the target plan
+        const newPrice = await stripe.prices.create({
+          currency: 'cad',
+          product: 'prod_U01gpSRLbAMbUc',
+          recurring: { interval },
+          unit_amount: unitAmount,
+        });
+
+        // Update the subscription with the new price
+        const updatedSubscription = await stripe.subscriptions.update(
+          existingSub.stripe_subscription_id,
+          {
+            items: [
+              {
+                id: currentItem.id,
+                price: newPrice.id,
+              },
+            ],
+            metadata: {
+              user_id: decoded.userId,
+              plan,
+              billing,
+            },
+            proration_behavior: 'create_prorations',
+          }
+        );
+
+        // Update the DB immediately (webhook will also fire, but this gives instant feedback)
+        const periodEnd = (updatedSubscription as any).current_period_end;
+        let currentPeriodEnd: string;
+        if (typeof periodEnd === 'number') {
+          currentPeriodEnd = new Date(periodEnd * 1000).toISOString();
+        } else if (typeof periodEnd === 'string') {
+          currentPeriodEnd = periodEnd;
+        } else {
+          currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+
+        const PLAN_DETAILS: Record<string, { price: number; emailLimit: number }> = {
+          basic:     { price: 7.99,  emailLimit: 2 },
+          pro:       { price: 14.99, emailLimit: 3 },
+          unlimited: { price: 24.99, emailLimit: 5 },
+        };
+        const ANNUAL_PRICES: Record<string, number> = {
+          basic: 6.39, pro: 11.99, unlimited: 19.99,
+        };
+
+        const planInfo = PLAN_DETAILS[plan] || PLAN_DETAILS.pro;
+        const displayPrice = isAnnual ? (ANNUAL_PRICES[plan] || planInfo.price) : planInfo.price;
+
+        await supabase
+          .from('subscriptions')
+          .update({
+            plan,
+            price: displayPrice,
+            period: isAnnual ? 'annual' : 'monthly',
+            email_limit: planInfo.emailLimit,
+            next_billing_date: currentPeriodEnd,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', decoded.userId);
+
+        return res.status(200).json({
+          updated: true,
+          plan,
+          billing,
+          message: `Subscription updated to ${plan} (${billing})`,
+        });
+      }
+    }
+
+    // No active Stripe subscription — create a new checkout session
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
-      customer_email: decoded.email,
       line_items: [
         {
           price_data: {
@@ -124,7 +219,16 @@ export default async function handler(
       },
       success_url: `${frontendUrl}/dashboard?upgraded=true`,
       cancel_url: `${frontendUrl}/pricing`,
-    });
+    };
+
+    // Use existing Stripe customer if available, otherwise use email
+    if (existingSub?.stripe_customer_id) {
+      sessionParams.customer = existingSub.stripe_customer_id;
+    } else {
+      sessionParams.customer_email = decoded.email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return res.status(200).json({ url: session.url });
   } catch (error: any) {

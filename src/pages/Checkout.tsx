@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LockIcon, CheckCircleIcon, ChevronRightIcon, CreditCardIcon, TagIcon, ZapIcon, LoaderIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/api';
 
 const Checkout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { token } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState({
     name: 'Pro',
@@ -117,6 +118,12 @@ const Checkout = () => {
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      // If subscription was updated in-place (upgrade/downgrade), redirect to dashboard
+      if (data.updated) {
+        navigate('/dashboard?upgraded=true');
+        return;
       }
 
       // Redirect to Stripe Checkout

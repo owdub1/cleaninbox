@@ -11,7 +11,7 @@ import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading, refetch: refetchDashboard } = useDashboardData();
   const { addEmailAccount, removeEmailAccount } = useEmailAccounts();
-  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled } = useSubscription();
+  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled, isExpired, isExpiring } = useSubscription();
   const { activities, loading: activityLoading, formatRelativeTime } = useActivity(5);
   const [activeTab, setActiveTab] = useState('overview');
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -341,8 +341,58 @@ const Dashboard = () => {
         </div>
       </section>
 
+      {/* Quick Clean Expiring Warning Banner */}
+      {isExpiring && subscription.daysUntilExpiry && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 dark:from-amber-900/20 dark:to-orange-900/20 dark:border-amber-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start">
+                <AlertCircleIcon className="w-6 h-6 text-amber-600 mr-3 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Quick Clean Expiring Soon</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Your Quick Clean access expires in {subscription.daysUntilExpiry} day{subscription.daysUntilExpiry === 1 ? '' : 's'}. Make sure to finish your cleanup!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/pricing')}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-2 rounded-md font-medium hover:from-amber-600 hover:to-orange-600 transition-colors whitespace-nowrap"
+              >
+                Upgrade to Subscription
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expired Plan Banner */}
+      {isExpired && subscription.expiredPlan && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-200 dark:from-red-900/20 dark:to-orange-900/20 dark:border-red-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start">
+                <AlertCircleIcon className="w-6 h-6 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Your plan has expired</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Your {subscription.expiredPlan === 'onetime' ? 'Quick Clean' : subscription.expiredPlan} plan has expired. Subscribe to continue using premium features.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/pricing')}
+                className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-2 rounded-md font-medium hover:from-red-600 hover:to-orange-600 transition-colors whitespace-nowrap"
+              >
+                Resubscribe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Friendly Upgrade Banner for Free Users */}
-      {isFreeUser && (
+      {isFreeUser && !isExpired && (
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

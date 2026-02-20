@@ -173,6 +173,66 @@ export default async function handler(
       });
     }
 
+    // Check if subscription has expired
+    const now = new Date();
+    const nextBillingDate = subscription.next_billing_date ? new Date(subscription.next_billing_date) : null;
+    let effectiveStatus = subscription.status;
+    let isExpired = false;
+
+    if (nextBillingDate && nextBillingDate < now) {
+      // One-time plans: expire when next_billing_date passes
+      if (subscription.plan === 'onetime') {
+        isExpired = true;
+      }
+      // Cancelled subscriptions: expire when period ends
+      else if (subscription.status === 'cancelled') {
+        isExpired = true;
+      }
+      // Active subscriptions WITH Stripe: trust Stripe for renewal
+      // (don't expire locally — Stripe manages the lifecycle)
+    }
+
+    if (isExpired) {
+      // Update status to expired in DB
+      effectiveStatus = 'expired';
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'expired',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', decoded.userId);
+
+      // Return free plan limits
+      const freePlan = PLAN_LIMITS.free;
+      return res.status(200).json({
+        subscription: {
+          plan: 'free',
+          planName: freePlan.name,
+          status: 'expired',
+          price: 0,
+          period: 'monthly',
+          emailLimit: freePlan.emailLimit,
+          emailProcessingLimit: freePlan.emailProcessingLimit,
+          syncIntervalMinutes: freePlan.syncIntervalMinutes,
+          features: freePlan.features,
+          nextBillingDate: null,
+          expiredPlan: subscription.plan,
+        }
+      });
+    }
+
+    // Check if Quick Clean is expiring within 3 days
+    let expiringWarning = false;
+    let daysUntilExpiry: number | null = null;
+    if (subscription.plan === 'onetime' && nextBillingDate && subscription.status === 'active') {
+      const msUntilExpiry = nextBillingDate.getTime() - now.getTime();
+      daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
+      if (daysUntilExpiry <= 3 && daysUntilExpiry > 0) {
+        expiringWarning = true;
+      }
+    }
+
     // Get plan limits
     const planKey = subscription.plan.toLowerCase() as keyof typeof PLAN_LIMITS;
     const planLimits = PLAN_LIMITS[planKey] || PLAN_LIMITS.free;
@@ -188,7 +248,8 @@ export default async function handler(
         emailProcessingLimit: planLimits.emailProcessingLimit,
         syncIntervalMinutes: planLimits.syncIntervalMinutes,
         features: planLimits.features,
-        nextBillingDate: subscription.next_billing_date
+        nextBillingDate: subscription.next_billing_date,
+        ...(expiringWarning && { expiringWarning: true, daysUntilExpiry }),
       }
     });
 

@@ -11,6 +11,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import {
+  sendSubscriptionConfirmedEmail,
+  sendSubscriptionCancelledEmail,
+  sendPaymentFailedEmail,
+} from '../lib/email.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -49,6 +54,20 @@ export default async function handler(
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         await handleCheckoutCompleted(session);
+
+        // Send confirmation email
+        const checkoutEmail = session.customer_email || session.customer_details?.email;
+        const checkoutPlan = session.metadata?.plan || 'pro';
+        if (checkoutEmail) {
+          const planNames: Record<string, string> = {
+            basic: 'Basic', pro: 'Pro', unlimited: 'Unlimited', onetime: 'Quick Clean',
+          };
+          await sendSubscriptionConfirmedEmail(
+            checkoutEmail,
+            planNames[checkoutPlan] || 'Pro',
+            checkoutPlan === 'onetime'
+          ).catch(err => console.error('Failed to send confirmation email:', err));
+        }
         break;
       }
 
@@ -61,12 +80,51 @@ export default async function handler(
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         await handleSubscriptionDeleted(subscription);
+
+        // Send cancellation email
+        const deletedUserId = subscription.metadata?.user_id || await getUserIdBySubscription(subscription.id);
+        if (deletedUserId) {
+          const { data: deletedUser } = await supabase
+            .from('users')
+            .select('email')
+            .eq('id', deletedUserId)
+            .single();
+          if (deletedUser?.email) {
+            const periodEnd = (subscription as any).current_period_end;
+            const accessUntil = typeof periodEnd === 'number'
+              ? new Date(periodEnd * 1000).toISOString()
+              : typeof periodEnd === 'string' ? periodEnd : null;
+            await sendSubscriptionCancelledEmail(deletedUser.email, accessUntil)
+              .catch(err => console.error('Failed to send cancellation email:', err));
+          }
+        }
         break;
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         await handlePaymentFailed(invoice);
+
+        // Send payment failed email
+        const failedSubId = (invoice as any).subscription as string;
+        if (failedSubId) {
+          const { data: failedSub } = await supabase
+            .from('subscriptions')
+            .select('user_id')
+            .eq('stripe_subscription_id', failedSubId)
+            .single();
+          if (failedSub?.user_id) {
+            const { data: failedUser } = await supabase
+              .from('users')
+              .select('email')
+              .eq('id', failedSub.user_id)
+              .single();
+            if (failedUser?.email) {
+              await sendPaymentFailedEmail(failedUser.email)
+                .catch(err => console.error('Failed to send payment failed email:', err));
+            }
+          }
+        }
         break;
       }
 
@@ -321,6 +379,15 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
         invoice_id: invoice.id,
       },
     });
+}
+
+async function getUserIdBySubscription(stripeSubscriptionId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('stripe_subscription_id', stripeSubscriptionId)
+    .single();
+  return data?.user_id || null;
 }
 
 async function updateSubscriptionStatus(userId: string, subscription: Stripe.Subscription) {

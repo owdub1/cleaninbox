@@ -12,6 +12,9 @@ export interface Subscription {
   syncIntervalMinutes: number;
   features: string[];
   nextBillingDate: string | null;
+  expiringWarning?: boolean;
+  daysUntilExpiry?: number;
+  expiredPlan?: string;
 }
 
 const DEFAULT_FREE_SUBSCRIPTION: Subscription = {
@@ -127,6 +130,8 @@ export function useSubscription() {
     isPro: subscription.plan.toLowerCase() === 'pro',
     isUnlimited: subscription.plan.toLowerCase() === 'unlimited',
     isPaid: subscription.plan.toLowerCase() !== 'free',
-    isCancelled: subscription.status === 'cancelled'
+    isCancelled: subscription.status === 'cancelled',
+    isExpired: subscription.status === 'expired',
+    isExpiring: !!subscription.expiringWarning,
   };
 }
