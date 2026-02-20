@@ -47,21 +47,38 @@ export default async function handler(
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
-    // Find all Stripe customers for this email to get complete payment history
+    // Collect all Stripe customer IDs for this user
+    const customerIds = new Set<string>();
+
+    // 1. Look up by stripe_customer_id in subscriptions table
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', decoded.userId)
+      .single();
+
+    if (subscription?.stripe_customer_id) {
+      customerIds.add(subscription.stripe_customer_id);
+    }
+
+    // 2. Also look up all Stripe customers by email for historical payments
     const customers = await stripe.customers.list({
       email: decoded.email,
       limit: 10,
     });
+    for (const customer of customers.data) {
+      customerIds.add(customer.id);
+    }
 
-    if (customers.data.length === 0) {
+    if (customerIds.size === 0) {
       return res.status(200).json({ invoices: [] });
     }
 
     // Fetch invoices from all customer records
     const allInvoices: Stripe.Invoice[] = [];
-    for (const customer of customers.data) {
+    for (const customerId of customerIds) {
       const invoices = await stripe.invoices.list({
-        customer: customer.id,
+        customer: customerId,
         limit: 50,
       });
       allInvoices.push(...invoices.data);
