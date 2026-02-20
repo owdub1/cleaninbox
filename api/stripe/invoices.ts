@@ -53,7 +53,7 @@ export default async function handler(
     // 1. Look up by stripe_customer_id in subscriptions table
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('stripe_customer_id')
+      .select('*')
       .eq('user_id', decoded.userId)
       .single();
 
@@ -74,8 +74,8 @@ export default async function handler(
     const debug = {
       email: decoded.email,
       userId: decoded.userId,
-      stripeCustomerIdFromDb: subscription?.stripe_customer_id || null,
-      stripeCustomersByEmail: customers.data.map(c => c.id),
+      subscriptionRecord: subscription,
+      stripeCustomersByEmail: customers.data.map(c => ({ id: c.id, email: c.email })),
       totalCustomerIds: customerIds.size,
       customerIdsList: Array.from(customerIds),
     };
