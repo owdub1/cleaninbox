@@ -28,7 +28,6 @@ const Dashboard = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesFetched, setInvoicesFetched] = useState(false);
-  const [viewInvoiceUrl, setViewInvoiceUrl] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Update connectedEmails when dbEmailAccounts changes
@@ -739,12 +738,14 @@ const Dashboard = () => {
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-right space-x-3">
                                   {invoice.hosted_invoice_url && (
-                                    <button
-                                      onClick={() => setViewInvoiceUrl(invoice.hosted_invoice_url)}
+                                    <a
+                                      href={invoice.hosted_invoice_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
                                       className="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
                                     >
                                       View
-                                    </button>
+                                    </a>
                                   )}
                                   {invoice.invoice_pdf && (
                                     <a
@@ -898,39 +899,6 @@ const Dashboard = () => {
           </div>
         </div>
       </section>
-      {/* Invoice Viewer Modal */}
-      {viewInvoiceUrl && (
-        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setViewInvoiceUrl(null)}></div>
-          <div className="relative bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl mx-4 shadow-xl" style={{ height: '85vh' }}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Invoice</h3>
-              <div className="flex items-center space-x-3">
-                <a
-                  href={viewInvoiceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
-                >
-                  Open in new tab
-                </a>
-                <button
-                  onClick={() => setViewInvoiceUrl(null)}
-                  className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
-                >
-                  <XIcon className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-            <iframe
-              src={viewInvoiceUrl}
-              className="w-full rounded-b-lg"
-              style={{ height: 'calc(85vh - 53px)' }}
-              title="Invoice"
-            />
-          </div>
-        </div>
-      )}
       {/* Cancel Subscription Modal */}
       {showCancelModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !cancelLoading && setShowCancelModal(false)}></div>
