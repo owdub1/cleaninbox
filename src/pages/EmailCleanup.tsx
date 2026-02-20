@@ -696,9 +696,9 @@ const EmailCleanup = () => {
     setSelectedTool(toolId);
     setCurrentView('cleanup');
     if (toolId === 'archive') {
-      // Bulk Delete Old Emails: sort by oldest first, then most emails
-      setSortBy('date');
-      setSortDirection('asc');
+      // Bulk Delete Old Emails: sort by most emails first
+      setSortBy('count');
+      setSortDirection('desc');
     } else {
       // Default all other tools to sort by last email date (newest first)
       setSortBy('date');
