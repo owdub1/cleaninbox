@@ -539,23 +539,11 @@ const Dashboard = () => {
                               Disconnect
                             </button>
                           </div>
-                          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="mt-4">
                             <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm">
                               <p className="text-sm text-gray-500 dark:text-gray-400">Total Emails</p>
                               <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
                                 {emailAccount.totalEmails.toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm">
-                              <p className="text-sm text-gray-500 dark:text-gray-400">Processed</p>
-                              <p className="text-xl font-bold text-purple-600">
-                                {emailAccount.processedEmails.toLocaleString()}
-                              </p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-sm">
-                              <p className="text-sm text-gray-500 dark:text-gray-400">Unsubscribed</p>
-                              <p className="text-xl font-bold text-green-600">
-                                {emailAccount.unsubscribed.toLocaleString()}
                               </p>
                             </div>
                           </div>
