@@ -75,7 +75,7 @@ export default async function handler(
       });
       // Add charges that aren't tied to an invoice (one-time payments)
       for (const charge of charges.data) {
-        if (!charge.invoice && charge.paid) {
+        if (!(charge as any).invoice && charge.paid) {
           allInvoices.push({
             id: charge.id,
             number: null,
