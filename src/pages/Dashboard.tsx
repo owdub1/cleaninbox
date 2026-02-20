@@ -68,6 +68,8 @@ const Dashboard = () => {
         .then(data => {
           setInvoices(data.invoices || []);
           setInvoicesFetched(true);
+          // TEMP DEBUG - remove after fixing
+          if (data.debug) console.log('Invoice debug:', JSON.stringify(data.debug, null, 2));
         })
         .catch(() => {
           setInvoices([]);

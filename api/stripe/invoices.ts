@@ -70,8 +70,18 @@ export default async function handler(
       customerIds.add(customer.id);
     }
 
+    // DEBUG: Return diagnostic info temporarily
+    const debug = {
+      email: decoded.email,
+      userId: decoded.userId,
+      stripeCustomerIdFromDb: subscription?.stripe_customer_id || null,
+      stripeCustomersByEmail: customers.data.map(c => c.id),
+      totalCustomerIds: customerIds.size,
+      customerIdsList: Array.from(customerIds),
+    };
+
     if (customerIds.size === 0) {
-      return res.status(200).json({ invoices: [] });
+      return res.status(200).json({ invoices: [], debug });
     }
 
     // Fetch invoices from all customer records
@@ -98,7 +108,7 @@ export default async function handler(
       hosted_invoice_url: inv.hosted_invoice_url,
     }));
 
-    return res.status(200).json({ invoices: mapped });
+    return res.status(200).json({ invoices: mapped, debug });
   } catch (error: any) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Invalid or expired token' });
