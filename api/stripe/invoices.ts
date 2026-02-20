@@ -53,7 +53,7 @@ export default async function handler(
     // 1. Look up by stripe_customer_id in subscriptions table
     const { data: subscription } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select('stripe_customer_id')
       .eq('user_id', decoded.userId)
       .single();
 
@@ -70,18 +70,8 @@ export default async function handler(
       customerIds.add(customer.id);
     }
 
-    // DEBUG: Return diagnostic info temporarily
-    const debug = {
-      email: decoded.email,
-      userId: decoded.userId,
-      subscriptionRecord: subscription,
-      stripeCustomersByEmail: customers.data.map(c => ({ id: c.id, email: c.email })),
-      totalCustomerIds: customerIds.size,
-      customerIdsList: Array.from(customerIds),
-    };
-
     if (customerIds.size === 0) {
-      return res.status(200).json({ invoices: [], debug });
+      return res.status(200).json({ invoices: [] });
     }
 
     // Fetch invoices from all customer records
@@ -108,7 +98,7 @@ export default async function handler(
       hosted_invoice_url: inv.hosted_invoice_url,
     }));
 
-    return res.status(200).json({ invoices: mapped, debug });
+    return res.status(200).json({ invoices: mapped });
   } catch (error: any) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Invalid or expired token' });
