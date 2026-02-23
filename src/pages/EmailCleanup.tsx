@@ -687,14 +687,24 @@ const EmailCleanup = () => {
                   </div>
                 )}
                 {connectedGmailAccount && (
-                  <button
-                    onClick={() => handleSync(false, false)}
-                    disabled={syncing}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                    {syncing ? 'Syncing...' : 'Sync Now'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSync(false, false)}
+                      disabled={syncing}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                      {syncing ? 'Syncing...' : 'Sync Now'}
+                    </button>
+                    <button
+                      onClick={() => handleSync(true, false)}
+                      disabled={syncing}
+                      className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      title="Delete all data and re-sync from scratch"
+                    >
+                      Full Sync
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

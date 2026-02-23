@@ -935,7 +935,7 @@ async function processDeletedMessages(
  *
  * GUARANTEES:
 /**
- * Fix orphaned senders: emails exist in DB but sender row is missing from email_senders.
+ * Fix orphaned senders: emails exist in DB but sender row is missing or has wrong count.
  * Only checks the 200 most recent emails — lightweight, not a full table scan.
  */
 async function fixOrphanedSenders(
@@ -952,31 +952,35 @@ async function fixOrphanedSenders(
 
   if (!recentEmails || recentEmails.length === 0) return 0;
 
-  // Get unique senders from recent emails
-  const uniqueSenders = new Map<string, { email: string; name: string }>();
+  // Count emails per sender from recent emails
+  const senderEmailCounts = new Map<string, { email: string; name: string; count: number }>();
   for (const e of recentEmails) {
     const key = `${e.sender_email}|||${e.sender_name}`;
-    if (!uniqueSenders.has(key)) {
-      uniqueSenders.set(key, { email: e.sender_email, name: e.sender_name });
+    const existing = senderEmailCounts.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      senderEmailCounts.set(key, { email: e.sender_email, name: e.sender_name, count: 1 });
     }
   }
 
-  // Check which of these senders have email_senders rows
+  // Check which of these senders have email_senders rows and their counts
   const senderEmails = [...new Set(recentEmails.map(e => e.sender_email))];
   const { data: existingSenders } = await supabase
     .from('email_senders')
-    .select('sender_email, sender_name')
+    .select('sender_email, sender_name, email_count')
     .eq('email_account_id', accountId)
     .in('sender_email', senderEmails);
 
-  const existingSet = new Set(
-    (existingSenders || []).map(s => `${s.sender_email}|||${s.sender_name}`)
+  const existingMap = new Map(
+    (existingSenders || []).map(s => [`${s.sender_email}|||${s.sender_name}`, s.email_count])
   );
 
-  // Recalculate stats only for senders that are truly missing
+  // Recalculate stats for senders that are missing OR have count 0 despite having emails
   let fixedCount = 0;
-  for (const [key, sender] of uniqueSenders) {
-    if (!existingSet.has(key)) {
+  for (const [key, sender] of senderEmailCounts) {
+    const existingCount = existingMap.get(key);
+    if (existingCount === undefined || existingCount === 0) {
       await recalculateSenderStats(userId, accountId, sender.email, sender.name);
       fixedCount++;
     }
