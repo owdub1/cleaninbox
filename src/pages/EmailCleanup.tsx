@@ -295,11 +295,13 @@ const EmailCleanup = () => {
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
+          const d = result._diag;
+          const diagStr = d ? ` | DB emails(48h): ${d.recentEmailSenders} senders, sender_rows(48h): ${d.recentSenderRows}${d.missingSenderRows?.length ? ', MISSING: ' + d.missingSenderRows.join('; ') : ''}` : '';
           const parts = [];
           if (result.addedEmails) parts.push(`${result.addedEmails} new emails`);
           if (result.orphansFixed) parts.push(`${result.orphansFixed} senders updated`);
           const detail = parts.length > 0 ? parts.join(', ') : 'Inbox is up to date';
-          setNotification({ type: 'success', message: `Sync complete. ${detail}.` });
+          setNotification({ type: 'success', message: `Sync complete. ${detail}.${diagStr}` });
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`

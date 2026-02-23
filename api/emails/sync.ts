@@ -692,6 +692,23 @@ async function performIncrementalSync(
   // Lightweight orphaned sender check
   const orphanedFixed = await fixOrphanedSenders(userId, accountId);
 
+  // Diagnostic: count emails and senders from last 48h to identify discrepancies
+  const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const { data: recentDbEmails } = await supabase
+    .from('emails')
+    .select('sender_email, sender_name')
+    .eq('email_account_id', accountId)
+    .gte('received_at', cutoff48h);
+  const recentSenderKeys = new Set((recentDbEmails || []).map(e => `${e.sender_email}|||${e.sender_name}`));
+  const { data: recentSenderRows } = await supabase
+    .from('email_senders')
+    .select('sender_email, sender_name, email_count, last_email_date')
+    .eq('email_account_id', accountId)
+    .gte('last_email_date', cutoff48h);
+  const recentSenderRowKeys = new Set((recentSenderRows || []).map(s => `${s.sender_email}|||${s.sender_name}`));
+  // Senders with recent emails in DB but no recent sender row
+  const missingSenderRows = [...recentSenderKeys].filter(k => !recentSenderRowKeys.has(k));
+
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
   await supabase
@@ -731,7 +748,13 @@ async function performIncrementalSync(
           ? `${description}${orphanedFixed > 0 ? `, ${orphanedFixed} orphans fixed` : ''}`
           : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
-    syncMethod
+    syncMethod,
+    // Temporary diagnostic - remove after debugging
+    _diag: {
+      recentEmailSenders: recentSenderKeys.size,
+      recentSenderRows: recentSenderRowKeys.size,
+      missingSenderRows: missingSenderRows.slice(0, 10),
+    }
   });
 }
 
