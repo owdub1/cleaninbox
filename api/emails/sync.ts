@@ -751,9 +751,12 @@ async function performIncrementalSync(
     syncMethod,
     // Temporary diagnostic - remove after debugging
     _diag: {
+      userEmail,
       recentEmailSenders: recentSenderKeys.size,
       recentSenderRows: recentSenderRowKeys.size,
       missingSenderRows: missingSenderRows.slice(0, 10),
+      completenessChecked: completenessResult.missingCount === 0 ? 'all 50 present' : `${completenessResult.missingCount} missing`,
+      recentEmails48h: (recentDbEmails || []).length,
     }
   });
 }
