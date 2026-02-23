@@ -290,19 +290,24 @@ const EmailCleanup = () => {
   const handleSync = async (fullSync: boolean = false, repair: boolean = false) => {
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
-      const result = await syncEmails(accountToSync.email, { fullSync, repair });
-      if (result.success) {
-        setSenderEmails({});
-        setExpandedSenders([]);
-      } else if (result.limitReached) {
-        const message = result.upgradeMessage
-          ? `${sendersError}. ${result.upgradeMessage}`
-          : sendersError || 'Sync limit reached.';
-        setNotification({ type: 'error', message });
-      } else {
-        const provider = accountToSync.provider === 'Outlook' ? 'Outlook' : 'Gmail';
-        const errorDetail = sendersError && sendersError !== 'Authentication required' ? sendersError : `Your ${provider} may need to be reconnected.`;
-        setNotification({ type: 'error', message: `Failed to sync emails. ${errorDetail}` });
+      try {
+        const result = await syncEmails(accountToSync.email, { fullSync, repair });
+        if (result.success) {
+          setSenderEmails({});
+          setExpandedSenders([]);
+          setNotification({ type: 'success', message: `Sync complete. ${senders.length} senders loaded.` });
+        } else if (result.limitReached) {
+          const message = result.upgradeMessage
+            ? `${sendersError}. ${result.upgradeMessage}`
+            : sendersError || 'Sync limit reached.';
+          setNotification({ type: 'error', message });
+        } else {
+          const provider = accountToSync.provider === 'Outlook' ? 'Outlook' : 'Gmail';
+          const errorDetail = sendersError && sendersError !== 'Authentication required' ? sendersError : `Your ${provider} may need to be reconnected.`;
+          setNotification({ type: 'error', message: `Failed to sync emails. ${errorDetail}` });
+        }
+      } catch (err: any) {
+        setNotification({ type: 'error', message: `Sync error: ${err.message}` });
       }
     } else {
       setNotification({ type: 'error', message: 'No email account found. Please connect your email first.' });
