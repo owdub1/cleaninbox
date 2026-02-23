@@ -149,7 +149,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const syncEmails = useCallback(async (
     email: string,
     options: { maxMessages?: number; fullSync?: boolean; repair?: boolean } = {}
-  ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string }> => {
+  ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string; syncMessage?: string; addedEmails?: number; syncMethod?: string }> => {
     const { maxMessages = 1000, fullSync = false, repair = false } = options;
 
     if (!token) {
@@ -188,9 +188,14 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       // Refresh senders after sync - fetch ALL senders (not just this account)
       // The frontend filters by selectedAccountEmail, so we need all accounts' data
-      await fetchSenders();
+      const updatedSenders = await fetchSenders();
 
-      return { success: true };
+      return {
+        success: true,
+        syncMessage: data.message,
+        addedEmails: data.addedEmails,
+        syncMethod: data.syncMethod,
+      };
     } catch (err: any) {
       console.error('Sync emails error:', err);
       setError(err.message);
