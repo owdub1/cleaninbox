@@ -23,6 +23,8 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.18",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.2",
     "@vercel/node": "^5.3.24",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",

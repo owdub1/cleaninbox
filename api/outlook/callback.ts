@@ -33,7 +33,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (limiter(req, res)) return;
+  if (await limiter(req, res)) return;
 
   const { code, state, error: oauthError, error_description } = req.query;
 

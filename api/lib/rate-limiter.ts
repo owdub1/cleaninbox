@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 import { getClientIP } from './auth-utils.js';
 
 interface RateLimitConfig {
@@ -8,24 +10,36 @@ interface RateLimitConfig {
   keyGenerator?: (req: VercelRequest) => string; // Custom key generator (default: IP address)
 }
 
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
+// Lazily-initialized Redis client (null if env vars missing → local dev fallback)
+let redis: Redis | null = null;
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  redis = new Redis({ url, token });
+  return redis;
 }
 
-// In-memory store for rate limiting
-// Note: In production with multiple serverless instances, use Redis/Upstash
-const rateLimitStore = new Map<string, RateLimitEntry>();
+// Cache of Ratelimit instances keyed by "windowMs:maxRequests"
+const limiters = new Map<string, Ratelimit>();
 
-// Cleanup old entries every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
-    if (entry.resetTime < now) {
-      rateLimitStore.delete(key);
-    }
+function getLimiter(windowMs: number, maxRequests: number): Ratelimit | null {
+  const r = getRedis();
+  if (!r) return null;
+
+  const cacheKey = `${windowMs}:${maxRequests}`;
+  let limiter = limiters.get(cacheKey);
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis: r,
+      limiter: Ratelimit.slidingWindow(maxRequests, `${windowMs} ms`),
+      prefix: `rl:${cacheKey}`,
+    });
+    limiters.set(cacheKey, limiter);
   }
-}, 10 * 60 * 1000);
+  return limiter;
+}
 
 /**
  * Rate limiting middleware for API routes
@@ -33,7 +47,7 @@ setInterval(() => {
  * @example
  * // Limit to 5 requests per minute
  * const limiter = rateLimit({ windowMs: 60 * 1000, maxRequests: 5 });
- * if (limiter(req, res)) return; // Request blocked
+ * if (await limiter(req, res)) return; // Request blocked
  *
  * @example
  * // Custom key generator (by user email instead of IP)
@@ -51,41 +65,32 @@ export function rateLimit(config: RateLimitConfig) {
     keyGenerator = getClientIP
   } = config;
 
-  return function rateLimitMiddleware(req: VercelRequest, res: VercelResponse): boolean {
-    const key = keyGenerator(req);
-    const now = Date.now();
+  return async function rateLimitMiddleware(req: VercelRequest, res: VercelResponse): Promise<boolean> {
+    const limiter = getLimiter(windowMs, maxRequests);
 
-    // Get or create rate limit entry
-    let entry = rateLimitStore.get(key);
-
-    if (!entry || entry.resetTime < now) {
-      // Create new entry or reset expired entry
-      entry = {
-        count: 0,
-        resetTime: now + windowMs
-      };
-      rateLimitStore.set(key, entry);
+    // Graceful fallback: if Upstash is not configured, allow all requests
+    if (!limiter) {
+      return false;
     }
 
-    // Increment request count
-    entry.count++;
+    const key = keyGenerator(req);
+    const { success, limit, remaining, reset } = await limiter.limit(key);
 
-    // Check if limit exceeded
-    if (entry.count > maxRequests) {
-      const resetIn = Math.ceil((entry.resetTime - now) / 1000); // seconds
+    // Set rate limit headers
+    res.setHeader('X-RateLimit-Limit', limit.toString());
+    res.setHeader('X-RateLimit-Remaining', remaining.toString());
+    res.setHeader('X-RateLimit-Reset', new Date(reset).toISOString());
+
+    if (!success) {
+      const retryAfter = Math.ceil((reset - Date.now()) / 1000);
       res.status(429).json({
         error: message,
-        retryAfter: resetIn,
+        retryAfter,
         limit: maxRequests,
         windowMs: windowMs / 1000
       });
       return true; // Request blocked
     }
-
-    // Add rate limit headers
-    res.setHeader('X-RateLimit-Limit', maxRequests.toString());
-    res.setHeader('X-RateLimit-Remaining', (maxRequests - entry.count).toString());
-    res.setHeader('X-RateLimit-Reset', new Date(entry.resetTime).toISOString());
 
     return false; // Request allowed
   };
@@ -128,28 +133,3 @@ export const RateLimitPresets = {
     message: 'Too many signup attempts. Please try again later.'
   }
 };
-
-/**
- * Get current rate limit status for a key
- */
-export function getRateLimitStatus(key: string): RateLimitEntry | null {
-  const entry = rateLimitStore.get(key);
-  if (!entry || entry.resetTime < Date.now()) {
-    return null;
-  }
-  return entry;
-}
-
-/**
- * Reset rate limit for a specific key (useful for testing or admin actions)
- */
-export function resetRateLimit(key: string): void {
-  rateLimitStore.delete(key);
-}
-
-/**
- * Clear all rate limit entries (useful for testing)
- */
-export function clearAllRateLimits(): void {
-  rateLimitStore.clear();
-}

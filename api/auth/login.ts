@@ -181,7 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Apply rate limiting
-  if (limiter(req, res)) return;
+  if (await limiter(req, res)) return;
 
   const ipAddress = getClientIP(req);
   const userAgent = getUserAgent(req);

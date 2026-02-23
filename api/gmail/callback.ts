@@ -35,7 +35,7 @@ export default async function handler(
   }
 
   // Rate limiting
-  if (limiter(req, res)) return;
+  if (await limiter(req, res)) return;
 
   const { code, state, error: oauthError } = req.query;
 

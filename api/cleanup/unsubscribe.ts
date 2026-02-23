@@ -133,7 +133,7 @@ async function handler(
   }
 
   // Rate limiting
-  if (limiter(req, res)) return;
+  if (await limiter(req, res)) return;
 
   // Require authentication
   const user = requireAuth(req as AuthenticatedRequest, res);

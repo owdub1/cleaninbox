@@ -48,7 +48,7 @@ export default async function handler(
   }
 
   // Rate limiting
-  if (limiter(req, res)) return;
+  if (await limiter(req, res)) return;
 
   try {
     if (!GMAIL_CLIENT_ID) {
