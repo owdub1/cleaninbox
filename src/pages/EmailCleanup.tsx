@@ -295,7 +295,19 @@ const EmailCleanup = () => {
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
-          setNotification({ type: 'success', message: `Sync: ${result.syncMessage || 'done'} (method: ${result.syncMethod || '?'}, added: ${result.addedEmails ?? '?'}, orphans: ${result.orphansFixed ?? '?'})` });
+          // Debug: show filter pipeline counts after re-render
+          setTimeout(() => {
+            const total = senders.length;
+            const forAccount = senders.filter(s => s.accountEmail === selectedAccountEmail).length;
+            const withCount = senders.filter(s => s.accountEmail === selectedAccountEmail && s.emailCount > 0).length;
+            const today = senders.filter(s => {
+              if (s.accountEmail !== selectedAccountEmail || s.emailCount <= 0) return false;
+              const d = new Date(s.lastEmailDate);
+              const now = new Date();
+              return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            });
+            setNotification({ type: 'success', message: `Total: ${total}, account: ${forAccount}, count>0: ${withCount}, today: ${today.length} | API: ${result.syncMessage} (${result.syncMethod}, +${result.addedEmails}, orphans: ${result.orphansFixed})` });
+          }, 500);
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`
