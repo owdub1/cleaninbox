@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import * as Sentry from '@sentry/react';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -67,13 +68,32 @@ function AppWithAuth() {
       <CookieConsent />
     </div>;
 }
+function SentryFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+      <div className="text-center max-w-md">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Something went wrong</h1>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">An unexpected error occurred. Please try reloading the page.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition-colors"
+        >
+          Reload Page
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
-  return <Router>
-      <ScrollToTop />
-      <ThemeProvider>
-        <AuthProvider>
-          <AppWithAuth />
-        </AuthProvider>
-      </ThemeProvider>
-    </Router>;
+  return <Sentry.ErrorBoundary fallback={<SentryFallback />}>
+      <Router>
+        <ScrollToTop />
+        <ThemeProvider>
+          <AuthProvider>
+            <AppWithAuth />
+          </AuthProvider>
+        </ThemeProvider>
+      </Router>
+    </Sentry.ErrorBoundary>;
 }

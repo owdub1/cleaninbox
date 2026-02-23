@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MailIcon, SendIcon, CheckCircleIcon } from 'lucide-react';
+import { MailIcon, SendIcon, CheckCircleIcon, Loader2 } from 'lucide-react';
+import { API_URL } from '../lib/api';
 const Contact = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,17 +22,27 @@ const Contact = () => {
       [name]: value
     }));
   };
-  const handleSubmit = e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, you would send the form data to your backend
-    console.log(formData);
-    setFormSubmitted(true);
-    setFormData({
-      name: '',
-      email: '',
-      subject: '',
-      message: ''
-    });
+    setSending(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_URL}/api/contact/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send message');
+      }
+      setFormSubmitted(true);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
   return <div className="w-full bg-white dark:bg-gray-900">
       {/* Header - Redesigned without gradient */}
@@ -119,10 +132,24 @@ const Contact = () => {
                           <textarea id="message" name="message" rows={6} value={formData.message} onChange={handleChange} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3 border dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" placeholder="Your message" required />
                         </div>
                       </div>
+                      {error && (
+                        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3 rounded-md text-sm">
+                          {error}
+                        </div>
+                      )}
                       <div>
-                        <button type="submit" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full justify-center">
-                          <SendIcon className="h-5 w-5 mr-2" />
-                          Send Message
+                        <button type="submit" disabled={sending} className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                          {sending ? (
+                            <>
+                              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <SendIcon className="h-5 w-5 mr-2" />
+                              Send Message
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>

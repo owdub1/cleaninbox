@@ -17,6 +17,7 @@ import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { sendMessage } from '../lib/gmail-api.js';
 import { sendMessage as outlookSendMessage } from '../lib/outlook-api.js';
 import { isUserPaid, getFreeTrialUsage, tryIncrementFreeTrialUsage, FREE_TRIAL_LIMIT } from '../lib/free-trial.js';
+import { withSentry } from '../lib/sentry.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -122,7 +123,7 @@ async function httpUnsubscribe(
   }
 }
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -504,3 +505,5 @@ async function logSuccessfulUnsubscribe(
       metadata: { senderEmail }
     });
 }
+
+export default withSentry(handler);

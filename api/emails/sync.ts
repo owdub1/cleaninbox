@@ -33,6 +33,7 @@ import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { listMessages, batchGetMessages, getProfile, getHistoryChanges } from '../lib/gmail-api.js';
 import { performOutlookFullSync, performOutlookIncrementalSync } from './outlook-sync.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
+import { withSentry } from '../lib/sentry.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -50,7 +51,7 @@ const STALE_SYNC_DAYS = 30;
 const BATCH_SIZE = 100;
 const MAX_INCREMENTAL_MESSAGES = 1000; // Safety limit for incremental sync
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -1290,7 +1291,7 @@ async function recalculateSenderStats(
 /**
  * Parse sender email and name from From header
  */
-function parseSender(fromHeader: string): { senderEmail: string; senderName: string } {
+export function parseSender(fromHeader: string): { senderEmail: string; senderName: string } {
   if (!fromHeader) return { senderEmail: '', senderName: '' };
 
   // Handle formats like:
@@ -1310,7 +1311,7 @@ function parseSender(fromHeader: string): { senderEmail: string; senderName: str
 /**
  * Extract unsubscribe link from List-Unsubscribe header (prefers HTTP)
  */
-function extractUnsubscribeLink(header: string): string | null {
+export function extractUnsubscribeLink(header: string): string | null {
   if (!header) return null;
 
   // Prefer HTTPS links in angle brackets (RFC 2369 standard)
@@ -1335,7 +1336,7 @@ function extractUnsubscribeLink(header: string): string | null {
 /**
  * Extract mailto unsubscribe link from List-Unsubscribe header (always extracts mailto if present)
  */
-function extractMailtoUnsubscribeLink(header: string): string | null {
+export function extractMailtoUnsubscribeLink(header: string): string | null {
   if (!header) return null;
 
   // Mailto in angle brackets (RFC 2369 standard)
@@ -1488,3 +1489,5 @@ async function performRepairSync(
     syncType: 'repair'
   });
 }
+
+export default withSentry(handler);

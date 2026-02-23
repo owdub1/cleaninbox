@@ -17,6 +17,7 @@ import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { batchArchiveMessages, archiveEmailsFromSender } from '../lib/gmail-api.js';
 import { batchArchiveMessages as outlookBatchArchiveMessages } from '../lib/outlook-api.js';
 import { checkFreeTrialOrPaid } from '../lib/free-trial.js';
+import { withSentry } from '../lib/sentry.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -30,7 +31,7 @@ const limiter = rateLimit({
   message: 'Too many cleanup requests. Please wait before trying again.'
 });
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -288,3 +289,5 @@ export default async function handler(
     });
   }
 }
+
+export default withSentry(handler);

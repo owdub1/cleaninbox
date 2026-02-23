@@ -181,6 +181,56 @@ export async function sendPaymentFailedEmail(to: string): Promise<boolean> {
 }
 
 /**
+ * Send contact form submission to support
+ */
+export async function sendContactFormEmail(
+  name: string,
+  email: string,
+  subject: string,
+  message: string
+): Promise<boolean> {
+  const body = `
+    <p style="font-size: 16px; margin-bottom: 20px;">New contact form submission:</p>
+    <div style="background: #f9fafb; padding: 20px; border-radius: 6px; border-left: 4px solid #6366f1; margin: 20px 0;">
+      <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Name:</strong> ${name}</p>
+      <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Email:</strong> ${email}</p>
+      <p style="margin: 0; font-size: 14px;"><strong>Subject:</strong> ${subject}</p>
+    </div>
+    <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 6px; margin: 20px 0;">
+      <p style="margin: 0; font-size: 15px; white-space: pre-wrap;">${message}</p>
+    </div>
+    <p style="font-size: 13px; color: #6b7280;">Reply directly to this email to respond to the user.</p>`;
+
+  const html = wrapEmail('New Contact Form Message', '#6366f1', '#4f46e5', body);
+  return sendEmail({ to: 'support@cleaninbox.ca', subject: `[Contact] ${subject}`, html });
+}
+
+/**
+ * Send auto-reply confirmation to user who submitted contact form
+ */
+export async function sendContactAutoReplyEmail(
+  to: string,
+  name: string
+): Promise<boolean> {
+  const subject = "We've received your message - CleanInbox";
+
+  const body = `
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${name},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      Thanks for reaching out! We've received your message and our team will get back to you within 24 hours.
+    </p>
+    <div style="background: #f0fdf4; padding: 20px; border-radius: 6px; border-left: 4px solid #10b981; margin: 20px 0;">
+      <p style="margin: 0; font-size: 14px; color: #065f46;">
+        If your issue is urgent, feel free to reply to this email directly.
+      </p>
+    </div>
+    <p style="font-size: 16px;">Best regards,<br>The CleanInbox Team</p>`;
+
+  const html = wrapEmail('Message Received', '#10b981', '#059669', body);
+  return sendEmail({ to, subject, html });
+}
+
+/**
  * Send Quick Clean expiring warning email
  */
 export async function sendQuickCleanExpiringEmail(

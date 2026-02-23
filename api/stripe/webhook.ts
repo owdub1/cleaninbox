@@ -16,6 +16,7 @@ import {
   sendSubscriptionCancelledEmail,
   sendPaymentFailedEmail,
 } from '../lib/email.js';
+import { withSentry } from '../lib/sentry.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -25,7 +26,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export default async function handler(
+async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -440,3 +441,5 @@ async function updateSubscriptionStatus(userId: string, subscription: Stripe.Sub
     throw error;
   }
 }
+
+export default withSentry(handler);
