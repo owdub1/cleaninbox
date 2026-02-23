@@ -287,27 +287,19 @@ const EmailCleanup = () => {
     setSelectedTool(null);
   };
 
-  const handleSync = async (fullSync: boolean = false, repair: boolean = false) => {
+  const handleSync = async () => {
     const accountToSync = connectedGmailAccount || anyGmailAccount;
     if (accountToSync) {
       try {
-        const result = await syncEmails(accountToSync.email, { fullSync, repair });
+        const result = await syncEmails(accountToSync.email);
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
-          // Debug: show filter pipeline counts after re-render
-          setTimeout(() => {
-            const total = senders.length;
-            const forAccount = senders.filter(s => s.accountEmail === selectedAccountEmail).length;
-            const withCount = senders.filter(s => s.accountEmail === selectedAccountEmail && s.emailCount > 0).length;
-            const today = senders.filter(s => {
-              if (s.accountEmail !== selectedAccountEmail || s.emailCount <= 0) return false;
-              const d = new Date(s.lastEmailDate);
-              const now = new Date();
-              return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            });
-            setNotification({ type: 'success', message: `Total: ${total}, account: ${forAccount}, count>0: ${withCount}, today: ${today.length} | API: ${result.syncMessage} (${result.syncMethod}, +${result.addedEmails}, orphans: ${result.orphansFixed})` });
-          }, 500);
+          const parts = [];
+          if (result.addedEmails) parts.push(`${result.addedEmails} new emails`);
+          if (result.orphansFixed) parts.push(`${result.orphansFixed} senders updated`);
+          const detail = parts.length > 0 ? parts.join(', ') : 'Inbox is up to date';
+          setNotification({ type: 'success', message: `Sync complete. ${detail}.` });
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`
@@ -701,20 +693,12 @@ const EmailCleanup = () => {
                 {connectedGmailAccount && (
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleSync(false, false)}
+                      onClick={() => handleSync()}
                       disabled={syncing}
                       className="flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                     >
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                       {syncing ? 'Syncing...' : 'Sync Now'}
-                    </button>
-                    <button
-                      onClick={() => handleSync(true, false)}
-                      disabled={syncing}
-                      className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                      title="Delete all data and re-sync from scratch"
-                    >
-                      Full Sync
                     </button>
                   </div>
                 )}
@@ -765,7 +749,7 @@ const EmailCleanup = () => {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {(connectedGmailAccount || anyGmailAccount) && (
-                    <button onClick={() => handleSync(false)} disabled={syncing} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    <button onClick={() => handleSync()} disabled={syncing} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                       <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Emails
                     </button>
                   )}

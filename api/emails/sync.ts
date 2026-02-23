@@ -984,12 +984,23 @@ async function fixOrphanedSenders(
   // 1. Missing from email_senders
   // 2. Have count = 0 despite having emails
   // 3. Have a stale last_email_date (newer emails exist in DB)
+  // 4. Have no last_email_date at all
   let fixedCount = 0;
   for (const [key, info] of senderInfo) {
     const existing = existingMap.get(key);
-    const needsFix = !existing
-      || existing.count === 0
-      || (info.newestDate && existing.lastDate && info.newestDate > existing.lastDate);
+    let needsFix = false;
+
+    if (!existing || existing.count === 0 || !existing.lastDate) {
+      needsFix = true;
+    } else if (info.newestDate) {
+      // Use Date objects for comparison — string comparison fails when
+      // Supabase returns different timestamp formats (.000Z vs +00:00)
+      const newestTime = new Date(info.newestDate).getTime();
+      const lastTime = new Date(existing.lastDate).getTime();
+      if (newestTime > lastTime) {
+        needsFix = true;
+      }
+    }
 
     if (needsFix) {
       await recalculateSenderStats(userId, accountId, info.email, info.name);
