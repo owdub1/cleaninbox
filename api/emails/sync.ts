@@ -517,7 +517,7 @@ async function performIncrementalSync(
   let syncMethod = 'history';
   let newHistoryId: string | undefined;
   // Collect unsubscribe info from all processNewMessages calls to apply AFTER sender rows are created
-  const allSendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
+  const allSendersWithUnsubscribe = new Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }>();
 
   // Try History API first if we have a stored historyId
   if (storedHistoryId) {
@@ -672,16 +672,20 @@ async function performIncrementalSync(
   // This prevents Vercel Hobby 10s timeout when many senders are affected
   await batchRecalculateSenderStats(userId, accountId, affectedSenders);
 
-  // Apply unsubscribe info AFTER recalculateSenderStats has created/updated sender rows
+  // Apply unsubscribe + newsletter/promotional info AFTER recalculateSenderStats has created/updated sender rows
   for (const [key, info] of allSendersWithUnsubscribe) {
     const [senderEmail, senderName] = key.split('|||');
     await supabase
       .from('email_senders')
       .update({
-        has_unsubscribe: true,
-        unsubscribe_link: info.unsubscribeLink,
+        ...(info.unsubscribeLink && {
+          has_unsubscribe: true,
+          unsubscribe_link: info.unsubscribeLink,
+          has_one_click_unsubscribe: info.hasOneClick,
+        }),
         ...(info.mailtoLink && { mailto_unsubscribe_link: info.mailtoLink }),
-        has_one_click_unsubscribe: info.hasOneClick,
+        ...(info.isNewsletter && { is_newsletter: true }),
+        ...(info.isPromotional && { is_promotional: true }),
         updated_at: new Date().toISOString(),
       })
       .eq('email_account_id', accountId)
@@ -744,7 +748,7 @@ async function processNewMessages(
   userEmail: string,
   messageIds: string[],
   affectedSenders: Set<string>
-): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
+): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }> }> {
   let addedCount = 0;
 
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
@@ -752,7 +756,7 @@ async function processNewMessages(
 
 
   // Track senders that need unsubscribe info restored
-  const sendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
+  const sendersWithUnsubscribe = new Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }>();
 
   for (const msg of messages) {
     const labels = msg.labelIds || [];
@@ -779,10 +783,12 @@ async function processNewMessages(
     // The Date header can be in any timezone and JS parsing can shift the date
     const receivedAt = new Date(parseInt(msg.internalDate)).toISOString();
 
-    // Track unsubscribe info from new emails to restore has_unsubscribe if needed
+    // Track unsubscribe + newsletter/promotional info to apply after sender rows are created
     const unsubscribeLink = extractUnsubscribeLink(unsubscribeHeader);
     const mailtoLink = extractMailtoUnsubscribeLink(unsubscribeHeader);
-    if (unsubscribeLink) {
+    const isNewsletter = labels.includes('CATEGORY_UPDATES') && !!unsubscribeLink;
+    const isPromotional = labels.includes('CATEGORY_PROMOTIONS');
+    if (unsubscribeLink || isNewsletter || isPromotional) {
       const key = `${senderEmail}|||${senderName}`;
       const existing = sendersWithUnsubscribe.get(key);
       if (!existing || receivedAt > existing.receivedAt) {
@@ -791,6 +797,8 @@ async function processNewMessages(
           mailtoLink,
           hasOneClick: unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click'),
           receivedAt,
+          isNewsletter,
+          isPromotional,
         });
       }
     }
@@ -835,7 +843,7 @@ async function performRecoverySync(
   accountId: string,
   userEmail: string,
   affectedSenders: Set<string>
-): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
+): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }> }> {
   console.log('Recovery sync: Fetching all recent emails to catch missed messages...');
 
   // Fetch a large number of recent emails to ensure completeness
@@ -1031,7 +1039,7 @@ async function verifyCompletenessAndSync(
   accountId: string,
   userEmail: string,
   affectedSenders: Set<string>
-): Promise<{ addedCount: number; complete: boolean; missingCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }> }> {
+): Promise<{ addedCount: number; complete: boolean; missingCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }> }> {
   console.log('Verifying sync completeness: checking Gmail\'s newest emails exist locally...');
 
   // Ask Gmail for its newest emails, then verify we have ALL of them

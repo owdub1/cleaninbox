@@ -295,11 +295,7 @@ const EmailCleanup = () => {
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
-          const parts = [];
-          if (result.addedEmails) parts.push(`${result.addedEmails} new emails`);
-          if (result.orphansFixed) parts.push(`${result.orphansFixed} senders updated`);
-          const detail = parts.length > 0 ? parts.join(', ') : 'Inbox is up to date';
-          setNotification({ type: 'success', message: `Sync complete. ${detail}.` });
+          // Success syncs are silent — no notification needed
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`
