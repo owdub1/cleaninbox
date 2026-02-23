@@ -295,13 +295,16 @@ const EmailCleanup = () => {
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
-          const d = result._diag;
-          const diagStr = d ? ` | senderRow: ${JSON.stringify(d.senderRow)} | emails: ${d.emailsInDb}, names: ${JSON.stringify(d.emailNames)} | acctId: ${d.accountId}` : '';
-          const parts = [];
-          if (result.addedEmails) parts.push(`${result.addedEmails} new emails`);
-          if (result.orphansFixed) parts.push(`${result.orphansFixed} senders updated`);
-          const detail = parts.length > 0 ? parts.join(', ') : 'Inbox is up to date';
-          setNotification({ type: 'success', message: `Sync complete. ${detail}.${diagStr}` });
+          // Check frontend state after React re-renders
+          setTimeout(() => {
+            const chrisInState = senders.find(s => s.email.includes('christophercollinrocks'));
+            const totalInState = senders.length;
+            const forAccount = senders.filter(s => s.accountEmail === selectedAccountEmail).length;
+            const clientDiag = chrisInState
+              ? `FOUND in state: ${chrisInState.name}, count:${chrisInState.emailCount}, last:${chrisInState.lastEmailDate}, acct:${chrisInState.accountEmail}`
+              : `NOT in state (${totalInState} total, ${forAccount} for account)`;
+            setNotification({ type: 'success', message: `Sync complete. ${clientDiag}` });
+          }, 500);
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`
