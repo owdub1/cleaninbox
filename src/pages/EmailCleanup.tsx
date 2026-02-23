@@ -297,12 +297,10 @@ const EmailCleanup = () => {
           setExpandedSenders([]);
           // Check frontend state after React re-renders
           setTimeout(() => {
-            const chrisInState = senders.find(s => s.email.includes('christophercollinrocks'));
-            const totalInState = senders.length;
-            const forAccount = senders.filter(s => s.accountEmail === selectedAccountEmail).length;
-            const clientDiag = chrisInState
-              ? `FOUND in state: ${chrisInState.name}, count:${chrisInState.emailCount}, last:${chrisInState.lastEmailDate}, acct:${chrisInState.accountEmail}`
-              : `NOT in state (${totalInState} total, ${forAccount} for account)`;
+            const allChris = senders.filter(s => s.email.includes('christophercollinrocks'));
+            const clientDiag = allChris.length > 0
+              ? `${allChris.length} matches: ${allChris.map(s => `[${s.name}, count:${s.emailCount}, last:${s.lastEmailDate}]`).join(' ')}`
+              : `NOT in state (${senders.length} total)`;
             setNotification({ type: 'success', message: `Sync complete. ${clientDiag}` });
           }, 500);
         } else if (result.limitReached) {
