@@ -750,14 +750,29 @@ async function performIncrementalSync(
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
     syncMethod,
     // Temporary diagnostic - remove after debugging
-    _diag: {
-      userEmail,
-      recentEmailSenders: recentSenderKeys.size,
-      recentSenderRows: recentSenderRowKeys.size,
-      missingSenderRows: missingSenderRows.slice(0, 10),
-      completenessChecked: completenessResult.missingCount === 0 ? 'all 50 present' : `${completenessResult.missingCount} missing`,
-      recentEmails48h: (recentDbEmails || []).length,
-    }
+    _diag: await (async () => {
+      // Check if chris collin email exists anywhere in the DB
+      const { data: chrisEmails, count: chrisCount } = await supabase
+        .from('emails')
+        .select('sender_email, sender_name, received_at, subject', { count: 'exact' })
+        .eq('email_account_id', accountId)
+        .ilike('sender_email', '%christophercollin%')
+        .limit(5);
+      // Get the 5 newest emails in the DB
+      const { data: newestEmails } = await supabase
+        .from('emails')
+        .select('sender_email, sender_name, received_at')
+        .eq('email_account_id', accountId)
+        .order('received_at', { ascending: false })
+        .limit(5);
+      return {
+        userEmail,
+        completeness: completenessResult.missingCount === 0 ? 'all 50 present' : `${completenessResult.missingCount} missing`,
+        chrisEmailsInDb: chrisCount || 0,
+        chrisEmails: (chrisEmails || []).map(e => `${e.sender_email} | ${e.received_at} | ${e.subject}`),
+        newest5: (newestEmails || []).map(e => `${e.sender_email} | ${e.received_at}`),
+      };
+    })()
   });
 }
 

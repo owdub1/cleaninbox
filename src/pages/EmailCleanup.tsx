@@ -296,7 +296,7 @@ const EmailCleanup = () => {
           setSenderEmails({});
           setExpandedSenders([]);
           const d = result._diag;
-          const diagStr = d ? ` | userEmail: ${d.userEmail}, emails48h: ${d.recentEmails48h}, senders: ${d.recentEmailSenders}/${d.recentSenderRows}, completeness: ${d.completenessChecked}${d.missingSenderRows?.length ? ', MISSING: ' + d.missingSenderRows.join('; ') : ''}` : '';
+          const diagStr = d ? ` | chris: ${d.chrisEmailsInDb} in DB${d.chrisEmails?.length ? ' [' + d.chrisEmails.join(', ') + ']' : ''} | newest: ${(d.newest5 || []).slice(0, 3).join(' / ')}` : '';
           const parts = [];
           if (result.addedEmails) parts.push(`${result.addedEmails} new emails`);
           if (result.orphansFixed) parts.push(`${result.orphansFixed} senders updated`);
