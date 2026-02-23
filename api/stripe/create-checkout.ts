@@ -75,7 +75,7 @@ export default async function handler(
           {
             price_data: {
               currency: 'cad',
-              product: 'prod_U01gpSRLbAMbUc',
+              product: process.env.STRIPE_PRODUCT_ID!,
               unit_amount: ONETIME_PRICE,
             },
             quantity: 1,
@@ -121,7 +121,7 @@ export default async function handler(
         // Create a new price for the target plan
         const newPrice = await stripe.prices.create({
           currency: 'cad',
-          product: 'prod_U01gpSRLbAMbUc',
+          product: process.env.STRIPE_PRODUCT_ID!,
           recurring: { interval },
           unit_amount: unitAmount,
         });
@@ -196,7 +196,7 @@ export default async function handler(
         {
           price_data: {
             currency: 'cad',
-            product: 'prod_U01gpSRLbAMbUc',
+            product: process.env.STRIPE_PRODUCT_ID!,
             recurring: {
               interval,
             },
