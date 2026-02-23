@@ -120,7 +120,10 @@ export default async function handler(
       else if (filter === 'unsubscribable') pageQuery = pageQuery.eq('has_unsubscribe', true);
       if (searchTerm) pageQuery = pageQuery.or(`sender_email.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%`);
 
-      pageQuery = pageQuery.order(sortColumn, { ascending }).range(pageStart, pageEnd);
+      // Tiebreaker sort by id ensures stable pagination — without it,
+      // PostgreSQL's unstable sort can skip rows at page boundaries
+      // when many senders share the same sort value (e.g., email_count=1)
+      pageQuery = pageQuery.order(sortColumn, { ascending }).order('id').range(pageStart, pageEnd);
 
       const { data, error } = await pageQuery;
       if (error) throw error;

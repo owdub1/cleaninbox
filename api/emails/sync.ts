@@ -692,23 +692,6 @@ async function performIncrementalSync(
   // Lightweight orphaned sender check
   const orphanedFixed = await fixOrphanedSenders(userId, accountId);
 
-  // Diagnostic: count emails and senders from last 48h to identify discrepancies
-  const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const { data: recentDbEmails } = await supabase
-    .from('emails')
-    .select('sender_email, sender_name')
-    .eq('email_account_id', accountId)
-    .gte('received_at', cutoff48h);
-  const recentSenderKeys = new Set((recentDbEmails || []).map(e => `${e.sender_email}|||${e.sender_name}`));
-  const { data: recentSenderRows } = await supabase
-    .from('email_senders')
-    .select('sender_email, sender_name, email_count, last_email_date')
-    .eq('email_account_id', accountId)
-    .gte('last_email_date', cutoff48h);
-  const recentSenderRowKeys = new Set((recentSenderRows || []).map(s => `${s.sender_email}|||${s.sender_name}`));
-  // Senders with recent emails in DB but no recent sender row
-  const missingSenderRows = [...recentSenderKeys].filter(k => !recentSenderRowKeys.has(k));
-
   // Update account with new sync time and historyId
   const now = new Date().toISOString();
   await supabase
@@ -748,28 +731,7 @@ async function performIncrementalSync(
           ? `${description}${orphanedFixed > 0 ? `, ${orphanedFixed} orphans fixed` : ''}`
           : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
-    syncMethod,
-    // Temporary diagnostic - remove after debugging
-    _diag: await (async () => {
-      // Check email_senders row for christophercollinrocks
-      const { data: chrisSenderRows } = await supabase
-        .from('email_senders')
-        .select('sender_email, sender_name, email_count, last_email_date, email_account_id')
-        .eq('user_id', userId)
-        .ilike('sender_email', '%christophercollinrocks%');
-      // Check emails from this sender
-      const { data: chrisEmails, count: chrisEmailCount } = await supabase
-        .from('emails')
-        .select('sender_email, sender_name, received_at', { count: 'exact' })
-        .eq('email_account_id', accountId)
-        .eq('sender_email', 'christophercollinrocks@gmail.com');
-      return {
-        senderRow: chrisSenderRows?.map(s => `${s.sender_name} | count:${s.email_count} | last:${s.last_email_date} | acct:${s.email_account_id}`) || [],
-        emailsInDb: chrisEmailCount || 0,
-        emailNames: [...new Set((chrisEmails || []).map(e => e.sender_name))],
-        accountId,
-      };
-    })()
+    syncMethod
   });
 }
 

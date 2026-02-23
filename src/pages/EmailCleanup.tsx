@@ -295,14 +295,11 @@ const EmailCleanup = () => {
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
-          // Check frontend state after React re-renders
-          setTimeout(() => {
-            const allChris = senders.filter(s => s.email.includes('christophercollinrocks'));
-            const clientDiag = allChris.length > 0
-              ? `${allChris.length} matches: ${allChris.map(s => `[${s.name}, count:${s.emailCount}, last:${s.lastEmailDate}]`).join(' ')}`
-              : `NOT in state (${senders.length} total)`;
-            setNotification({ type: 'success', message: `Sync complete. ${clientDiag}` });
-          }, 500);
+          const parts = [];
+          if (result.addedEmails) parts.push(`${result.addedEmails} new emails`);
+          if (result.orphansFixed) parts.push(`${result.orphansFixed} senders updated`);
+          const detail = parts.length > 0 ? parts.join(', ') : 'Inbox is up to date';
+          setNotification({ type: 'success', message: `Sync complete. ${detail}.` });
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`
