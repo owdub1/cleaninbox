@@ -667,13 +667,9 @@ async function performIncrementalSync(
   }
 
   // Recalculate sender stats for affected senders (creates rows for new senders)
-  if (affectedSenders.size > 0) {
-    const senderKeys = Array.from(affectedSenders);
-    for (const key of senderKeys) {
-      const [senderEmail, senderName] = key.split('|||');
-      await recalculateSenderStats(userId, accountId, senderEmail, senderName);
-    }
-  }
+  // Uses batched approach: 2-3 DB queries total instead of 3*N sequential queries
+  // This prevents Vercel Hobby 10s timeout when many senders are affected
+  await batchRecalculateSenderStats(userId, accountId, affectedSenders);
 
   // Apply unsubscribe info AFTER recalculateSenderStats has created/updated sender rows
   for (const [key, info] of allSendersWithUnsubscribe) {
@@ -1064,6 +1060,157 @@ async function verifyCompletenessAndSync(
 
   console.log('Completeness check: Verified all of Gmail\'s newest emails now exist locally ✓');
   return { addedCount: result.addedCount, complete: true, missingCount: 0, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
+}
+
+/**
+ * Batch recalculate sender stats for multiple senders at once.
+ *
+ * Instead of 3 sequential DB queries per sender (N senders = 3N queries),
+ * this does it in ~3 total queries:
+ * 1. Fetch all emails for affected senders (paginated for Supabase 1000-row limit)
+ * 2. Aggregate stats in-memory
+ * 3. Fetch existing sender rows to determine insert vs update
+ * 4. Batch insert/update/delete
+ *
+ * This prevents Vercel Hobby 10s timeout when 20+ senders are affected.
+ */
+async function batchRecalculateSenderStats(
+  userId: string,
+  accountId: string,
+  affectedSenderKeys: Set<string>
+): Promise<void> {
+  if (affectedSenderKeys.size === 0) return;
+
+  // Extract unique sender emails for DB filtering
+  const affectedEmails = [...new Set([...affectedSenderKeys].map(k => k.split('|||')[0]))];
+
+  // 1. Fetch all emails for affected senders (paginated to handle Supabase 1000-row limit)
+  const allEmails: Array<{ sender_email: string; sender_name: string; received_at: string; is_unread: boolean }> = [];
+  let page = 0;
+  while (true) {
+    const { data } = await supabase
+      .from('emails')
+      .select('sender_email, sender_name, received_at, is_unread')
+      .eq('email_account_id', accountId)
+      .in('sender_email', affectedEmails)
+      .range(page * 1000, (page + 1) * 1000 - 1);
+    if (!data || data.length === 0) break;
+    allEmails.push(...data);
+    if (data.length < 1000) break;
+    page++;
+  }
+
+  // 2. Aggregate stats per sender key (only for affected senders)
+  const statsMap = new Map<string, {
+    email_count: number;
+    unread_count: number;
+    first_email_date: string;
+    last_email_date: string;
+  }>();
+
+  for (const email of allEmails) {
+    const key = `${email.sender_email}|||${email.sender_name}`;
+    if (!affectedSenderKeys.has(key)) continue;
+    const existing = statsMap.get(key);
+    if (existing) {
+      existing.email_count++;
+      if (email.is_unread) existing.unread_count++;
+      if (email.received_at < existing.first_email_date) existing.first_email_date = email.received_at;
+      if (email.received_at > existing.last_email_date) existing.last_email_date = email.received_at;
+    } else {
+      statsMap.set(key, {
+        email_count: 1,
+        unread_count: email.is_unread ? 1 : 0,
+        first_email_date: email.received_at,
+        last_email_date: email.received_at,
+      });
+    }
+  }
+
+  // 3. Fetch existing sender rows for affected senders
+  const existingSenders: Array<{ id: string; sender_email: string; sender_name: string }> = [];
+  for (let i = 0; i < affectedEmails.length; i += 100) {
+    const batch = affectedEmails.slice(i, i + 100);
+    const { data } = await supabase
+      .from('email_senders')
+      .select('id, sender_email, sender_name')
+      .eq('email_account_id', accountId)
+      .in('sender_email', batch);
+    if (data) existingSenders.push(...data);
+  }
+
+  const existingMap = new Map<string, string>();
+  for (const s of existingSenders) {
+    existingMap.set(`${s.sender_email}|||${s.sender_name}`, s.id);
+  }
+
+  // 4. Categorize into insert/update/delete
+  const toInsert: any[] = [];
+  const toUpdate: Array<{ id: string; data: any }> = [];
+  const toDeleteIds: string[] = [];
+  const now = new Date().toISOString();
+
+  for (const key of affectedSenderKeys) {
+    const [senderEmail, senderName] = key.split('|||');
+    const stats = statsMap.get(key);
+    const existingId = existingMap.get(key);
+
+    if (!stats) {
+      // No emails left for this sender - delete if row exists
+      if (existingId) toDeleteIds.push(existingId);
+    } else if (existingId) {
+      // Update existing sender row
+      toUpdate.push({
+        id: existingId,
+        data: {
+          email_count: stats.email_count,
+          unread_count: stats.unread_count,
+          first_email_date: stats.first_email_date,
+          last_email_date: stats.last_email_date,
+          updated_at: now,
+        }
+      });
+    } else {
+      // Insert new sender row
+      toInsert.push({
+        user_id: userId,
+        email_account_id: accountId,
+        sender_email: senderEmail,
+        sender_name: senderName,
+        email_count: stats.email_count,
+        unread_count: stats.unread_count,
+        first_email_date: stats.first_email_date,
+        last_email_date: stats.last_email_date,
+        has_unsubscribe: false,
+        is_newsletter: false,
+        is_promotional: false,
+        updated_at: now,
+      });
+    }
+  }
+
+  // 5. Execute batch operations
+  // Insert new senders in batches
+  for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+    const batch = toInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('email_senders').insert(batch);
+    if (error) console.error('Batch sender insert error:', error.message);
+  }
+
+  // Update existing senders concurrently (10 at a time)
+  for (let i = 0; i < toUpdate.length; i += 10) {
+    const batch = toUpdate.slice(i, i + 10);
+    await Promise.all(batch.map(({ id, data }) =>
+      supabase.from('email_senders').update(data).eq('id', id)
+    ));
+  }
+
+  // Delete senders with no remaining emails
+  if (toDeleteIds.length > 0) {
+    await supabase.from('email_senders').delete().in('id', toDeleteIds);
+  }
+
+  console.log(`Batch sender stats: ${toInsert.length} inserted, ${toUpdate.length} updated, ${toDeleteIds.length} deleted`);
 }
 
 /**
