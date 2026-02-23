@@ -935,53 +935,64 @@ async function processDeletedMessages(
  *
  * GUARANTEES:
 /**
- * Fix orphaned senders: emails exist in DB but sender row is missing or has wrong count.
- * Only checks the 200 most recent emails — lightweight, not a full table scan.
+ * Fix orphaned/stale senders: emails exist in DB but sender row is missing, has wrong count,
+ * or has a stale last_email_date. Only checks the 200 most recent emails — lightweight.
  */
 async function fixOrphanedSenders(
   userId: string,
   accountId: string
 ): Promise<number> {
-  // Get senders from the 200 most recent emails
+  // Get senders from the 200 most recent emails with dates
   const { data: recentEmails } = await supabase
     .from('emails')
-    .select('sender_email, sender_name')
+    .select('sender_email, sender_name, received_at')
     .eq('email_account_id', accountId)
     .order('received_at', { ascending: false })
     .limit(200);
 
   if (!recentEmails || recentEmails.length === 0) return 0;
 
-  // Count emails per sender from recent emails
-  const senderEmailCounts = new Map<string, { email: string; name: string; count: number }>();
+  // Track per-sender: count and newest email date from DB
+  const senderInfo = new Map<string, { email: string; name: string; count: number; newestDate: string }>();
   for (const e of recentEmails) {
     const key = `${e.sender_email}|||${e.sender_name}`;
-    const existing = senderEmailCounts.get(key);
+    const existing = senderInfo.get(key);
     if (existing) {
       existing.count++;
+      if (e.received_at > existing.newestDate) existing.newestDate = e.received_at;
     } else {
-      senderEmailCounts.set(key, { email: e.sender_email, name: e.sender_name, count: 1 });
+      senderInfo.set(key, { email: e.sender_email, name: e.sender_name, count: 1, newestDate: e.received_at });
     }
   }
 
-  // Check which of these senders have email_senders rows and their counts
+  // Check which of these senders have email_senders rows, their counts, and last dates
   const senderEmails = [...new Set(recentEmails.map(e => e.sender_email))];
   const { data: existingSenders } = await supabase
     .from('email_senders')
-    .select('sender_email, sender_name, email_count')
+    .select('sender_email, sender_name, email_count, last_email_date')
     .eq('email_account_id', accountId)
     .in('sender_email', senderEmails);
 
   const existingMap = new Map(
-    (existingSenders || []).map(s => [`${s.sender_email}|||${s.sender_name}`, s.email_count])
+    (existingSenders || []).map(s => [
+      `${s.sender_email}|||${s.sender_name}`,
+      { count: s.email_count, lastDate: s.last_email_date }
+    ])
   );
 
-  // Recalculate stats for senders that are missing OR have count 0 despite having emails
+  // Recalculate stats for senders that are:
+  // 1. Missing from email_senders
+  // 2. Have count = 0 despite having emails
+  // 3. Have a stale last_email_date (newer emails exist in DB)
   let fixedCount = 0;
-  for (const [key, sender] of senderEmailCounts) {
-    const existingCount = existingMap.get(key);
-    if (existingCount === undefined || existingCount === 0) {
-      await recalculateSenderStats(userId, accountId, sender.email, sender.name);
+  for (const [key, info] of senderInfo) {
+    const existing = existingMap.get(key);
+    const needsFix = !existing
+      || existing.count === 0
+      || (info.newestDate && existing.lastDate && info.newestDate > existing.lastDate);
+
+    if (needsFix) {
+      await recalculateSenderStats(userId, accountId, info.email, info.name);
       fixedCount++;
     }
   }
