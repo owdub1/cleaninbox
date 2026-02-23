@@ -751,26 +751,23 @@ async function performIncrementalSync(
     syncMethod,
     // Temporary diagnostic - remove after debugging
     _diag: await (async () => {
-      // Check if chris collin email exists anywhere in the DB
-      const { data: chrisEmails, count: chrisCount } = await supabase
+      // Check email_senders row for christophercollinrocks
+      const { data: chrisSenderRows } = await supabase
+        .from('email_senders')
+        .select('sender_email, sender_name, email_count, last_email_date, email_account_id')
+        .eq('user_id', userId)
+        .ilike('sender_email', '%christophercollinrocks%');
+      // Check emails from this sender
+      const { data: chrisEmails, count: chrisEmailCount } = await supabase
         .from('emails')
-        .select('sender_email, sender_name, received_at, subject', { count: 'exact' })
+        .select('sender_email, sender_name, received_at', { count: 'exact' })
         .eq('email_account_id', accountId)
-        .ilike('sender_email', '%christophercollin%')
-        .limit(5);
-      // Get the 5 newest emails in the DB
-      const { data: newestEmails } = await supabase
-        .from('emails')
-        .select('sender_email, sender_name, received_at')
-        .eq('email_account_id', accountId)
-        .order('received_at', { ascending: false })
-        .limit(5);
+        .eq('sender_email', 'christophercollinrocks@gmail.com');
       return {
-        userEmail,
-        completeness: completenessResult.missingCount === 0 ? 'all 50 present' : `${completenessResult.missingCount} missing`,
-        chrisEmailsInDb: chrisCount || 0,
-        chrisEmails: (chrisEmails || []).map(e => `${e.sender_email} | ${e.received_at} | ${e.subject}`),
-        newest5: (newestEmails || []).map(e => `${e.sender_email} | ${e.received_at}`),
+        senderRow: chrisSenderRows?.map(s => `${s.sender_name} | count:${s.email_count} | last:${s.last_email_date} | acct:${s.email_account_id}`) || [],
+        emailsInDb: chrisEmailCount || 0,
+        emailNames: [...new Set((chrisEmails || []).map(e => e.sender_name))],
+        accountId,
       };
     })()
   });
