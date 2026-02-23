@@ -295,7 +295,7 @@ const EmailCleanup = () => {
         if (result.success) {
           setSenderEmails({});
           setExpandedSenders([]);
-          setNotification({ type: 'success', message: `Sync: ${result.syncMessage || 'done'} (method: ${result.syncMethod || '?'}, added: ${result.addedEmails ?? '?'})` });
+          setNotification({ type: 'success', message: `Sync: ${result.syncMessage || 'done'} (method: ${result.syncMethod || '?'}, added: ${result.addedEmails ?? '?'}, orphans: ${result.orphansFixed ?? '?'})` });
         } else if (result.limitReached) {
           const message = result.upgradeMessage
             ? `${sendersError}. ${result.upgradeMessage}`

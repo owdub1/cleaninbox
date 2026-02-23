@@ -724,9 +724,12 @@ async function performIncrementalSync(
     totalSenders: affectedSenders.size,
     addedEmails: addedCount,
     deletedEmails: deletedCount,
+    orphansFixed: orphanedFixed,
     message: syncMethod.includes('failed')
       ? `Sync incomplete - ${completenessResult.missingCount} emails could not be synced`
-      : (addedCount > 0 || deletedCount > 0 ? description : 'Inbox is up to date'),
+      : (addedCount > 0 || deletedCount > 0 || orphanedFixed > 0
+          ? `${description}${orphanedFixed > 0 ? `, ${orphanedFixed} orphans fixed` : ''}`
+          : 'Inbox is up to date'),
     syncType: syncMethod.includes('recovery') ? 'recovery' : 'incremental',
     syncMethod
   });
