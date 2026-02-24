@@ -123,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailVerified: user.email_verified
       },
       JWT_SECRET,
-      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
+      { expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'] }
     );
 
     // Rotate refresh token: revoke old, issue new

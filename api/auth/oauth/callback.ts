@@ -343,7 +343,7 @@ export default async function handler(
         emailVerified: true
       },
       JWT_SECRET,
-      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
+      { expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'] }
     );
 
     // Generate refresh token (7 days)
