@@ -5,12 +5,26 @@
 These are actual problems in the code that should be fixed.
 
 ### Security Fixes
-- [ ] **Sanitize email HTML** — `EmailViewModal.tsx` uses `dangerouslySetInnerHTML` to display email content. If a spammy email has malicious code in it, it could run in your user's browser. Fix: add a library like DOMPurify to clean the HTML before displaying it.
-- [ ] **CAPTCHA fails silently** — if the Turnstile secret key isn't set, CAPTCHA is just skipped instead of blocking the request. In production, if the env var is missing, signups/logins would have no bot protection.
-- [ ] **Free trial check fails open** — if the database call to check free trial limits fails (e.g. Supabase is briefly down), the code says "allow it anyway." This means a database hiccup would let free users do unlimited cleanups. It should block instead.
-- [ ] **Remove localhost URLs from production** — several API files fall back to `http://localhost:5173` if the `VITE_APP_URL` env var isn't set. If that var is ever missing in Vercel, OAuth redirects and emails would point to localhost. Files: `signup.ts`, `forgot-password.ts`, `gmail/callback.ts`, `outlook/callback.ts`, `subscription/get.ts`.
-- [ ] **Remove localhost from CORS whitelist** — `api/subscription/get.ts` has hardcoded `localhost:5173` and `localhost:3000` in allowed origins. Remove these for production.
-- [ ] **npm audit vulnerabilities** — 30 vulnerabilities (23 high), including an XSS issue in react-router-dom. Run `npm audit fix` and test that nothing breaks.
+- [x] **Sanitize email HTML** — fixed in `0b69bb7`
+- [x] **CAPTCHA fails silently** — fixed in `0b69bb7`
+- [x] **Free trial check fails open** — fixed in `0b69bb7`
+- [x] **Remove localhost URLs from production** — fixed in `0b69bb7`
+- [x] **Remove localhost from CORS whitelist** — fixed in `0b69bb7`
+- [x] **npm audit vulnerabilities** — fixed in `0b69bb7`
+- [x] **Remove .env files from git** — fixed in `9fb7dbd`
+- [x] **Remove hardcoded JWT secret fallbacks** — fixed in `9fb7dbd` (17 files now use `requireEnv()`)
+- [x] **Remove frontend discount code** — fixed in `9fb7dbd` (removed `clean25` from Checkout.tsx)
+- [x] **Harden account deletion** — fixed in `9fb7dbd` (Gmail/Outlook tokens revoked before DB deletion)
+
+### Key Rotation (Secrets Were Exposed in Git History)
+- [x] **JWT_SECRET** — rotated
+- [x] **JWT_REFRESH_SECRET** — rotated
+- [x] **RESEND_API_KEY** — rotated
+- [x] **GMAIL_CLIENT_SECRET** — rotated
+- [x] **GMAIL_TOKEN_ENCRYPTION_KEY** — rotated
+- [ ] **Supabase keys** — `VITE_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` should be rotated. Lower risk (protected by Row Level Security), but the old keys are in git history. Requires contacting Supabase support or creating a new project.
+- [ ] **Stripe keys** — currently in test/sandbox mode so no risk. When switching to live mode, use fresh keys (don't reuse test keys).
+- [ ] **Outlook keys** — not set up yet. When you add Outlook support, set `OUTLOOK_CLIENT_SECRET` and `OUTLOOK_TOKEN_ENCRYPTION_KEY` on Vercel.
 
 ### Code Cleanup
 - [ ] **Remove console.logs from API code** — there are 200+ `console.log` statements scattered across the API files. These are debug messages that clutter logs and could accidentally leak info. Remove them or replace critical ones with Sentry error tracking.
