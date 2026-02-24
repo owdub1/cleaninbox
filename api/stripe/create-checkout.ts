@@ -61,7 +61,7 @@ export default async function handler(
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-    const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || '';
 
     const { plan = 'pro', billing = 'monthly' } = req.body || {};
 

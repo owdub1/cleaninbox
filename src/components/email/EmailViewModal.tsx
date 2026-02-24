@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { X, Mail, Calendar, User, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
 import { API_URL } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -185,7 +186,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                 {email.bodyHtml ? (
                   <div
                     className="email-content"
-                    dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.bodyHtml) }}
                     style={{
                       // Contain email styles
                       all: 'initial',

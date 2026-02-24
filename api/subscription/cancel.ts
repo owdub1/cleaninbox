@@ -29,7 +29,7 @@ export default async function handler(
   res: VercelResponse
 ) {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', process.env.VITE_APP_URL || 'http://localhost:5173');
+  res.setHeader('Access-Control-Allow-Origin', process.env.VITE_APP_URL || '');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');

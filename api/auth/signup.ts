@@ -20,7 +20,7 @@ const supabase = createClient(
 );
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+const APP_URL = process.env.VITE_APP_URL || '';
 const EMAIL_VERIFICATION_EXPIRY = process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY || '24h';
 
 // Rate limit: 3 signups per hour per IP

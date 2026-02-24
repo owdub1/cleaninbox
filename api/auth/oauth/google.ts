@@ -80,7 +80,7 @@ export default async function handler(
     console.error('Google auth error:', error);
 
     // Redirect to login with error
-    const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+    const APP_URL = process.env.VITE_APP_URL || '';
     return res.redirect(`${APP_URL}/login?error=oauth_config_error`);
   }
 }

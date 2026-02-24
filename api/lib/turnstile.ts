@@ -31,9 +31,13 @@ interface TurnstileVerifyResponse {
  * @returns Promise<boolean> - True if verification passed
  */
 export async function verifyTurnstile(token: string, req?: VercelRequest): Promise<boolean> {
-  // If no secret key is configured, allow through (development mode)
+  // If no secret key is configured, only allow in development
   if (!TURNSTILE_SECRET_KEY) {
-    console.warn('TURNSTILE_SECRET_KEY not configured - CAPTCHA verification bypassed');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('TURNSTILE_SECRET_KEY not configured in production - rejecting request');
+      return false;
+    }
+    console.warn('TURNSTILE_SECRET_KEY not configured - CAPTCHA verification bypassed (dev mode)');
     return true;
   }
 

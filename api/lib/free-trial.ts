@@ -45,8 +45,8 @@ export async function tryIncrementFreeTrialUsage(
 
   if (error) {
     console.error('Free trial RPC error:', error);
-    // Fail open - allow the action if the RPC fails
-    return { allowed: true, actions_used: 0, limit: FREE_TRIAL_LIMIT };
+    // Fail closed - block the action if the RPC fails
+    return { allowed: false, actions_used: 0, limit: FREE_TRIAL_LIMIT };
   }
 
   return data as { allowed: boolean; actions_used: number; limit: number };

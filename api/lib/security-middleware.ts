@@ -290,10 +290,10 @@ export function validateOrigin(req: VercelRequest): boolean {
 
   // In production, validate against allowed origins
   const allowedOrigins = [
-    process.env.VITE_APP_URL || 'http://localhost:5173',
+    process.env.VITE_APP_URL,
     'https://cleaninbox.vercel.app',
     'https://cleaninbox.com'
-  ];
+  ].filter(Boolean) as string[];
 
   return allowedOrigins.some(allowed => origin.startsWith(allowed));
 }

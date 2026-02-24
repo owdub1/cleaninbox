@@ -59,7 +59,7 @@ export default async function handler(
       return res.status(400).json({ error: 'No billing account found. Please subscribe first.' });
     }
 
-    const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.VITE_APP_URL || process.env.FRONTEND_URL || '';
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,

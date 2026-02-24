@@ -104,8 +104,6 @@ interface JWTPayload {
 const ALLOWED_ORIGINS = [
   'https://cleaninbox.vercel.app',
   'https://www.cleaninbox.com',
-  'http://localhost:5173',
-  'http://localhost:3000',
   process.env.VITE_APP_URL,
   process.env.FRONTEND_URL,
 ].filter(Boolean);

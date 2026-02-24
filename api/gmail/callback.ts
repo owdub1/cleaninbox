@@ -22,7 +22,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const APP_URL = process.env.VITE_APP_URL || 'http://localhost:5173';
+const APP_URL = process.env.VITE_APP_URL || '';
 const limiter = rateLimit(RateLimitPresets.STANDARD);
 
 export default async function handler(
