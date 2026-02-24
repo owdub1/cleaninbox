@@ -52,15 +52,18 @@ export interface GmailProfile {
 }
 
 /**
- * Encrypt a string using AES-256-GCM
+ * Encrypt a string using AES-256-GCM with random salt
  */
 export function encryptToken(plaintext: string): string {
   if (!GMAIL_TOKEN_ENCRYPTION_KEY) {
     throw new Error('GMAIL_TOKEN_ENCRYPTION_KEY is not configured');
   }
 
-  // Derive 32-byte key from the encryption key
-  const key = crypto.scryptSync(GMAIL_TOKEN_ENCRYPTION_KEY, 'gmail-salt', 32);
+  // Generate random 16-byte salt for key derivation
+  const salt = crypto.randomBytes(16);
+
+  // Derive 32-byte key from the encryption key + random salt
+  const key = crypto.scryptSync(GMAIL_TOKEN_ENCRYPTION_KEY, salt, 32);
 
   // Generate random IV (12 bytes for GCM)
   const iv = crypto.randomBytes(12);
@@ -75,12 +78,12 @@ export function encryptToken(plaintext: string): string {
   // Get auth tag
   const authTag = cipher.getAuthTag();
 
-  // Combine IV + authTag + encrypted data
-  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+  // Format: salt:iv:authTag:ciphertext
+  return salt.toString('hex') + ':' + iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
 }
 
 /**
- * Decrypt a string using AES-256-GCM
+ * Decrypt a string using AES-256-GCM with embedded salt
  */
 export function decryptToken(encryptedData: string): string {
   if (!GMAIL_TOKEN_ENCRYPTION_KEY) {
@@ -88,16 +91,17 @@ export function decryptToken(encryptedData: string): string {
   }
 
   const parts = encryptedData.split(':');
-  if (parts.length !== 3) {
+  if (parts.length !== 4) {
     throw new Error('Invalid encrypted data format');
   }
 
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
-  const encrypted = parts[2];
+  const salt = Buffer.from(parts[0], 'hex');
+  const iv = Buffer.from(parts[1], 'hex');
+  const authTag = Buffer.from(parts[2], 'hex');
+  const encrypted = parts[3];
 
-  // Derive key
-  const key = crypto.scryptSync(GMAIL_TOKEN_ENCRYPTION_KEY, 'gmail-salt', 32);
+  // Derive key using the stored salt
+  const key = crypto.scryptSync(GMAIL_TOKEN_ENCRYPTION_KEY, salt, 32);
 
   // Create decipher
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);

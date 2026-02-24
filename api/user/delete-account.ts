@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
+import { csrfProtection } from '../lib/csrf.js';
 import { comparePassword } from '../lib/auth-utils.js';
 import { decryptToken, revokeTokens } from '../lib/gmail.js';
 import { decryptToken as decryptOutlookToken } from '../lib/outlook.js';
@@ -22,6 +23,7 @@ export default async function handler(
   }
 
   if (await limiter(req, res)) return;
+  if (!csrfProtection(req, res)) return;
 
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;

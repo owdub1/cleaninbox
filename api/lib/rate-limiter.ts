@@ -112,10 +112,10 @@ export const RateLimitPresets = {
   // Auth endpoints: 5 attempts per 15 minutes
   AUTH: { windowMs: 15 * 60 * 1000, maxRequests: 5 },
 
-  // Password reset: 10 requests per 5 minutes (for testing - change back to 1 hour in production)
+  // Password reset: 3 requests per hour
   PASSWORD_RESET: {
-    windowMs: 5 * 60 * 1000,
-    maxRequests: 10,
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 3,
     message: 'Too many password reset requests. Please try again later.'
   },
 

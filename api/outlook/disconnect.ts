@@ -11,6 +11,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
+import { csrfProtection } from '../lib/csrf.js';
 import { deleteOutlookOAuthTokens } from '../lib/outlook.js';
 
 const supabase = createClient(
@@ -29,6 +30,7 @@ export default async function handler(
   }
 
   if (await limiter(req, res)) return;
+  if (!csrfProtection(req, res)) return;
 
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;

@@ -9,7 +9,7 @@ import {
   generateToken,
   getExpirationDate
 } from '../lib/auth-utils.js';
-import { sendVerificationEmail } from '../../src/lib/email.js';
+import { sendVerificationEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
 import { verifyTurnstile } from '../lib/turnstile.js';

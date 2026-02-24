@@ -1,8 +1,8 @@
 /**
  * Server-side Email Service for CleanInbox
  *
- * Sends transactional emails for subscription events using Resend API.
- * Used by webhook handlers and other server-side code.
+ * ALL transactional emails should use this module (not src/lib/email.ts).
+ * Sends emails using Resend API.
  */
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -260,5 +260,175 @@ export async function sendQuickCleanExpiringEmail(
     </div>`;
 
   const html = wrapEmail('Quick Clean Expiring Soon', '#f59e0b', '#d97706', body);
+  return sendEmail({ to, subject, html });
+}
+
+// --- Auth emails (migrated from src/lib/email.ts) ---
+
+interface VerificationEmailOptions {
+  to: string;
+  firstName: string;
+  verificationUrl: string;
+}
+
+interface PasswordResetEmailOptions {
+  to: string;
+  firstName: string;
+  resetUrl: string;
+}
+
+interface AccountLockedEmailOptions {
+  to: string;
+  firstName: string;
+  lockedUntil: Date;
+}
+
+/**
+ * Send email verification email
+ */
+export async function sendVerificationEmail({
+  to,
+  firstName,
+  verificationUrl,
+}: VerificationEmailOptions): Promise<boolean> {
+  const subject = 'Verify your CleanInbox account';
+  const body = `
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      Thank you for signing up for CleanInbox! We're excited to help you take control of your inbox.
+    </p>
+    <p style="font-size: 16px; margin-bottom: 30px;">
+      To get started, please verify your email address by clicking the button below:
+    </p>
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="${verificationUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+        Verify Email Address
+      </a>
+    </div>
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+      If the button doesn't work, copy and paste this link into your browser:
+    </p>
+    <p style="font-size: 14px; color: #667eea; word-break: break-all;">
+      ${verificationUrl}
+    </p>
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px; padding-top: 30px; border-top: 1px solid #e5e7eb;">
+      This link will expire in 24 hours for security reasons.
+    </p>
+    <p style="font-size: 14px; color: #6b7280;">
+      If you didn't create an account with CleanInbox, you can safely ignore this email.
+    </p>`;
+
+  const html = wrapEmail('Welcome to CleanInbox!', '#667eea', '#764ba2', body);
+  return sendEmail({ to, subject, html });
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail({
+  to,
+  firstName,
+  resetUrl,
+}: PasswordResetEmailOptions): Promise<boolean> {
+  const subject = 'Reset your CleanInbox password';
+  const body = `
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      We received a request to reset your password for your CleanInbox account.
+    </p>
+    <p style="font-size: 16px; margin-bottom: 30px;">
+      Click the button below to choose a new password:
+    </p>
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="${resetUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+        Reset Password
+      </a>
+    </div>
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+      If the button doesn't work, copy and paste this link into your browser:
+    </p>
+    <p style="font-size: 14px; color: #667eea; word-break: break-all;">
+      ${resetUrl}
+    </p>
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px; padding-top: 30px; border-top: 1px solid #e5e7eb;">
+      This link will expire in 1 hour for security reasons.
+    </p>
+    <p style="font-size: 14px; color: #ef4444; background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 4px solid #ef4444;">
+      <strong>Security Alert:</strong> If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
+    </p>`;
+
+  const html = wrapEmail('Password Reset Request', '#667eea', '#764ba2', body);
+  return sendEmail({ to, subject, html });
+}
+
+/**
+ * Send account locked notification email
+ */
+export async function sendAccountLockedEmail({
+  to,
+  firstName,
+  lockedUntil,
+}: AccountLockedEmailOptions): Promise<boolean> {
+  const subject = 'Your CleanInbox account has been locked';
+  const lockDuration = Math.round((lockedUntil.getTime() - Date.now()) / (1000 * 60));
+
+  const body = `
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      Your CleanInbox account has been temporarily locked due to multiple failed login attempts.
+    </p>
+    <div style="background: #fef2f2; padding: 20px; border-radius: 6px; border-left: 4px solid #ef4444; margin: 30px 0;">
+      <p style="margin: 0; font-size: 16px; color: #991b1b;">
+        <strong>Account Status:</strong> Locked for ${lockDuration} minutes
+      </p>
+    </div>
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      This is a security measure to protect your account from unauthorized access.
+    </p>
+    <p style="font-size: 16px; margin-bottom: 30px;">
+      <strong>What to do next:</strong>
+    </p>
+    <ul style="font-size: 16px; line-height: 1.8;">
+      <li>Wait ${lockDuration} minutes before trying again</li>
+      <li>Make sure you're using the correct password</li>
+      <li>If you forgot your password, use the "Forgot Password" link</li>
+      <li>If you didn't attempt to log in, contact support immediately</li>
+    </ul>
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px; padding-top: 30px; border-top: 1px solid #e5e7eb;">
+      If you believe this is an error or if you're having trouble accessing your account, please contact our support team.
+    </p>`;
+
+  const html = wrapEmail('Security Alert', '#ef4444', '#dc2626', body);
+  return sendEmail({ to, subject, html });
+}
+
+/**
+ * Send password changed confirmation email
+ */
+export async function sendPasswordChangedEmail(to: string, firstName: string): Promise<boolean> {
+  const subject = 'Your CleanInbox password was changed';
+  const body = `
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">
+      This email confirms that your CleanInbox password was changed successfully.
+    </p>
+    <div style="background: #f0fdf4; padding: 20px; border-radius: 6px; border-left: 4px solid #10b981; margin: 30px 0;">
+      <p style="margin: 0; font-size: 16px; color: #065f46;">
+        Your password has been updated
+      </p>
+    </div>
+    <p style="font-size: 14px; color: #ef4444; background: #fef2f2; padding: 15px; border-radius: 6px; border-left: 4px solid #ef4444;">
+      <strong>Important:</strong> If you didn't make this change, please contact our support team immediately and secure your account.
+    </p>
+    <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+      For your security, you may want to:
+    </p>
+    <ul style="font-size: 14px; color: #6b7280; line-height: 1.8;">
+      <li>Review your recent account activity</li>
+      <li>Enable two-factor authentication (coming soon)</li>
+      <li>Use a unique password for CleanInbox</li>
+    </ul>`;
+
+  const html = wrapEmail('Password Changed Successfully', '#10b981', '#059669', body);
   return sendEmail({ to, subject, html });
 }

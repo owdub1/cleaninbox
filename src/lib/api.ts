@@ -10,6 +10,22 @@ export const API_URL = import.meta.env.VITE_API_URL ??
   (import.meta.env.PROD ? '' : 'http://localhost:5173');
 
 /**
+ * Get standard auth headers (Authorization + CSRF token)
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const csrfToken = localStorage.getItem('csrf_token');
+  if (csrfToken) {
+    headers['x-csrf-token'] = csrfToken;
+  }
+  return headers;
+}
+
+/**
  * Helper function to make API calls with proper URL
  */
 export async function apiRequest(
@@ -22,6 +38,7 @@ export async function apiRequest(
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...options?.headers,
     },
     credentials: 'include', // Important for cookies

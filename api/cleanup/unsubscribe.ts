@@ -12,6 +12,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
+import { csrfProtection } from '../lib/csrf.js';
 import { getValidAccessToken } from '../lib/gmail.js';
 import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { sendMessage } from '../lib/gmail-api.js';
@@ -52,6 +53,57 @@ interface HttpUnsubscribeResult {
   };
 }
 
+/**
+ * Validate URL to prevent SSRF attacks.
+ * Only allows http/https schemes and rejects private/internal IP ranges.
+ */
+function validateUrl(urlString: string): { valid: boolean; error?: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlString);
+  } catch {
+    return { valid: false, error: 'Invalid URL' };
+  }
+
+  // Only allow http and https
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return { valid: false, error: `Blocked scheme: ${parsed.protocol}` };
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+
+  // Block localhost variants
+  if (hostname === 'localhost' || hostname === '[::1]') {
+    return { valid: false, error: 'Blocked: localhost' };
+  }
+
+  // Block private IPv4 ranges
+  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const [, a, b] = ipv4Match.map(Number);
+    if (
+      a === 127 ||                        // 127.0.0.0/8 loopback
+      a === 10 ||                          // 10.0.0.0/8 private
+      (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12 private
+      (a === 192 && b === 168) ||          // 192.168.0.0/16 private
+      (a === 169 && b === 254) ||          // 169.254.0.0/16 link-local
+      a === 0                              // 0.0.0.0/8
+    ) {
+      return { valid: false, error: 'Blocked: private IP range' };
+    }
+  }
+
+  // Block IPv6 private ranges (encoded in brackets)
+  if (hostname.startsWith('[')) {
+    const ipv6 = hostname.slice(1, -1).toLowerCase();
+    if (ipv6 === '::1' || ipv6.startsWith('fc') || ipv6.startsWith('fd') || ipv6.startsWith('fe80')) {
+      return { valid: false, error: 'Blocked: private IPv6 range' };
+    }
+  }
+
+  return { valid: true };
+}
+
 async function httpUnsubscribe(
   url: string,
   supportsOneClick: boolean
@@ -61,6 +113,12 @@ async function httpUnsubscribe(
     method: supportsOneClick ? 'POST (One-Click)' : 'manual',
     supportsOneClick,
   };
+
+  // SSRF protection: validate URL before making any request
+  const urlCheck = validateUrl(url);
+  if (!urlCheck.valid) {
+    return { success: false, error: urlCheck.error, debug };
+  }
 
   try {
     if (supportsOneClick) {
@@ -134,6 +192,7 @@ async function handler(
 
   // Rate limiting
   if (await limiter(req, res)) return;
+  if (!csrfProtection(req, res)) return;
 
   // Require authentication
   const user = requireAuth(req as AuthenticatedRequest, res);

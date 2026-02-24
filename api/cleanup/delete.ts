@@ -12,6 +12,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
+import { csrfProtection } from '../lib/csrf.js';
 import { getValidAccessToken } from '../lib/gmail.js';
 import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { batchTrashMessages, deleteEmailsFromSender } from '../lib/gmail-api.js';
@@ -42,6 +43,7 @@ async function handler(
 
   // Rate limiting
   if (await limiter(req, res)) return;
+  if (!csrfProtection(req, res)) return;
 
   // Require authentication
   const user = requireAuth(req as AuthenticatedRequest, res);

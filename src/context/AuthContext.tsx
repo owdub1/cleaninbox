@@ -29,8 +29,8 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const CSRF_TOKEN_KEY = 'csrf_token';
 const USER_KEY = 'auth_user';
 
-// Refresh token once per day (tokens last 7 days, refresh at day 6)
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+// Refresh access token every 10 minutes (tokens last 15 minutes)
+const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
 export const AuthProvider: React.FC<{
   children: React.ReactNode;
@@ -72,6 +72,9 @@ export const AuthProvider: React.FC<{
       setUser(data.user);
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      if (data.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+      }
 
       return true;
     } catch (error) {
@@ -116,6 +119,9 @@ export const AuthProvider: React.FC<{
             setUser(data.user);
             localStorage.setItem(TOKEN_KEY, data.token);
             localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+            if (data.refreshToken) {
+              localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+            }
           } else if (response.status === 401) {
             // Only clear on explicit 401 (unauthorized) - token is definitely invalid
             console.warn('Refresh token rejected (401), clearing session');

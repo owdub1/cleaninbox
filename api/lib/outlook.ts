@@ -50,14 +50,17 @@ export interface OutlookProfile {
 }
 
 /**
- * Encrypt a string using AES-256-GCM
+ * Encrypt a string using AES-256-GCM with random salt
  */
 export function encryptToken(plaintext: string): string {
   if (!OUTLOOK_TOKEN_ENCRYPTION_KEY) {
     throw new Error('OUTLOOK_TOKEN_ENCRYPTION_KEY is not configured');
   }
 
-  const key = crypto.scryptSync(OUTLOOK_TOKEN_ENCRYPTION_KEY, 'outlook-salt', 32);
+  // Generate random 16-byte salt for key derivation
+  const salt = crypto.randomBytes(16);
+
+  const key = crypto.scryptSync(OUTLOOK_TOKEN_ENCRYPTION_KEY, salt, 32);
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
 
@@ -65,11 +68,12 @@ export function encryptToken(plaintext: string): string {
   encrypted += cipher.final('hex');
   const authTag = cipher.getAuthTag();
 
-  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+  // Format: salt:iv:authTag:ciphertext
+  return salt.toString('hex') + ':' + iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
 }
 
 /**
- * Decrypt a string using AES-256-GCM
+ * Decrypt a string using AES-256-GCM with embedded salt
  */
 export function decryptToken(encryptedData: string): string {
   if (!OUTLOOK_TOKEN_ENCRYPTION_KEY) {
@@ -77,15 +81,16 @@ export function decryptToken(encryptedData: string): string {
   }
 
   const parts = encryptedData.split(':');
-  if (parts.length !== 3) {
+  if (parts.length !== 4) {
     throw new Error('Invalid encrypted data format');
   }
 
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
-  const encrypted = parts[2];
+  const salt = Buffer.from(parts[0], 'hex');
+  const iv = Buffer.from(parts[1], 'hex');
+  const authTag = Buffer.from(parts[2], 'hex');
+  const encrypted = parts[3];
 
-  const key = crypto.scryptSync(OUTLOOK_TOKEN_ENCRYPTION_KEY, 'outlook-salt', 32);
+  const key = crypto.scryptSync(OUTLOOK_TOKEN_ENCRYPTION_KEY, salt, 32);
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(authTag);
 

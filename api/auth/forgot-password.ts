@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { generateToken, getExpirationDate, getClientIP, getUserAgent } from '../lib/auth-utils.js';
-import { sendPasswordResetEmail } from '../../src/lib/email.js';
+import { sendPasswordResetEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(

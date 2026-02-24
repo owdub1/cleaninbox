@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { requireEnv } from '../lib/env.js';
+import { getClientIP, getUserAgent } from '../lib/auth-utils.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -114,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Generate new access token (7 days - long-lived for better UX)
+    // Generate new access token (short-lived, refresh token handles session persistence)
     const newAccessToken = jwt.sign(
       {
         userId: user.id,
@@ -122,18 +123,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailVerified: user.email_verified
       },
       JWT_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
+    );
+
+    // Rotate refresh token: revoke old, issue new
+    await supabase
+      .from('refresh_tokens')
+      .update({ revoked: true })
+      .eq('token_hash', tokenHash);
+
+    const newRefreshToken = jwt.sign(
+      { userId: user.id },
+      JWT_REFRESH_SECRET,
       { expiresIn: '7d' }
     );
 
-    // Optionally rotate refresh token (best practice for security)
-    // For now, we'll keep the same refresh token
-    // In a more secure implementation, you would:
-    // 1. Revoke the old refresh token
-    // 2. Generate a new refresh token
-    // 3. Return both new access and refresh tokens
+    const newTokenHash = hashToken(newRefreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await supabase
+      .from('refresh_tokens')
+      .insert([{
+        user_id: user.id,
+        token_hash: newTokenHash,
+        expires_at: expiresAt.toISOString(),
+        ip_address: getClientIP(req),
+        user_agent: getUserAgent(req)
+      }]);
 
     return res.status(200).json({
       token: newAccessToken,
+      refreshToken: newRefreshToken,
       user: {
         id: user.id,
         email: user.email,

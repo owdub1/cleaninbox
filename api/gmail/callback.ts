@@ -16,6 +16,7 @@ import {
   getGmailProfile,
   storeOAuthTokens
 } from '../lib/gmail.js';
+import { PLAN_LIMITS } from '../subscription/get.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -90,6 +91,27 @@ export default async function handler(
       .single();
 
     let emailAccountId: string;
+
+    if (!existingAccount) {
+      // Check plan limits before creating a new account
+      const { count: accountCount } = await supabase
+        .from('email_accounts')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('subscription')
+        .eq('id', userId)
+        .single();
+
+      const planKey = (userData?.subscription?.toLowerCase() || 'free') as keyof typeof PLAN_LIMITS;
+      const limit = (PLAN_LIMITS[planKey] || PLAN_LIMITS.free).emailLimit;
+
+      if ((accountCount || 0) >= limit) {
+        return res.redirect(`${APP_URL}/email-cleanup?error=account_limit_reached`);
+      }
+    }
 
     if (existingAccount) {
       // Update existing account

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
+import { csrfProtection } from '../lib/csrf.js';
 import { hashPassword, comparePassword, validatePassword } from '../lib/auth-utils.js';
 import { requireEnv } from '../lib/env.js';
 
@@ -24,6 +25,7 @@ export default async function handler(
   }
 
   if (await limiter(req, res)) return;
+  if (!csrfProtection(req, res)) return;
 
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { isExpired, validatePassword, hashPassword } from '../lib/auth-utils.js';
-import { sendPasswordChangedEmail } from '../../src/lib/email.js';
+import { sendPasswordChangedEmail } from '../lib/email.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,

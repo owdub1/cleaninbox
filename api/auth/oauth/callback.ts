@@ -335,7 +335,7 @@ export default async function handler(
       }
     }
 
-    // Generate JWT access token (15 minutes)
+    // Generate JWT access token (short-lived, refresh token handles session persistence)
     const accessToken = jwt.sign(
       {
         userId: user.id,
@@ -343,7 +343,7 @@ export default async function handler(
         emailVerified: true
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
     );
 
     // Generate refresh token (7 days)

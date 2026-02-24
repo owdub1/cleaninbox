@@ -7,7 +7,7 @@ import {
   getClientIP,
   getUserAgent
 } from '../lib/auth-utils.js';
-import { sendAccountLockedEmail } from '../../src/lib/email.js';
+import { sendAccountLockedEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
 import { verifyTurnstile } from '../lib/turnstile.js';
@@ -23,8 +23,8 @@ const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 const MAX_LOGIN_ATTEMPTS = parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10);
 const LOCKOUT_DURATION_MINUTES = parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10);
 
-// Rate limit: 30 requests per minute
-const limiter = rateLimit(RateLimitPresets.STANDARD);
+// Rate limit: 5 attempts per 15 minutes
+const limiter = rateLimit(RateLimitPresets.AUTH);
 
 /**
  * Hash a refresh token for secure storage
@@ -290,7 +290,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Record successful login
     await recordLoginAttempt(user.id, email, ipAddress, userAgent, true, undefined);
 
-    // Generate JWT access token (7 days - long-lived for better UX)
+    // Generate JWT access token (short-lived, refresh token handles session persistence)
     const token = jwt.sign(
       {
         userId: user.id,
@@ -298,7 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         emailVerified: user.email_verified
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY || '15m' }
     );
 
     // Generate refresh token (7 or 30 days based on Remember Me)
