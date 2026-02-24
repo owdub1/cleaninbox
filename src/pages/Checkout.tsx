@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LockIcon, CheckCircleIcon, ChevronRightIcon, CreditCardIcon, TagIcon, ZapIcon, LoaderIcon } from 'lucide-react';
+import { LockIcon, ChevronRightIcon, CreditCardIcon, ZapIcon, LoaderIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/api';
 
@@ -13,10 +13,6 @@ const Checkout = () => {
     price: '$14.99',
     billing: 'monthly'
   });
-  const [discountCode, setDiscountCode] = useState('');
-  const [discountApplied, setDiscountApplied] = useState(false);
-  const [discountError, setDiscountError] = useState('');
-  const [originalPrice, setOriginalPrice] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,7 +29,6 @@ const Checkout = () => {
         price: finalPrice,
         billing: 'one-time'
       });
-      setOriginalPrice(finalPrice);
       return;
     }
 
@@ -45,7 +40,6 @@ const Checkout = () => {
     }
 
     const finalPrice = billing === 'annual' ? `$${(parseFloat(basePrice) * 0.8).toFixed(2)}` : `$${basePrice}`;
-    setOriginalPrice(finalPrice);
 
     if (planId === 'basic') {
       setSelectedPlan({ name: 'Basic', price: finalPrice, billing });
@@ -55,37 +49,6 @@ const Checkout = () => {
       setSelectedPlan({ name: 'Unlimited', price: finalPrice, billing });
     }
   }, [location]);
-
-  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDiscountCode(e.target.value);
-    if (discountApplied) {
-      setDiscountApplied(false);
-      setSelectedPlan({
-        ...selectedPlan,
-        price: originalPrice
-      });
-    }
-    setDiscountError('');
-  };
-
-  const applyDiscount = () => {
-    if (!discountCode.trim()) {
-      setDiscountError('Please enter a discount code');
-      return;
-    }
-    if (discountCode.toLowerCase() === 'clean25') {
-      const numericPrice = parseFloat(originalPrice.replace('$', ''));
-      const discountedPrice = (numericPrice * 0.75).toFixed(2);
-      setSelectedPlan({
-        ...selectedPlan,
-        price: `$${discountedPrice}`
-      });
-      setDiscountApplied(true);
-      setDiscountError('');
-    } else {
-      setDiscountError('Invalid discount code');
-    }
-  };
 
   const handleCheckout = async () => {
     if (!token) {
@@ -187,30 +150,6 @@ const Checkout = () => {
                 </div>
               </div>
               <div className="space-y-6">
-                {/* Discount Code Section */}
-                <div>
-                  <label htmlFor="discountCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Discount Code
-                  </label>
-                  <div className="mt-1 flex">
-                    <div className="relative flex-grow">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <TagIcon className="h-5 w-5 text-gray-400" />
-                      </div>
-                      <input type="text" id="discountCode" name="discountCode" value={discountCode} onChange={handleDiscountChange} className="block w-full border border-gray-300 rounded-l-md shadow-sm pl-10 p-3 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" placeholder="Enter discount code" />
-                    </div>
-                    <button type="button" onClick={applyDiscount} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-r-md font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
-                      Apply
-                    </button>
-                  </div>
-                  {discountError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                      {discountError}
-                    </p>}
-                  {discountApplied && <p className="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center">
-                      <CheckCircleIcon className="h-4 w-4 mr-1" />
-                      Discount applied successfully!
-                    </p>}
-                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Payment Method

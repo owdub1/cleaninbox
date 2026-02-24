@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { comparePassword } from '../lib/auth-utils.js';
+import { decryptToken, revokeTokens } from '../lib/gmail.js';
+import { decryptToken as decryptOutlookToken } from '../lib/outlook.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -68,9 +70,50 @@ export default async function handler(
     const emailAccountIds = emailAccounts?.map(a => a.id) || [];
 
     // Delete all user data in order
-    // 1. Gmail OAuth tokens
+    // 1. Revoke and delete Gmail OAuth tokens
+    const { data: gmailTokens } = await supabase
+      .from('gmail_oauth_tokens')
+      .select('id, access_token_encrypted')
+      .eq('user_id', user.userId);
+
+    if (gmailTokens) {
+      for (const token of gmailTokens) {
+        try {
+          const accessToken = decryptToken(token.access_token_encrypted);
+          await revokeTokens(accessToken);
+        } catch (err) {
+          console.warn('Failed to revoke Gmail token:', err);
+        }
+      }
+    }
+
     await supabase
       .from('gmail_oauth_tokens')
+      .delete()
+      .eq('user_id', user.userId);
+
+    // 1b. Revoke and delete Outlook OAuth tokens
+    const { data: outlookTokens } = await supabase
+      .from('outlook_oauth_tokens')
+      .select('id, access_token_encrypted')
+      .eq('user_id', user.userId);
+
+    if (outlookTokens) {
+      for (const token of outlookTokens) {
+        try {
+          const accessToken = decryptOutlookToken(token.access_token_encrypted);
+          // Revoke with Microsoft logout endpoint
+          await fetch(`https://login.microsoftonline.com/common/oauth2/v2.0/logout?token=${accessToken}`, {
+            method: 'POST',
+          });
+        } catch (err) {
+          console.warn('Failed to revoke Outlook token:', err);
+        }
+      }
+    }
+
+    await supabase
+      .from('outlook_oauth_tokens')
       .delete()
       .eq('user_id', user.userId);
 

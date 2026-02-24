@@ -11,14 +11,15 @@ import { sendAccountLockedEmail } from '../../src/lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
 import { verifyTurnstile } from '../lib/turnstile.js';
+import { requireEnv } from '../lib/env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 const MAX_LOGIN_ATTEMPTS = parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10);
 const LOCKOUT_DURATION_MINUTES = parseInt(process.env.LOCKOUT_DURATION_MINUTES || '30', 10);
 

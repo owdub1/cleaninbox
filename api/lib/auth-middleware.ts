@@ -1,13 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
+import { requireEnv } from './env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 /**
  * Extended request interface with authenticated user data

@@ -11,9 +11,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { rateLimit, RateLimitPresets } from '../../lib/rate-limiter.js';
+import { requireEnv } from '../../lib/env.js';
 
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
 
 // Minimal scopes for sign-in (just profile and email)

@@ -2,14 +2,15 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { requireEnv } from '../lib/env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 
 /**
  * Hash a refresh token for secure storage

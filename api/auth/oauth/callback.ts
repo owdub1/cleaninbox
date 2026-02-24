@@ -13,6 +13,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { rateLimit, RateLimitPresets } from '../../lib/rate-limiter.js';
 import { getClientIP, getUserAgent } from '../../lib/auth-utils.js';
+import { requireEnv } from '../../lib/env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -21,8 +22,8 @@ const supabase = createClient(
 
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
 const APP_URL = process.env.VITE_APP_URL || 'https://cleaninbox.ca';
 

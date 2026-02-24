@@ -13,13 +13,14 @@ import { sendVerificationEmail } from '../../src/lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
 import { verifyTurnstile } from '../lib/turnstile.js';
+import { requireEnv } from '../lib/env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 const APP_URL = process.env.VITE_APP_URL || '';
 const EMAIL_VERIFICATION_EXPIRY = process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY || '24h';
 

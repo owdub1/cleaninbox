@@ -4,13 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { hashPassword, comparePassword, validatePassword } from '../lib/auth-utils.js';
+import { requireEnv } from '../lib/env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 const limiter = rateLimit(RateLimitPresets.STANDARD);
 

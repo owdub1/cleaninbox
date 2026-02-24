@@ -11,6 +11,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
+import { requireEnv } from './env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -21,7 +22,7 @@ const supabase = createClient(
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const GMAIL_TOKEN_ENCRYPTION_KEY = process.env.GMAIL_TOKEN_ENCRYPTION_KEY;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 // API_URL is where Google redirects to (backend)
 const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
 // APP_URL is where we redirect users after OAuth (frontend)

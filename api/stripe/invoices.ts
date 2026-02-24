@@ -10,9 +10,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import { requireEnv } from '../lib/env.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,

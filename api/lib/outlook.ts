@@ -11,6 +11,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
+import { requireEnv } from './env.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -21,7 +22,7 @@ const supabase = createClient(
 const OUTLOOK_CLIENT_ID = process.env.OUTLOOK_CLIENT_ID;
 const OUTLOOK_CLIENT_SECRET = process.env.OUTLOOK_CLIENT_SECRET;
 const OUTLOOK_TOKEN_ENCRYPTION_KEY = process.env.OUTLOOK_TOKEN_ENCRYPTION_KEY;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
 const APP_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'https://cleaninbox.ca';
 
