@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 export interface Sender {
   id: string;
@@ -51,7 +51,7 @@ interface UseSendersOptions {
 }
 
 export const useEmailSenders = (options: UseSendersOptions = {}) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [senders, setSenders] = useState<Sender[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -103,15 +103,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       if (filter) params.set('filter', filter);
       if (limit) params.set('limit', limit.toString());
 
-      const response = await fetch(
-        `${API_URL}/api/emails/senders?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        }
+      const response = await fetchWithAuth(
+        `/api/emails/senders?${params.toString()}`,
+        { method: 'GET' },
+        refreshToken
       );
 
       const data: SendersResponse = await response.json();
@@ -135,7 +130,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, optEmail, optSortBy, optSortDirection, optFilter, optLimit]);
+  }, [isAuthenticated, refreshToken, optEmail, optSortBy, optSortDirection, optFilter, optLimit]);
 
   /**
    * Sync emails from Gmail
@@ -161,14 +156,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       setSyncing(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/emails/sync`, {
+      const response = await fetchWithAuth('/api/emails/sync', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({ email, maxMessages, fullSync, repair }),
-      });
+      }, refreshToken);
 
       const data = await response.json();
 
@@ -326,15 +317,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         params.set('senderName', senderName);
       }
 
-      const response = await fetch(
-        `${API_URL}/api/emails/by-sender?${params.toString()}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        }
+      const response = await fetchWithAuth(
+        `/api/emails/by-sender?${params.toString()}`,
+        { method: 'GET' },
+        refreshToken
       );
 
       const data = await response.json();
@@ -362,7 +348,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       console.error('Fetch emails by sender error:', err);
       return [];
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshToken]);
 
   // Auto-fetch on mount if enabled (only once)
   useEffect(() => {

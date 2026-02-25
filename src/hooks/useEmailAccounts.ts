@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL, getCSRFHeaders } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 export const useEmailAccounts = () => {
-  const { user } = useAuth();
+  const { user, refreshToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,15 +33,10 @@ export const useEmailAccounts = () => {
         ? '/api/outlook/disconnect'
         : '/api/gmail/disconnect';
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await fetchWithAuth(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getCSRFHeaders(),
-        },
-        credentials: 'include',
         body: JSON.stringify({ email }),
-      });
+      }, refreshToken);
 
       if (!response.ok) {
         const data = await response.json();
@@ -78,15 +73,10 @@ export const useEmailAccounts = () => {
       }
 
       // Call the server-side sync API
-      const response = await fetch(`${API_URL}/api/emails/sync`, {
+      const response = await fetchWithAuth('/api/emails/sync', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getCSRFHeaders(),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ email, fullSync })
-      });
+        body: JSON.stringify({ email, fullSync }),
+      }, refreshToken);
 
       const data = await response.json();
 

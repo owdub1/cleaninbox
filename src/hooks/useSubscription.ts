@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export interface Subscription {
@@ -38,7 +38,7 @@ const DEFAULT_FREE_SUBSCRIPTION: Subscription = {
 };
 
 export function useSubscription() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [subscription, setSubscription] = useState<Subscription>(DEFAULT_FREE_SUBSCRIPTION);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +52,7 @@ export function useSubscription() {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/subscription/get`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      const response = await fetchWithAuth('/api/subscription/get', { method: 'GET' }, refreshToken);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -92,13 +86,7 @@ export function useSubscription() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/subscription/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      const response = await fetchWithAuth('/api/subscription/cancel', { method: 'POST' }, refreshToken);
 
       const data = await response.json();
 

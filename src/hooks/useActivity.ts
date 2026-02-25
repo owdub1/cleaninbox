@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export interface Activity {
@@ -11,7 +11,7 @@ export interface Activity {
 }
 
 export function useActivity(limit: number = 10) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +25,9 @@ export function useActivity(limit: number = 10) {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/activity/get?limit=${limit}`, {
+      const response = await fetchWithAuth(`/api/activity/get?limit=${limit}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      }, refreshToken);
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -51,7 +47,7 @@ export function useActivity(limit: number = 10) {
     } finally {
       setLoading(false);
     }
-  }, [limit, isAuthenticated]);
+  }, [limit, isAuthenticated, refreshToken]);
 
   useEffect(() => {
     fetchActivity();
@@ -65,25 +61,21 @@ export function useActivity(limit: number = 10) {
     if (!isAuthenticated) return;
 
     try {
-      await fetch(`${API_URL}/api/activity/log`, {
+      await fetchWithAuth(`/api/activity/log`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify({
           action_type: actionType,
           description,
           metadata
         })
-      });
+      }, refreshToken);
 
       // Refetch to update the list
       fetchActivity();
     } catch (err) {
       console.error('Error logging activity:', err);
     }
-  }, [fetchActivity, isAuthenticated]);
+  }, [fetchActivity, isAuthenticated, refreshToken]);
 
   // Format relative time (e.g., "2 hours ago", "Yesterday at 2:30 PM")
   const formatRelativeTime = useCallback((dateString: string): string => {

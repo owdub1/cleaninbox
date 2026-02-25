@@ -18,7 +18,7 @@ import { useOutlookConnection } from '../hooks/useOutlookConnection';
 import { useSubscription } from '../hooks/useSubscription';
 import CleanupConfirmModal from '../components/email/CleanupConfirmModal';
 import EmailViewModal from '../components/email/EmailViewModal';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 // Extracted components
 import {
@@ -44,7 +44,7 @@ import TopSendersView from '../components/email/cleanup/TopSendersView';
 const FREE_TRIAL_LIMIT = 5;
 
 const EmailCleanup = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, refreshToken } = useAuth();
   const { emailAccounts, loading: dashboardLoading } = useDashboardData();
   const navigate = useNavigate();
 
@@ -157,9 +157,7 @@ const EmailCleanup = () => {
 
   useEffect(() => {
     if (!isAuthenticated || freeActionsLoaded) return;
-    fetch(`${API_URL}/api/user/free-actions`, {
-      credentials: 'include',
-    })
+    fetchWithAuth('/api/user/free-actions', { method: 'GET' }, refreshToken)
       .then(r => r.json())
       .then(data => {
         if (data.isPaid) {

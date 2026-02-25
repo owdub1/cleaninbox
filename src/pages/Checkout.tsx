@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LockIcon, ChevronRightIcon, CreditCardIcon, ZapIcon, LoaderIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState({
     name: 'Pro',
     price: '$14.99',
@@ -64,17 +64,13 @@ const Checkout = () => {
       const planId = params.get('plan') || 'pro';
       const billingParam = params.get('billing') || 'monthly';
 
-      const response = await fetch(`${API_URL}/api/stripe/create-checkout`, {
+      const response = await fetchWithAuth('/api/stripe/create-checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           plan: planId,
           billing: billingParam,
         })
-      });
+      }, refreshToken);
 
       const data = await response.json();
 

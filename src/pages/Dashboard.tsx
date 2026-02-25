@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarIcon, MailIcon, AlertCircleIcon, CheckCircleIcon, UserIcon, XIcon, FileTextIcon, InboxIcon, RefreshCwIcon, TrashIcon, PlusIcon, CreditCardIcon, DownloadIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useEmailAccounts } from '../hooks/useEmailAccounts';
 import { useSubscription } from '../hooks/useSubscription';
@@ -53,16 +53,15 @@ const Dashboard = () => {
   const {
     user,
     updateUser,
-    logout
+    logout,
+    refreshToken
   } = useAuth();
 
   // Fetch invoices when Payment History tab is selected
   useEffect(() => {
     if (activeTab === 'payments' && !invoicesFetched) {
       setInvoicesLoading(true);
-      fetch(`${API_URL}/api/stripe/invoices`, {
-        credentials: 'include',
-      })
+      fetchWithAuth('/api/stripe/invoices', { method: 'GET' }, refreshToken)
         .then(res => res.json())
         .then(data => {
           setInvoices(data.invoices || []);
@@ -173,13 +172,9 @@ const Dashboard = () => {
   const handleManageBilling = async () => {
     setBillingLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/stripe/portal`, {
+      const response = await fetchWithAuth('/api/stripe/portal', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include'
-      });
+      }, refreshToken);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || 'Failed to open billing portal');
@@ -250,14 +245,10 @@ const Dashboard = () => {
         body.newPassword = newPassword;
       }
 
-      const response = await fetch(`${API_URL}/api/user/update-profile`, {
+      const response = await fetchWithAuth('/api/user/update-profile', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify(body)
-      });
+      }, refreshToken);
 
       const data = await response.json();
       if (!response.ok) {
@@ -289,14 +280,10 @@ const Dashboard = () => {
     setDeleteError(null);
     setDeleteLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/user/delete-account`, {
+      const response = await fetchWithAuth('/api/user/delete-account', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({ confirmText: 'DELETE' })
-      });
+      }, refreshToken);
 
       const data = await response.json();
       if (!response.ok) {

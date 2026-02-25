@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 interface CleanupResult {
   senderEmail: string;
@@ -61,7 +61,7 @@ export class CleanupError extends Error {
 }
 
 export const useCleanupActions = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,18 +82,14 @@ export const useCleanupActions = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/cleanup/delete-single`, {
+      const response = await fetchWithAuth('/api/cleanup/delete-single', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           accountEmail,
           messageId,
           senderEmail,
         }),
-      });
+      }, refreshToken);
 
       const data = await response.json();
 
@@ -150,14 +146,10 @@ export const useCleanupActions = () => {
         body.senderNames = senderNames;
       }
 
-      const response = await fetch(`${API_URL}/api/cleanup/delete`, {
+      const response = await fetchWithAuth('/api/cleanup/delete', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify(body),
-      });
+      }, refreshToken);
 
       const data = await response.json();
 
@@ -214,14 +206,10 @@ export const useCleanupActions = () => {
         body.senderNames = senderNames;
       }
 
-      const response = await fetch(`${API_URL}/api/cleanup/archive`, {
+      const response = await fetchWithAuth('/api/cleanup/archive', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify(body),
-      });
+      }, refreshToken);
 
       const data = await response.json();
 
@@ -261,19 +249,15 @@ export const useCleanupActions = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/cleanup/unsubscribe`, {
+      const response = await fetchWithAuth('/api/cleanup/unsubscribe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
         body: JSON.stringify({
           accountEmail,
           senderEmail,
           unsubscribeLink,
           hasOneClickUnsubscribe,
         }),
-      });
+      }, refreshToken);
 
       const data = await response.json();
 

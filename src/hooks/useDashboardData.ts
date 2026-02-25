@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 export interface DashboardStats {
   emailsProcessed: number;
@@ -29,7 +29,7 @@ export interface ActivityItem {
 }
 
 export const useDashboardData = () => {
-  const { user } = useAuth();
+  const { user, refreshToken } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     emailsProcessed: 0,
     unsubscribed: 0,
@@ -51,11 +51,11 @@ export const useDashboardData = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch all data through server-side API endpoints (authenticated via HTTP-only cookies)
+      // Fetch all data through server-side API endpoints (with auto-retry on 401)
       const [dashboardRes, sendersRes, activityRes] = await Promise.all([
-        fetch(`${API_URL}/api/user/dashboard-data`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/emails/senders`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/activity/get?limit=10`, { credentials: 'include' }),
+        fetchWithAuth('/api/user/dashboard-data', { method: 'GET' }, refreshToken),
+        fetchWithAuth('/api/emails/senders', { method: 'GET' }, refreshToken),
+        fetchWithAuth('/api/activity/get?limit=10', { method: 'GET' }, refreshToken),
       ]);
 
       // Process dashboard data (email accounts + user stats)
