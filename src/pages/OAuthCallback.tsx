@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 // Map OAuth error codes to user-friendly messages
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -21,16 +22,18 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
  * OAuth Callback Page
  *
  * After the backend sets auth cookies and redirects here with ?success=true,
- * this page calls /api/auth/refresh to establish the session, saves the user
- * to localStorage, and navigates to the dashboard.
+ * this page waits for AuthContext to finish its refresh call, then navigates
+ * to the dashboard. No full page reload — avoids aborting the refresh request.
  */
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isAuthenticated, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [hasSuccess, setHasSuccess] = useState(false);
 
+  // Handle error/success query params on mount
   useEffect(() => {
-    // Check for error in query parameters
     const errorCode = searchParams.get('error');
 
     if (errorCode) {
@@ -39,22 +42,27 @@ const OAuthCallback = () => {
       return;
     }
 
-    // Check for success — cookies were already set by the backend
-    const success = searchParams.get('success');
-
-    if (success === 'true') {
-      // Cookies were set by the backend. Full page reload to /dashboard
-      // will trigger AuthContext.initializeAuth which calls /api/auth/refresh
-      // to establish the session and save user data.
-      window.location.href = '/dashboard';
+    if (searchParams.get('success') === 'true') {
+      setHasSuccess(true);
     } else {
-      // Missing success param — something went wrong
       setError('Sign-in incomplete. Please try again.');
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 2000);
     }
   }, [searchParams, navigate]);
+
+  // Once AuthContext finishes loading, navigate based on auth state
+  useEffect(() => {
+    if (!hasSuccess || loading) return;
+
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    } else {
+      // AuthContext finished but user is not authenticated — refresh failed
+      setError('Sign-in failed. Could not establish session. Please try again.');
+    }
+  }, [hasSuccess, loading, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
