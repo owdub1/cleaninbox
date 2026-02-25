@@ -377,7 +377,8 @@ export default async function handler(
       email: user.email,
       firstName: user.first_name || profile.given_name || null,
       lastName: user.last_name || profile.family_name || null,
-      emailVerified: true
+      emailVerified: true,
+      subscription: user.subscription || null
     })).toString('base64url');
 
     return res.redirect(`${APP_URL}/oauth/callback?success=true&u=${userData}`);
