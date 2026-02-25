@@ -70,23 +70,28 @@ export const AuthProvider: React.FC<{
   };
 
   useEffect(() => {
-    // Check for existing session and refresh token if needed
+    // Check for existing session on load
     const initializeAuth = async () => {
       const savedUser = localStorage.getItem(USER_KEY);
 
       if (savedUser) {
-        // Restore the user from localStorage immediately for instant UI
+        // Restore from localStorage — don't proactively refresh.
+        // Token rotation on every page load causes issues after OAuth redirects
+        // (token gets revoked mid-navigation, browser doesn't save new cookie).
+        // Instead, let fetchWithAuth handle on-demand refresh when API calls need it.
         try {
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
         } catch (e) {
           console.error('Failed to parse saved user:', e);
+          localStorage.removeItem(USER_KEY);
         }
+        setLoading(false);
+        return;
       }
 
-      // Always try to refresh — handles both:
-      // 1. Existing sessions (savedUser in localStorage)
-      // 2. OAuth sessions (cookies set but no localStorage data yet)
+      // No saved user — try refresh in case cookies exist
+      // (e.g. verify-email redirect sets cookies but no localStorage)
       try {
         const response = await fetch(`${API_URL}/api/auth/refresh`, {
           method: 'POST',
@@ -98,20 +103,10 @@ export const AuthProvider: React.FC<{
           const data = await response.json();
           setUser(data.user);
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-        } else if (savedUser) {
-          // Had a saved session but refresh failed — clear it
-          if (response.status === 400 || response.status === 401) {
-            console.warn('Refresh failed (clearing session):', response.status);
-            localStorage.removeItem(USER_KEY);
-            setUser(null);
-          } else {
-            console.warn('Refresh endpoint error, keeping existing session:', response.status);
-          }
         }
-        // If no savedUser and refresh failed, just stay logged out (normal for unauthenticated visitors)
+        // If refresh failed and no savedUser, stay logged out (normal for visitors)
       } catch (error) {
-        console.error('Error refreshing token on load:', error);
-        // Network error — keep existing session if we have one
+        // Network error — stay logged out
       }
 
       setLoading(false);
