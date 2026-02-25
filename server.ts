@@ -58,6 +58,7 @@ import activityLog from './api/activity/log.js';
 import userUpdateProfile from './api/user/update-profile.js';
 import userDeleteAccount from './api/user/delete-account.js';
 import userFreeActions from './api/user/free-actions.js';
+import userDashboardData from './api/user/dashboard-data.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -189,6 +190,7 @@ app.post('/api/activity/log', wrapHandler(activityLog));
 app.post('/api/user/update-profile', wrapHandler(userUpdateProfile));
 app.post('/api/user/delete-account', wrapHandler(userDeleteAccount));
 app.get('/api/user/free-actions', wrapHandler(userFreeActions));
+app.get('/api/user/dashboard-data', wrapHandler(userDashboardData));
 
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
