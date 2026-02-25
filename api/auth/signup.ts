@@ -15,7 +15,7 @@ import {
 } from '../lib/auth-utils.js';
 import { sendVerificationEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
-import { issueCSRFToken } from '../lib/csrf.js';
+
 import { verifyTurnstile } from '../lib/turnstile.js';
 import { requireEnv } from '../lib/env.js';
 import { setAuthCookies } from '../lib/auth-cookies.js';
@@ -192,14 +192,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user_agent: userAgent
       }]);
 
-    // Issue CSRF token for security
-    const csrfToken = issueCSRFToken(res);
-
     // Set HTTP-only auth cookies
     setAuthCookies(res, { accessToken: token, refreshToken });
 
     return res.status(201).json({
-      csrfToken,
       user: {
         id: user.id,
         email: user.email,

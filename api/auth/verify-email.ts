@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { isExpired, hashToken, getClientIP, getUserAgent } from '../lib/auth-utils.js';
 import { requireEnv } from '../lib/env.js';
 import { setAuthCookies } from '../lib/auth-cookies.js';
-import { issueCSRFToken } from '../lib/csrf.js';
+
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -128,14 +128,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user_agent: userAgent
       }]);
 
-    // Set HTTP-only cookies and CSRF token
-    const csrfToken = issueCSRFToken(res);
+    // Set HTTP-only cookies
     setAuthCookies(res, { accessToken, refreshToken });
 
     return res.status(200).json({
       message: 'Email verified successfully',
       verified: true,
-      csrfToken,
       user: {
         id: user.id,
         email: user.email,

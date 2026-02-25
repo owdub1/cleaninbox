@@ -15,7 +15,7 @@ import { rateLimit, RateLimitPresets } from '../../lib/rate-limiter.js';
 import { getClientIP, getUserAgent } from '../../lib/auth-utils.js';
 import { requireEnv } from '../../lib/env.js';
 import { setAuthCookies } from '../../lib/auth-cookies.js';
-import { issueCSRFToken } from '../../lib/csrf.js';
+
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -370,10 +370,7 @@ export default async function handler(
     // Set HTTP-only auth cookies (no tokens in URL)
     setAuthCookies(res, { accessToken, refreshToken });
 
-    // Issue CSRF token (double-submit cookie pattern)
-    const csrfToken = issueCSRFToken(res);
-
-    // Include user profile + CSRF token in redirect so the frontend can
+    // Include user profile in redirect so the frontend can
     // establish the session immediately without needing an API call.
     // This is NOT sensitive — just display data. Auth is enforced by HttpOnly cookies.
     const userData = Buffer.from(JSON.stringify({
@@ -385,7 +382,7 @@ export default async function handler(
       subscription: user.subscription || null
     })).toString('base64url');
 
-    return res.redirect(`${APP_URL}/oauth/callback?success=true&u=${userData}&csrf=${csrfToken}`);
+    return res.redirect(`${APP_URL}/oauth/callback?success=true&u=${userData}`);
 
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);

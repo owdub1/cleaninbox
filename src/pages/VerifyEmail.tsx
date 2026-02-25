@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_URL } from '../lib/api';
 
 const USER_KEY = 'auth_user';
-const CSRF_TOKEN_KEY = 'csrf_token';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -40,12 +39,9 @@ export default function VerifyEmail() {
         setStatus('success');
         setMessage(data.message || 'Email verified successfully!');
 
-        // Save user data and CSRF token (auth tokens are in HTTP-only cookies)
+        // Save user data (auth tokens are in HTTP-only cookies)
         if (data.user) {
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-        }
-        if (data.csrfToken) {
-          localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
         }
 
         // Redirect to dashboard after 2 seconds

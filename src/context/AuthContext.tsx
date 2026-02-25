@@ -23,7 +23,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const CSRF_TOKEN_KEY = 'csrf_token';
 const USER_KEY = 'auth_user';
 
 // Refresh access token every 10 minutes (tokens last 15 minutes)
@@ -52,7 +51,6 @@ export const AuthProvider: React.FC<{
         // 400 = no refresh cookie, 401 = invalid/expired — session is dead
         if (response.status === 400 || response.status === 401) {
           console.warn('Refresh failed (clearing session):', response.status);
-          localStorage.removeItem(CSRF_TOKEN_KEY);
           localStorage.removeItem(USER_KEY);
           setUser(null);
         }
@@ -104,7 +102,6 @@ export const AuthProvider: React.FC<{
           // Had a saved session but refresh failed — clear it
           if (response.status === 400 || response.status === 401) {
             console.warn('Refresh failed (clearing session):', response.status);
-            localStorage.removeItem(CSRF_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             setUser(null);
           } else {
@@ -154,9 +151,6 @@ export const AuthProvider: React.FC<{
     // handle it without crashing — only set user if data.user exists
     if (data.user) {
       setUser(data.user);
-      if (data.csrfToken) {
-        localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
-      }
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       // Redirect to pricing to purchase a plan
       navigate('/pricing');
@@ -182,9 +176,6 @@ export const AuthProvider: React.FC<{
     const data = await response.json();
 
     setUser(data.user);
-    if (data.csrfToken) {
-      localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
-    }
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
     navigate('/dashboard');
@@ -215,7 +206,6 @@ export const AuthProvider: React.FC<{
     }
 
     setUser(null);
-    localStorage.removeItem(CSRF_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     navigate('/');
   };

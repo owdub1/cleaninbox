@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { extractToken } from '../lib/auth-middleware.js';
 import { clearAuthCookies } from '../lib/auth-cookies.js';
-import { clearCSRFCookie } from '../lib/csrf.js';
+
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -32,7 +32,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Always clear cookies, even if token was already expired
   clearAuthCookies(res);
-  clearCSRFCookie(res);
 
   return res.status(200).json({ success: true });
 }

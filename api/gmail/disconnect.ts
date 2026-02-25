@@ -11,7 +11,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
-import { csrfProtection } from '../lib/csrf.js';
+
 import { deleteOAuthTokens } from '../lib/gmail.js';
 
 const supabase = createClient(
@@ -32,7 +32,6 @@ export default async function handler(
 
   // Rate limiting
   if (await limiter(req, res)) return;
-  if (!csrfProtection(req, res)) return;
 
   // Require authentication
   const user = requireAuth(req as AuthenticatedRequest, res);

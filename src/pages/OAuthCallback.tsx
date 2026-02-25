@@ -50,12 +50,6 @@ const OAuthCallback = () => {
         // Decode user profile from URL parameter (base64url-encoded JSON)
         const userData = JSON.parse(atob(userDataParam));
 
-        // Save CSRF token if provided (for double-submit cookie CSRF protection)
-        const csrfToken = searchParams.get('csrf');
-        if (csrfToken) {
-          localStorage.setItem('csrf_token', csrfToken);
-        }
-
         // Save to localStorage and update AuthContext
         localStorage.setItem('auth_user', JSON.stringify(userData));
         updateUser(userData);

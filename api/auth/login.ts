@@ -9,7 +9,7 @@ import {
 } from '../lib/auth-utils.js';
 import { sendAccountLockedEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
-import { issueCSRFToken } from '../lib/csrf.js';
+
 import { verifyTurnstile } from '../lib/turnstile.js';
 import { requireEnv } from '../lib/env.js';
 import { setAuthCookies } from '../lib/auth-cookies.js';
@@ -297,14 +297,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Generate refresh token (7 or 30 days based on Remember Me)
     const refreshToken = await generateRefreshToken(user.id, ipAddress, userAgent, rememberMe || false);
 
-    // Issue CSRF token for security
-    const csrfToken = issueCSRFToken(res);
-
     // Set HTTP-only auth cookies (browser sends them automatically)
     setAuthCookies(res, { accessToken: token, refreshToken });
 
     return res.status(200).json({
-      csrfToken,
       user: {
         id: user.id,
         email: user.email,

@@ -12,7 +12,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import { requireEnv } from '../lib/env.js';
-import { csrfProtection } from '../lib/csrf.js';
+
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const JWT_SECRET = requireEnv('JWT_SECRET');
@@ -38,8 +38,6 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  if (!csrfProtection(req, res)) return;
 
   // Authenticate user (cookie or header)
   const authHeader = req.headers.authorization;
