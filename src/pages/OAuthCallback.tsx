@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { API_URL } from '../lib/api';
 
 // Map OAuth error codes to user-friendly messages
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -21,7 +22,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
  * OAuth Callback Page
  *
  * After the backend sets auth cookies and redirects here with ?success=true,
- * this page redirects to the dashboard. No tokens in the URL.
+ * this page calls /api/auth/refresh to establish the session, saves the user
+ * to localStorage, and navigates to the dashboard.
  */
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -42,8 +44,32 @@ const OAuthCallback = () => {
     const success = searchParams.get('success');
 
     if (success === 'true') {
-      // Force full page reload to reinitialize AuthContext with cookie-based auth
-      window.location.href = '/dashboard';
+      // Explicitly call refresh to establish session before navigating
+      const establishSession = async () => {
+        try {
+          const response = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            // Save user to localStorage so AuthContext picks it up immediately
+            localStorage.setItem('auth_user', JSON.stringify(data.user));
+            // Full page reload to reinitialize AuthContext with the saved user
+            window.location.href = '/dashboard';
+          } else {
+            console.error('OAuth session refresh failed:', response.status);
+            setError(`Sign-in almost complete but session setup failed (${response.status}). Please try logging in again.`);
+          }
+        } catch (err) {
+          console.error('OAuth session refresh error:', err);
+          setError('Network error during sign-in. Please try again.');
+        }
+      };
+
+      establishSession();
     } else {
       // Missing success param — something went wrong
       setError('Sign-in incomplete. Please try again.');
