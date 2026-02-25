@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 interface ConnectionStatus {
   isConnected: boolean;
@@ -9,7 +9,7 @@ interface ConnectionStatus {
 }
 
 export const useGmailConnection = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,13 +26,11 @@ export const useGmailConnection = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/gmail/connect`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuth(
+        '/api/gmail/connect',
+        { method: 'GET' },
+        refreshToken
+      );
 
       const data = await response.json();
 
@@ -48,7 +46,7 @@ export const useGmailConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshToken]);
 
   /**
    * Disconnect Gmail account
@@ -63,14 +61,14 @@ export const useGmailConnection = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/gmail/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithAuth(
+        '/api/gmail/disconnect',
+        {
+          method: 'POST',
+          body: JSON.stringify({ email }),
         },
-        credentials: 'include',
-        body: JSON.stringify({ email }),
-      });
+        refreshToken
+      );
 
       const data = await response.json();
 
@@ -86,7 +84,7 @@ export const useGmailConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshToken]);
 
   /**
    * Handle OAuth callback query parameters

@@ -42,3 +42,35 @@ export async function apiRequest(
     credentials: 'include', // Important for cookies
   });
 }
+
+/**
+ * Make an authenticated API call with automatic retry on 401.
+ * If the access token expired, refreshes it and retries once.
+ */
+export async function fetchWithAuth(
+  endpoint: string,
+  options: RequestInit,
+  refreshFn: () => Promise<boolean>
+): Promise<Response> {
+  const url = `${API_URL}${endpoint}`;
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getCSRFHeaders(),
+      ...options.headers,
+    },
+    credentials: 'include',
+  };
+
+  let response = await fetch(url, fetchOptions);
+
+  if (response.status === 401) {
+    const refreshed = await refreshFn();
+    if (refreshed) {
+      response = await fetch(url, fetchOptions);
+    }
+  }
+
+  return response;
+}

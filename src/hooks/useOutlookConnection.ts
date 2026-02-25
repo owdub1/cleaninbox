@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { fetchWithAuth } from '../lib/api';
 
 export const useOutlookConnection = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,13 +20,11 @@ export const useOutlookConnection = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/outlook/connect`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
+      const response = await fetchWithAuth(
+        '/api/outlook/connect',
+        { method: 'GET' },
+        refreshToken
+      );
 
       const data = await response.json();
 
@@ -42,7 +40,7 @@ export const useOutlookConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshToken]);
 
   /**
    * Disconnect Outlook account
@@ -57,14 +55,14 @@ export const useOutlookConnection = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/outlook/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetchWithAuth(
+        '/api/outlook/disconnect',
+        {
+          method: 'POST',
+          body: JSON.stringify({ email }),
         },
-        credentials: 'include',
-        body: JSON.stringify({ email }),
-      });
+        refreshToken
+      );
 
       const data = await response.json();
 
@@ -80,7 +78,7 @@ export const useOutlookConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshToken]);
 
   return {
     connectOutlook,
