@@ -359,7 +359,9 @@ const EmailCleanup = () => {
           }
         }
       } catch (error: any) {
-        if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
+        if (error instanceof CleanupError && error.code === 'PAYMENT_PAST_DUE') {
+          setNotification({ type: 'error', message: 'Your payment failed. Please update your payment method in your Dashboard to continue.' });
+        } else if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
           if (error.freeTrialRemaining !== undefined) {
             setFreeActionsUsed(FREE_TRIAL_LIMIT - error.freeTrialRemaining);
           }
@@ -435,7 +437,9 @@ const EmailCleanup = () => {
         setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
       }
     } catch (error) {
-      if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
+      if (error instanceof CleanupError && error.code === 'PAYMENT_PAST_DUE') {
+        setNotification({ type: 'error', message: 'Your payment failed. Please update your payment method in your Dashboard to continue.' });
+      } else if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
         if (error.freeTrialRemaining !== undefined) setFreeActionsUsed(FREE_TRIAL_LIMIT - error.freeTrialRemaining);
         setShowUpgradeModal(true);
       } else {

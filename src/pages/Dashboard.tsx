@@ -11,7 +11,7 @@ import ConnectEmailModal from '../components/modals/ConnectEmailModal';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading, refetch: refetchDashboard } = useDashboardData();
   const { addEmailAccount, removeEmailAccount } = useEmailAccounts();
-  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled, isExpired, isExpiring } = useSubscription();
+  const { subscription, loading: subscriptionLoading, isPaid, isUnlimited, cancelSubscription, isCancelled, isExpired, isExpiring, isPastDue } = useSubscription();
   const { activities, loading: activityLoading, formatRelativeTime } = useActivity(5);
   const [activeTab, setActiveTab] = useState('overview');
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -139,7 +139,7 @@ const Dashboard = () => {
     email: user?.email || '',
     subscription: {
       plan: subscription.planName,
-      status: subscription.status === 'active' ? 'Active' : subscription.status,
+      status: isPastDue ? 'Payment Failed' : subscription.status === 'active' ? 'Active' : subscription.status,
       nextBilling: formatDate(subscription.nextBillingDate),
       price: subscription.price === 0 ? '$0' : `$${subscription.price}`,
       period: subscription.period,
@@ -389,8 +389,34 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* Payment Failed Banner */}
+      {isPastDue && (
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-200 dark:from-red-900/20 dark:to-orange-900/20 dark:border-red-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start">
+                <AlertCircleIcon className="w-6 h-6 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Your last payment failed</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Please update your payment method to keep your subscription active.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleManageBilling}
+                disabled={billingLoading}
+                className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-6 py-2 rounded-md font-medium hover:from-red-600 hover:to-orange-600 transition-colors whitespace-nowrap disabled:opacity-50"
+              >
+                {billingLoading ? 'Loading...' : 'Update Payment Method'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Friendly Upgrade Banner for Free Users */}
-      {isFreeUser && !isExpired && (
+      {isFreeUser && !isExpired && !isPastDue && (
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -486,8 +512,15 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
-                        <p className="text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full inline-flex items-center">
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+                        <p className={`text-sm font-medium px-2 py-1 rounded-full inline-flex items-center ${
+                          isPastDue
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
+                            : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                        }`}>
+                          {isPastDue
+                            ? <AlertCircleIcon className="h-4 w-4 mr-1" />
+                            : <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          }
                           {userData.subscription.status}
                         </p>
                       </div>
@@ -637,8 +670,15 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
-                        <p className="text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full inline-flex items-center">
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+                        <p className={`text-sm font-medium px-2 py-1 rounded-full inline-flex items-center ${
+                          isPastDue
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400'
+                            : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400'
+                        }`}>
+                          {isPastDue
+                            ? <AlertCircleIcon className="h-4 w-4 mr-1" />
+                            : <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          }
                           {userData.subscription.status}
                         </p>
                       </div>

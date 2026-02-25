@@ -131,5 +131,6 @@ export function useSubscription() {
     isCancelled: subscription.status === 'cancelled',
     isExpired: subscription.status === 'expired',
     isExpiring: !!subscription.expiringWarning,
+    isPastDue: subscription.status === 'past_due',
   };
 }

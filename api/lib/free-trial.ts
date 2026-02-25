@@ -83,23 +83,29 @@ export async function isUserPaid(
 /**
  * Check if user is paid. If not, enforce free trial limits.
  *
- * @returns { isPaid: boolean, allowed: boolean, remaining: number }
+ * @returns { isPaid: boolean, allowed: boolean, remaining: number, isPastDue: boolean }
  *   - isPaid: true if user has active paid subscription
  *   - allowed: true if action should proceed
  *   - remaining: free trial actions remaining (only meaningful for free users)
+ *   - isPastDue: true if user has a subscription with failed payment
  */
 export async function checkFreeTrialOrPaid(
   supabase: SupabaseClient,
   userId: string,
   userEmail: string,
   actionCount: number
-): Promise<{ isPaid: boolean; allowed: boolean; remaining: number }> {
+): Promise<{ isPaid: boolean; allowed: boolean; remaining: number; isPastDue: boolean }> {
   // Check subscription status
   const { data: subscription } = await supabase
     .from('subscriptions')
     .select('plan, status, next_billing_date, stripe_subscription_id')
     .eq('user_id', userId)
     .single();
+
+  // If subscription exists and payment has failed, block immediately
+  if (subscription && subscription.plan.toLowerCase() !== 'free' && subscription.status === 'past_due') {
+    return { isPaid: false, allowed: false, remaining: 0, isPastDue: true };
+  }
 
   let isPaid = !!subscription &&
     subscription.plan.toLowerCase() !== 'free' &&
@@ -113,7 +119,7 @@ export async function checkFreeTrialOrPaid(
   }
 
   if (isPaid) {
-    return { isPaid: true, allowed: true, remaining: -1 };
+    return { isPaid: true, allowed: true, remaining: -1, isPastDue: false };
   }
 
   // Free user - check and increment trial
@@ -123,5 +129,6 @@ export async function checkFreeTrialOrPaid(
     isPaid: false,
     allowed: result.allowed,
     remaining: Math.max(0, result.limit - result.actions_used),
+    isPastDue: false,
   };
 }

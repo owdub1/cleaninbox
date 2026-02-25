@@ -231,6 +231,20 @@ async function handler(
       });
     }
 
+    // Check for past_due subscription (payment failed)
+    const { data: subStatus } = await supabase
+      .from('subscriptions')
+      .select('plan, status')
+      .eq('user_id', user.userId)
+      .single();
+
+    if (subStatus && subStatus.plan.toLowerCase() !== 'free' && subStatus.status === 'past_due') {
+      return res.status(402).json({
+        error: 'Your payment failed. Please update your payment method to continue.',
+        code: 'PAYMENT_PAST_DUE',
+      });
+    }
+
     // Free trial enforcement (read-only check; increment only on success)
     const paid = await isUserPaid(supabase, user.userId);
     if (!paid) {

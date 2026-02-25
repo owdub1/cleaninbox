@@ -115,6 +115,12 @@ async function handler(
       }
 
       const trialCheck = await checkFreeTrialOrPaid(supabase, user.userId, user.email, totalEmailCount);
+      if (trialCheck.isPastDue) {
+        return res.status(402).json({
+          error: 'Your payment failed. Please update your payment method to continue.',
+          code: 'PAYMENT_PAST_DUE',
+        });
+      }
       if (!trialCheck.isPaid) {
         freeTrialRemaining = trialCheck.remaining;
       }
