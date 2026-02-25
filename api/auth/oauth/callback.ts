@@ -369,7 +369,18 @@ export default async function handler(
     // Set HTTP-only auth cookies (no tokens in URL)
     setAuthCookies(res, { accessToken, refreshToken });
 
-    return res.redirect(`${APP_URL}/oauth/callback?success=true`);
+    // Include user profile in redirect so the frontend can establish the session
+    // immediately without needing to call /api/auth/refresh first.
+    // This is NOT sensitive — just display data. Auth is enforced by HttpOnly cookies.
+    const userData = Buffer.from(JSON.stringify({
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name || profile.given_name || null,
+      lastName: user.last_name || profile.family_name || null,
+      emailVerified: true
+    })).toString('base64url');
+
+    return res.redirect(`${APP_URL}/oauth/callback?success=true&u=${userData}`);
 
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);

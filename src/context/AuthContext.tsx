@@ -191,7 +191,12 @@ export const AuthProvider: React.FC<{
   };
 
   const updateUser = (updates: Partial<User>) => {
-    const updatedUser = user ? { ...user, ...updates } : null;
+    // If user exists, merge updates. If null (e.g. OAuth login), create from updates.
+    const updatedUser = user
+      ? { ...user, ...updates }
+      : updates.id && updates.email
+        ? (updates as User)
+        : null;
     setUser(updatedUser);
     if (updatedUser) {
       localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));

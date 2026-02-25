@@ -21,19 +21,18 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
 /**
  * OAuth Callback Page
  *
- * After the backend sets auth cookies and redirects here with ?success=true,
- * this page waits for AuthContext to finish its refresh call, then navigates
- * to the dashboard. No full page reload — avoids aborting the refresh request.
+ * After the backend sets auth cookies and redirects here with ?success=true&u=<base64>,
+ * this page reads the user profile from the URL, saves it to localStorage,
+ * and navigates to the dashboard. No /api/auth/refresh call needed.
  */
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isAuthenticated, loading } = useAuth();
+  const { updateUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [hasSuccess, setHasSuccess] = useState(false);
 
-  // Handle error/success query params on mount
   useEffect(() => {
+    // Check for error in query parameters
     const errorCode = searchParams.get('error');
 
     if (errorCode) {
@@ -42,27 +41,36 @@ const OAuthCallback = () => {
       return;
     }
 
-    if (searchParams.get('success') === 'true') {
-      setHasSuccess(true);
+    // Check for success
+    const success = searchParams.get('success');
+    const userDataParam = searchParams.get('u');
+
+    if (success === 'true' && userDataParam) {
+      try {
+        // Decode user profile from URL parameter (base64url-encoded JSON)
+        const userData = JSON.parse(atob(userDataParam));
+
+        // Save to localStorage and update AuthContext
+        localStorage.setItem('auth_user', JSON.stringify(userData));
+        updateUser(userData);
+
+        // Navigate to dashboard (no page reload needed)
+        navigate('/dashboard', { replace: true });
+      } catch (e) {
+        console.error('Failed to parse OAuth user data:', e);
+        setError('Sign-in failed. Invalid user data. Please try again.');
+      }
+    } else if (success === 'true') {
+      // Fallback: success but no user data param (shouldn't happen with updated backend)
+      // Do a full page reload to let AuthContext handle it via refresh
+      window.location.href = '/dashboard';
     } else {
       setError('Sign-in incomplete. Please try again.');
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 2000);
     }
-  }, [searchParams, navigate]);
-
-  // Once AuthContext finishes loading, navigate based on auth state
-  useEffect(() => {
-    if (!hasSuccess || loading) return;
-
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    } else {
-      // AuthContext finished but user is not authenticated — refresh failed
-      setError('Sign-in failed. Could not establish session. Please try again.');
-    }
-  }, [hasSuccess, loading, isAuthenticated, navigate]);
+  }, [searchParams, navigate, updateUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
