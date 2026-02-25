@@ -176,7 +176,7 @@ export default async function handler(
         isNewsletter: sender.is_newsletter,
         isPromotional: sender.is_promotional,
         emailAccountId: sender.email_account_id,
-        accountEmail: sender.email_accounts?.email || '',
+        accountEmail: (Array.isArray(sender.email_accounts) ? sender.email_accounts[0]?.email : sender.email_accounts?.email) || '',
         hasMultipleNames,
         relatedSenderNames,
       };
