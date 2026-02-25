@@ -184,7 +184,10 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                 {email.bodyHtml ? (
                   <div
                     className="email-content"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.bodyHtml) }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.bodyHtml, {
+                      FORBID_TAGS: ['form', 'input', 'textarea', 'select', 'button', 'script', 'iframe', 'object', 'embed', 'meta', 'link', 'base'],
+                      FORBID_ATTR: ['action', 'formaction', 'onsubmit', 'onclick', 'onerror', 'onload', 'onfocus', 'onblur', 'onmouseover'],
+                    }) }}
                     style={{
                       // Contain email styles
                       all: 'initial',

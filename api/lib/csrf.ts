@@ -44,10 +44,15 @@ export function verifyCSRFToken(req: VercelRequest): boolean {
   }
 
   // Tokens must match using constant-time comparison to prevent timing attacks
-  return crypto.timingSafeEqual(
-    Buffer.from(cookieToken),
-    Buffer.from(requestToken)
-  );
+  const cookieBuf = Buffer.from(cookieToken);
+  const requestBuf = Buffer.from(requestToken);
+
+  // timingSafeEqual throws if lengths differ — check first
+  if (cookieBuf.length !== requestBuf.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(cookieBuf, requestBuf);
 }
 
 /**
@@ -96,10 +101,17 @@ export function setCSRFCookie(
   token: string,
   maxAge: number = 7 * 24 * 60 * 60 // 7 days
 ): void {
-  // Set cookie with security flags
   const cookieValue = `csrf-token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}; Path=/`;
 
-  res.setHeader('Set-Cookie', cookieValue);
+  // Preserve any existing Set-Cookie headers (e.g. auth cookies)
+  const existing = res.getHeader('Set-Cookie');
+  const cookies: string[] = [];
+  if (existing) {
+    if (Array.isArray(existing)) cookies.push(...existing.map(String));
+    else cookies.push(String(existing));
+  }
+  cookies.push(cookieValue);
+  res.setHeader('Set-Cookie', cookies);
 }
 
 /**
@@ -116,5 +128,15 @@ export function issueCSRFToken(res: VercelResponse): string {
  * Clear CSRF cookie (use on logout)
  */
 export function clearCSRFCookie(res: VercelResponse): void {
-  res.setHeader('Set-Cookie', 'csrf-token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/');
+  const cookieValue = 'csrf-token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/';
+
+  // Preserve any existing Set-Cookie headers (e.g. auth cookies being cleared)
+  const existing = res.getHeader('Set-Cookie');
+  const cookies: string[] = [];
+  if (existing) {
+    if (Array.isArray(existing)) cookies.push(...existing.map(String));
+    else cookies.push(String(existing));
+  }
+  cookies.push(cookieValue);
+  res.setHeader('Set-Cookie', cookies);
 }

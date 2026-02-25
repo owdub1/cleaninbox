@@ -72,10 +72,10 @@ Go through each of these on the live production site. Check them off as you go.
 - [ ] Use Stripe test card `4000000000000341` → payment fails → proper error shown
 
 ### Security Checks
-- [ ] Try a POST request without CSRF token → should get rejected (403)
-- [ ] Hit a rate-limited endpoint many times fast → should get blocked (429)
-- [ ] CAPTCHA shows on signup and login
-- [ ] Visit securityheaders.com with your production URL → check for A or A+ rating
+- [x] Try a POST request without CSRF token → should get rejected (403) — confirmed
+- [x] Hit a rate-limited endpoint many times fast → should get blocked (429) — confirmed (forgot-password, 4th request blocked)
+- [x] CAPTCHA shows on signup and login — confirmed (using Turnstile test keys, swap for real keys before launch)
+- [x] Visit securityheaders.com with your production URL → check for A or A+ rating — Grade A confirmed
 
 ### Pages & Legal
 - [ ] `/terms-of-service` loads and reads correctly

@@ -6,6 +6,7 @@ import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { csrfProtection } from '../lib/csrf.js';
 import { hashPassword, comparePassword, validatePassword } from '../lib/auth-utils.js';
 import { requireEnv } from '../lib/env.js';
+import { setAuthCookies } from '../lib/auth-cookies.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -137,19 +138,30 @@ export default async function handler(
       });
     }
 
-    // Generate new JWT token (always, so user data in token stays fresh)
+    // Generate new JWT access token with expiry (so user data in token stays fresh)
     const newToken = jwt.sign(
       {
         userId: updatedUser.id,
         email: updatedUser.email,
         emailVerified: updatedUser.email_verified
       },
-      JWT_SECRET
+      JWT_SECRET,
+      { expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'] }
     );
+
+    // Update the auth cookie with the new token (keep the existing refresh token)
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    const existing = res.getHeader('Set-Cookie');
+    const cookies: string[] = [];
+    if (existing) {
+      if (Array.isArray(existing)) cookies.push(...existing.map(String));
+      else cookies.push(String(existing));
+    }
+    cookies.push(`auth_token=${newToken}; HttpOnly${secure}; SameSite=Strict; Path=/; Max-Age=900`);
+    res.setHeader('Set-Cookie', cookies);
 
     return res.status(200).json({
       success: true,
-      token: newToken,
       user: {
         id: updatedUser.id,
         email: updatedUser.email,

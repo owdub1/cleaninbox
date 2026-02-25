@@ -1,8 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
-import { isExpired, hashToken } from '../lib/auth-utils.js';
+import crypto from 'crypto';
+import { isExpired, hashToken, getClientIP, getUserAgent } from '../lib/auth-utils.js';
 import { requireEnv } from '../lib/env.js';
+import { setAuthCookies } from '../lib/auth-cookies.js';
+import { issueCSRFToken } from '../lib/csrf.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -10,6 +13,7 @@ const supabase = createClient(
 );
 
 const JWT_SECRET = requireEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -92,20 +96,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Failed to verify email' });
     }
 
-    // Generate JWT token
-    const jwtToken = jwt.sign(
+    // Generate JWT access token (short-lived)
+    const accessToken = jwt.sign(
       {
         userId: user.id,
         email: user.email,
         emailVerified: true
       },
-      JWT_SECRET
+      JWT_SECRET,
+      { expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'] }
     );
+
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { userId: user.id },
+      JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Store refresh token hash in DB
+    const tokenHash2 = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const ipAddress = getClientIP(req);
+    const userAgent = getUserAgent(req);
+    await supabase
+      .from('refresh_tokens')
+      .insert([{
+        user_id: user.id,
+        token_hash: tokenHash2,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        ip_address: ipAddress,
+        user_agent: userAgent
+      }]);
+
+    // Set HTTP-only cookies and CSRF token
+    const csrfToken = issueCSRFToken(res);
+    setAuthCookies(res, { accessToken, refreshToken });
 
     return res.status(200).json({
       message: 'Email verified successfully',
       verified: true,
-      token: jwtToken,
+      csrfToken,
       user: {
         id: user.id,
         email: user.email,

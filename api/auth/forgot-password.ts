@@ -90,10 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Don't fail the request, token is still valid
     }
 
-    return res.status(200).json({
-      message: 'Password reset email sent successfully',
-      expiresAt: expiresAt.toISOString()
-    });
+    return res.status(200).json(successResponse);
 
   } catch (error: any) {
     console.error('Forgot password error:', error);

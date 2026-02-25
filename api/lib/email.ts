@@ -5,6 +5,18 @@
  * Sends emails using Resend API.
  */
 
+/**
+ * Escape HTML special characters to prevent injection
+ */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <noreply@cleaninbox.ca>';
 const FRONTEND_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'https://cleaninbox.vercel.app';
@@ -191,17 +203,17 @@ export async function sendContactFormEmail(
   const body = `
     <p style="font-size: 16px; margin-bottom: 20px;">New contact form submission:</p>
     <div style="background: #f9fafb; padding: 20px; border-radius: 6px; border-left: 4px solid #6366f1; margin: 20px 0;">
-      <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Name:</strong> ${name}</p>
-      <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Email:</strong> ${email}</p>
-      <p style="margin: 0; font-size: 14px;"><strong>Subject:</strong> ${subject}</p>
+      <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Name:</strong> ${escapeHtml(name)}</p>
+      <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Email:</strong> ${escapeHtml(email)}</p>
+      <p style="margin: 0; font-size: 14px;"><strong>Subject:</strong> ${escapeHtml(subject)}</p>
     </div>
     <div style="background: #ffffff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 6px; margin: 20px 0;">
-      <p style="margin: 0; font-size: 15px; white-space: pre-wrap;">${message}</p>
+      <p style="margin: 0; font-size: 15px; white-space: pre-wrap;">${escapeHtml(message)}</p>
     </div>
     <p style="font-size: 13px; color: #6b7280;">Reply directly to this email to respond to the user.</p>`;
 
   const html = wrapEmail('New Contact Form Message', '#6366f1', '#4f46e5', body);
-  return sendEmail({ to: 'support@cleaninbox.ca', subject: `[Contact] ${subject}`, html });
+  return sendEmail({ to: 'support@cleaninbox.ca', subject: `[Contact] ${escapeHtml(subject)}`, html });
 }
 
 /**
@@ -214,7 +226,7 @@ export async function sendContactAutoReplyEmail(
   const subject = "We've received your message - CleanInbox";
 
   const body = `
-    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${name},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${escapeHtml(name)},</p>
     <p style="font-size: 16px; margin-bottom: 20px;">
       Thanks for reaching out! We've received your message and our team will get back to you within 24 hours.
     </p>
@@ -292,7 +304,7 @@ export async function sendVerificationEmail({
 }: VerificationEmailOptions): Promise<boolean> {
   const subject = 'Verify your CleanInbox account';
   const body = `
-    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${escapeHtml(firstName)},</p>
     <p style="font-size: 16px; margin-bottom: 20px;">
       Thank you for signing up for CleanInbox! We're excited to help you take control of your inbox.
     </p>
@@ -331,7 +343,7 @@ export async function sendPasswordResetEmail({
 }: PasswordResetEmailOptions): Promise<boolean> {
   const subject = 'Reset your CleanInbox password';
   const body = `
-    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${escapeHtml(firstName)},</p>
     <p style="font-size: 16px; margin-bottom: 20px;">
       We received a request to reset your password for your CleanInbox account.
     </p>
@@ -372,7 +384,7 @@ export async function sendAccountLockedEmail({
   const lockDuration = Math.round((lockedUntil.getTime() - Date.now()) / (1000 * 60));
 
   const body = `
-    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${escapeHtml(firstName)},</p>
     <p style="font-size: 16px; margin-bottom: 20px;">
       Your CleanInbox account has been temporarily locked due to multiple failed login attempts.
     </p>
@@ -407,7 +419,7 @@ export async function sendAccountLockedEmail({
 export async function sendPasswordChangedEmail(to: string, firstName: string): Promise<boolean> {
   const subject = 'Your CleanInbox password was changed';
   const body = `
-    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${firstName},</p>
+    <p style="font-size: 16px; margin-bottom: 20px;">Hi ${escapeHtml(firstName)},</p>
     <p style="font-size: 16px; margin-bottom: 20px;">
       This email confirms that your CleanInbox password was changed successfully.
     </p>
