@@ -19,7 +19,10 @@ import {
 import { withSentry } from '../lib/sentry.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
+const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+if (!WEBHOOK_SECRET) {
+  throw new Error('STRIPE_WEBHOOK_SECRET environment variable is required');
+}
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -129,6 +132,18 @@ async function handler(
         break;
       }
 
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(charge);
+        break;
+      }
+
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeCreated(dispute);
+        break;
+      }
+
       default:
         // Unhandled event type — that's fine
         break;
@@ -139,8 +154,6 @@ async function handler(
     console.error('Error processing webhook event:', error);
     return res.status(500).json({
       error: 'Webhook handler failed',
-      detail: error.message,
-      eventType: event.type,
     });
   }
 }
@@ -440,6 +453,95 @@ async function updateSubscriptionStatus(userId: string, subscription: Stripe.Sub
     console.error('Error updating subscription status:', error);
     throw error;
   }
+}
+
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  // Find the user by Stripe customer ID
+  const customerId = charge.customer as string;
+  if (!customerId) return;
+
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
+  if (!sub) {
+    console.error('Could not find user for refunded charge, customer:', customerId);
+    return;
+  }
+
+  // If fully refunded, cancel the subscription
+  if (charge.refunded) {
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', sub.user_id);
+
+    if (error) {
+      console.error('Error updating subscription after refund:', error);
+      throw error;
+    }
+
+    await supabase
+      .from('activity_log')
+      .insert({
+        user_id: sub.user_id,
+        action_type: 'subscription_change',
+        description: 'Subscription cancelled due to refund',
+        metadata: { charge_id: charge.id },
+      });
+  }
+}
+
+async function handleDisputeCreated(dispute: Stripe.Dispute) {
+  // Find the user by Stripe customer ID from the charge
+  const charge = dispute.charge;
+  const chargeId = typeof charge === 'string' ? charge : charge?.id;
+  if (!chargeId) return;
+
+  // Retrieve the charge to get the customer ID
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const fullCharge = await stripe.charges.retrieve(chargeId);
+  const customerId = fullCharge.customer as string;
+  if (!customerId) return;
+
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
+  if (!sub) {
+    console.error('Could not find user for disputed charge, customer:', customerId);
+    return;
+  }
+
+  // Immediately revoke access on dispute
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'cancelled',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', sub.user_id);
+
+  if (error) {
+    console.error('Error updating subscription after dispute:', error);
+    throw error;
+  }
+
+  await supabase
+    .from('activity_log')
+    .insert({
+      user_id: sub.user_id,
+      action_type: 'subscription_change',
+      description: 'Subscription cancelled due to payment dispute',
+      metadata: { dispute_id: dispute.id, charge_id: chargeId },
+    });
 }
 
 export default withSentry(handler);

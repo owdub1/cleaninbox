@@ -266,14 +266,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!passwordMatch) {
       await handleFailedLogin(user.id, email, ipAddress, userAgent, 'invalid_password');
-      const attemptsLeft = MAX_LOGIN_ATTEMPTS - (user.failed_login_attempts || 0) - 1;
-
-      if (attemptsLeft > 0 && attemptsLeft <= 2) {
-        return res.status(401).json({
-          error: `Invalid email or password. ${attemptsLeft} attempt(s) remaining before account lockout.`
-        });
-      }
-
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -323,6 +315,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error: any) {
     console.error('Login error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -10,6 +10,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import { requireEnv } from '../lib/env.js';
+import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -17,6 +18,9 @@ const supabase = createClient(
 );
 
 const JWT_SECRET = requireEnv('JWT_SECRET');
+
+// Rate limit: 10 requests per minute
+const limiter = rateLimit(RateLimitPresets.STRICT);
 
 interface JWTPayload {
   userId: string;
@@ -46,6 +50,9 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Rate limiting
+  if (await limiter(req, res)) return;
 
   // Get token from cookie or Authorization header
   const authHeader = req.headers.authorization;

@@ -297,7 +297,7 @@ export default async function handler(
 
       if (createError) {
         console.error('Failed to create user:', createError);
-        return res.redirect(`${APP_URL}/oauth/callback?error=signup_failed&reason=${encodeURIComponent(createError.message || 'unknown')}`);
+        return res.redirect(`${APP_URL}/oauth/callback?error=signup_failed`);
       }
 
       user = newUser;
@@ -357,13 +357,6 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    // Include error hint in redirect for debugging
-    const errorReason = encodeURIComponent(error.message?.substring(0, 100) || 'unknown');
-    return res.redirect(`${APP_URL}/oauth/callback?error=callback_failed&reason=${errorReason}`);
+    return res.redirect(`${APP_URL}/oauth/callback?error=callback_failed`);
   }
 }

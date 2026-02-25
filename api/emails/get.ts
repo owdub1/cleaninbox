@@ -216,7 +216,6 @@ export default async function handler(
     console.error('Fetch email error:', error);
     return res.status(500).json({
       error: 'Failed to fetch email',
-      message: error.message
     });
   }
 }

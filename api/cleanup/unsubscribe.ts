@@ -361,7 +361,6 @@ async function handler(
         linkExpired: true,
         error: result.error,
         message: result.error || 'This unsubscribe link has expired.',
-        debug: result.debug
       });
     }
 
@@ -410,7 +409,6 @@ async function handler(
         requiresManualAction: true,
         unsubscribeLink: linkToUse,
         message: 'This sender doesn\'t support automatic unsubscribe. Opening the unsubscribe page for you to complete manually.',
-        debug: result.debug
       });
     }
 
@@ -440,7 +438,6 @@ async function handler(
         success: true,
         message: `Successfully unsubscribed from ${senderEmail}`,
         ...(freeTrialRemaining !== undefined && { freeTrialRemaining }),
-        debug: result.debug
       });
     }
 
@@ -451,7 +448,6 @@ async function handler(
       unsubscribeLink: linkToUse,
       error: result.error,
       message: 'Automatic unsubscribe failed. Please try the unsubscribe link manually.',
-      debug: result.debug
     });
 
   } catch (error: any) {

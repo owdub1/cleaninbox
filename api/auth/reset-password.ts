@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { isExpired, validatePassword, hashPassword } from '../lib/auth-utils.js';
+import { isExpired, validatePassword, hashPassword, hashToken } from '../lib/auth-utils.js';
 import { sendPasswordChangedEmail } from '../lib/email.js';
 
 const supabase = createClient(
@@ -29,11 +29,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Find the reset token
+    // Hash the incoming token and look up by hash
+    const tokenHashed = hashToken(token);
     const { data: resetToken, error: tokenError } = await supabase
       .from('password_reset_tokens')
       .select('*')
-      .eq('token', token)
+      .eq('token_hash', tokenHashed)
       .single();
 
     if (tokenError || !resetToken) {
@@ -139,6 +140,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error('Reset password error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

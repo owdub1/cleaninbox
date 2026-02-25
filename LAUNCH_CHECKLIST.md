@@ -109,7 +109,7 @@ Go through each of these on the live production site. Check them off as you go.
 ### Security Improvements
 - [x] **Revoke refresh tokens on logout** — fixed in `c509e0c` (new `api/auth/logout.ts` endpoint revokes all refresh tokens + clears cookies)
 - [ ] **Set up Sentry monitoring** — add `VITE_SENTRY_DSN` and `SENTRY_DSN` env vars so you get emailed when errors happen in production. The code is already wired up — you just need the Sentry account and the DSN values.
-- [ ] **Check past-due subscriptions** — if someone's payment fails and their subscription goes to "past_due" status, they might still be able to use cleanup features. Add a check for this.
+- [x] **Check past-due subscriptions** — fixed in `e3a7b33` (past-due users see "payment failed" messaging, 402 `PAYMENT_PAST_DUE` on cleanup endpoints, red banner + badge on Dashboard)
 
 ### User Experience
 - [ ] **Add skeleton loaders** — some pages might flash empty before data loads. Add loading animations to the pricing page and dashboard.

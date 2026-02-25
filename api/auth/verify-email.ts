@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
-import { isExpired } from '../lib/auth-utils.js';
+import { isExpired, hashToken } from '../lib/auth-utils.js';
 import { requireEnv } from '../lib/env.js';
 
 const supabase = createClient(
@@ -12,25 +12,23 @@ const supabase = createClient(
 const JWT_SECRET = requireEnv('JWT_SECRET');
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST' && req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Token can come from query param (email link) or request body
-    const token = req.method === 'GET'
-      ? req.query.token as string
-      : req.body.token;
+    const token = req.body.token;
 
     if (!token) {
       return res.status(400).json({ error: 'Verification token is required' });
     }
 
-    // Find the verification token
+    // Hash the token and look up by hash
+    const tokenHash = hashToken(token);
     const { data: verificationToken, error: tokenError } = await supabase
       .from('email_verification_tokens')
       .select('*')
-      .eq('token', token)
+      .eq('token_hash', tokenHash)
       .single();
 
     if (tokenError || !verificationToken) {
@@ -119,6 +117,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error('Email verification error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { generateToken, getExpirationDate } from '../lib/auth-utils.js';
+import { generateToken, hashToken, getExpirationDate } from '../lib/auth-utils.js';
 import { sendVerificationEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
@@ -56,16 +56,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('user_id', user.id)
       .eq('used', false);
 
-    // Generate new verification token
+    // Generate new verification token (store hash, send plaintext in email)
     const token = generateToken();
+    const tokenHashed = hashToken(token);
     const expiresAt = getExpirationDate(EMAIL_VERIFICATION_EXPIRY);
 
-    // Store the token
+    // Store the hashed token
     const { error: tokenError } = await supabase
       .from('email_verification_tokens')
       .insert([{
         user_id: user.id,
-        token,
+        token_hash: tokenHashed,
         expires_at: expiresAt.toISOString()
       }]);
 
@@ -94,6 +95,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error('Resend verification error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -8,6 +8,7 @@ import {
   hashPassword,
   sanitizeInput,
   generateToken,
+  hashToken as hashTokenUtil,
   getExpirationDate,
   getClientIP,
   getUserAgent
@@ -125,15 +126,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         p_max_history: 10
       });
 
-    // Generate email verification token
+    // Generate email verification token (store hash, send plaintext in email)
     const verificationToken = generateToken();
+    const verificationTokenHash = hashTokenUtil(verificationToken);
     const verificationExpiresAt = getExpirationDate(EMAIL_VERIFICATION_EXPIRY);
 
     const { error: tokenError } = await supabase
       .from('email_verification_tokens')
       .insert([{
         user_id: user.id,
-        token: verificationToken,
+        token_hash: verificationTokenHash,
         expires_at: verificationExpiresAt.toISOString()
       }]);
 
@@ -206,6 +208,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error: any) {
     console.error('Signup error:', error);
-    return res.status(500).json({ error: error.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

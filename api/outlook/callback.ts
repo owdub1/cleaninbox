@@ -175,6 +175,6 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Outlook callback error:', error);
-    return res.redirect(`${APP_URL}/email-cleanup?error=callback_failed&reason=${encodeURIComponent(error.message || 'unknown')}`);
+    return res.redirect(`${APP_URL}/email-cleanup?error=callback_failed`);
   }
 }
