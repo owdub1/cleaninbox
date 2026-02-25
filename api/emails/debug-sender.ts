@@ -46,7 +46,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Search Gmail for emails from this sender
     const searchQuery = `from:${sender}`;
-    console.log('Searching Gmail with query:', searchQuery);
 
     const response = await listMessages(accessToken, {
       maxResults: 20,
@@ -54,7 +53,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const messages = response.messages || [];
-    console.log('Found', messages.length, 'messages from', sender);
 
     // Get details for found messages
     const details = [];

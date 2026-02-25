@@ -57,15 +57,12 @@ export default async function handler(
     }
 
     const { userId } = stateData;
-    console.log('Outlook callback for user:', userId);
 
     // Exchange authorization code for tokens
     const tokens = await exchangeOutlookCodeForTokens(code);
-    console.log('Got tokens, expires_in:', tokens.expires_in);
 
     // Get Outlook profile
     const profile = await getOutlookProfile(tokens.access_token);
-    console.log('Outlook profile:', profile.email);
 
     // Check if this Outlook account is already connected to another user
     const { data: existingToken } = await supabase
@@ -146,14 +143,12 @@ export default async function handler(
     }
 
     // Store encrypted OAuth tokens
-    console.log('Storing tokens for:', { userId, emailAccountId, email: profile.email });
     const { id: tokenId } = await storeOutlookOAuthTokens(
       userId,
       emailAccountId,
       profile.email,
       tokens
     );
-    console.log('Tokens stored with ID:', tokenId);
 
     // Update email account with token reference
     const { error: updateError } = await supabase

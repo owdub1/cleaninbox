@@ -165,7 +165,6 @@ async function handler(
         // If we have local emails, use them for archiving (fast path)
         if (localEmails && localEmails.length > 0) {
           messageIds = localEmails.map(e => e.gmail_message_id);
-          console.log(`Archiving ${messageIds.length} emails for ${senderEmail}${senderName ? ` (${senderName})` : ''} from local DB`);
 
           // Archive using stored message IDs
           const { success } = isOutlook
@@ -177,7 +176,6 @@ async function handler(
           // But we could update a flag if needed
         } else {
           // Fallback: no local emails found, use Gmail API directly
-          console.log(`No local emails found for ${senderEmail}, falling back to Gmail API`);
           const result = await archiveEmailsFromSender(accessToken, senderEmail);
           archivedCount = result.archivedCount;
           messageIds = result.messageIds;

@@ -164,7 +164,6 @@ async function handler(
       }
 
       if (repair) {
-        console.log(`Repair mode: recalculating sender stats for ${email}`);
         return await performRepairSync(res, user.userId, account.id, email);
       }
 
@@ -217,7 +216,6 @@ async function handler(
     // ==================== REPAIR MODE ====================
     // Recalculate all sender stats from existing emails (no Gmail fetch)
     if (repair) {
-      console.log(`Repair mode: recalculating sender stats for ${email}`);
       return await performRepairSync(res, user.userId, account.id, email);
     }
 
@@ -230,7 +228,6 @@ async function handler(
 
     const userEmail = (account.gmail_email || email).toLowerCase();
     const syncType = isFullSync ? 'full' : 'incremental';
-    console.log(`Starting ${syncType} sync for ${email}`);
 
     if (isFullSync) {
       // ==================== FULL SYNC ====================
@@ -288,7 +285,6 @@ async function performFullSync(
   email: string
 ) {
   const maxMessages = Math.min(10000, emailLimit);
-  console.log(`Full sync: fetching up to ${maxMessages} emails`);
 
   // Step 1: Fetch all message IDs from Gmail
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
@@ -309,8 +305,6 @@ async function performFullSync(
     pageToken = response.nextPageToken;
   }
 
-  console.log(`Full sync: found ${allMessageRefs.length} messages in Gmail`);
-
   // Safety check: Don't delete existing data if Gmail returned nothing
   if (allMessageRefs.length === 0) {
     console.warn('Full sync: Gmail returned 0 messages - keeping existing data');
@@ -328,10 +322,8 @@ async function performFullSync(
   const messageIds = allMessageRefs.map(m => m.id);
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
-  console.log(`Full sync: fetched ${messages.length} message details`);
 
   // Step 3: Delete existing emails and senders
-  console.log('Full sync: clearing existing data');
   await supabase.from('emails').delete().eq('email_account_id', accountId);
   await supabase.from('email_senders').delete().eq('email_account_id', accountId);
 
@@ -433,7 +425,6 @@ async function performFullSync(
   }
 
   // Step 5: Insert emails in batches
-  console.log(`Full sync: inserting ${emailsToInsert.length} emails`);
   for (let i = 0; i < emailsToInsert.length; i += BATCH_SIZE) {
     const batch = emailsToInsert.slice(i, i + BATCH_SIZE);
     const { error } = await supabase.from('emails').insert(batch);
@@ -448,7 +439,6 @@ async function performFullSync(
     updated_at: new Date().toISOString()
   }));
 
-  console.log(`Full sync: inserting ${sendersToInsert.length} senders`);
   for (let i = 0; i < sendersToInsert.length; i += BATCH_SIZE) {
     const batch = sendersToInsert.slice(i, i + BATCH_SIZE);
     const { error } = await supabase.from('email_senders').insert(batch);
@@ -523,13 +513,10 @@ async function performIncrementalSync(
 
   // Try History API first if we have a stored historyId
   if (storedHistoryId) {
-    console.log(`Incremental sync: trying History API with historyId ${storedHistoryId}`);
-
     try {
       const historyChanges = await getHistoryChanges(accessToken, storedHistoryId);
 
       if (historyChanges.historyExpired) {
-        console.log('History API: historyId expired, falling back to timestamp-based sync');
         syncMethod = 'timestamp';
       } else {
         // History API succeeded - use its results
@@ -537,8 +524,6 @@ async function performIncrementalSync(
 
         const addedMessageIds = historyChanges.addedMessageIds;
         const deletedMessageIds = historyChanges.deletedMessageIds;
-
-        console.log(`History API: ${addedMessageIds.length} added, ${deletedMessageIds.length} deleted`);
 
         // Process added messages
         if (addedMessageIds.length > 0) {
@@ -562,14 +547,11 @@ async function performIncrementalSync(
       syncMethod = 'timestamp';
     }
   } else {
-    console.log('Incremental sync: no stored historyId, using timestamp-based sync');
     syncMethod = 'timestamp';
   }
 
   // Fallback: timestamp-based sync
   if (syncMethod === 'timestamp') {
-    console.log(`Timestamp-based sync: fetching ALL emails since ${lastSyncedAt}`);
-
     // Build query to get ALL emails after last sync (not limited to arbitrary count)
     const lastSyncDate = new Date(lastSyncedAt);
     // Subtract 1 hour buffer to handle timezone/timing edge cases
@@ -595,8 +577,6 @@ async function performIncrementalSync(
       pageToken = response.nextPageToken;
     }
 
-    console.log(`Timestamp sync: found ${messageRefs.length} messages since last sync`);
-
     // Find which messages are new (not in our DB)
     const gmailMessageIds = messageRefs.map(m => m.id);
 
@@ -615,8 +595,6 @@ async function performIncrementalSync(
       }
 
       const newMessageIds = gmailMessageIds.filter(id => !existingIds.has(id));
-      console.log(`Timestamp sync: ${newMessageIds.length} new emails to add`);
-
 
       if (newMessageIds.length > 0) {
         const result = await processNewMessages(
@@ -846,8 +824,6 @@ async function performRecoverySync(
   userEmail: string,
   affectedSenders: Set<string>
 ): Promise<{ addedCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }> }> {
-  console.log('Recovery sync: Fetching all recent emails to catch missed messages...');
-
   // Fetch a large number of recent emails to ensure completeness
   const RECOVERY_FETCH_COUNT = 500;
   const query = '-in:sent -in:drafts -in:trash -in:spam';
@@ -869,8 +845,6 @@ async function performRecoverySync(
     pageToken = response.nextPageToken;
   }
 
-  console.log(`Recovery sync: Found ${messageRefs.length} recent messages in Gmail`);
-
   // Find which messages are missing from our DB
   const gmailIds = messageRefs.map(m => m.id);
   const existingIds = new Set<string>();
@@ -887,7 +861,6 @@ async function performRecoverySync(
   }
 
   const missingIds = gmailIds.filter(id => !existingIds.has(id));
-  console.log(`Recovery sync: ${missingIds.length} emails missing from local DB`);
 
   if (missingIds.length === 0) {
     return { addedCount: 0, sendersWithUnsubscribe: new Map() };
@@ -899,7 +872,6 @@ async function performRecoverySync(
     accessToken, accountId, userEmail, missingIds, affectedSenders
   );
 
-  console.log(`Recovery sync: Added ${result.addedCount} missing emails`);
   return { addedCount: result.addedCount, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
 }
 
@@ -936,7 +908,6 @@ async function processDeletedMessages(
     }
   }
 
-  console.log(`Deleted ${deletedCount} emails from DB based on History API`);
   return { deletedCount };
 }
 
@@ -1042,8 +1013,6 @@ async function verifyCompletenessAndSync(
   userEmail: string,
   affectedSenders: Set<string>
 ): Promise<{ addedCount: number; complete: boolean; missingCount: number; sendersWithUnsubscribe: Map<string, { unsubscribeLink: string | null; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string; isNewsletter: boolean; isPromotional: boolean }> }> {
-  console.log('Verifying sync completeness: checking Gmail\'s newest emails exist locally...');
-
   // Ask Gmail for its newest emails, then verify we have ALL of them
   // The count (50) is implementation detail; the guarantee is: Gmail's emails = our emails
   const response = await listMessages(accessToken, {
@@ -1052,7 +1021,6 @@ async function verifyCompletenessAndSync(
   });
 
   if (!response.messages || response.messages.length === 0) {
-    console.log('Completeness check: No messages in Gmail');
     return { addedCount: 0, complete: true, missingCount: 0, sendersWithUnsubscribe: new Map() };
   }
 
@@ -1069,19 +1037,13 @@ async function verifyCompletenessAndSync(
   let missingIds = gmailIds.filter(id => !existingIds.has(id));
 
   if (missingIds.length === 0) {
-    console.log('Completeness check: All of Gmail\'s newest emails exist locally ✓');
     return { addedCount: 0, complete: true, missingCount: 0, sendersWithUnsubscribe: new Map() };
   }
-
-  console.log(`Completeness check: ${missingIds.length} emails missing, attempting to add...`);
-
 
   // Attempt to add the missing emails
   const result = await processNewMessages(
     accessToken, accountId, userEmail, missingIds, affectedSenders
   );
-
-  console.log(`Completeness check: Added ${result.addedCount} of ${missingIds.length} missing emails`);
 
   // RE-VERIFY: Check again to confirm all missing emails were actually added
   const { data: recheck } = await supabase
@@ -1098,7 +1060,6 @@ async function verifyCompletenessAndSync(
     return { addedCount: result.addedCount, complete: false, missingCount: stillMissing.length, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
   }
 
-  console.log('Completeness check: Verified all of Gmail\'s newest emails now exist locally ✓');
   return { addedCount: result.addedCount, complete: true, missingCount: 0, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
 }
 
@@ -1250,7 +1211,6 @@ async function batchRecalculateSenderStats(
     await supabase.from('email_senders').delete().in('id', toDeleteIds);
   }
 
-  console.log(`Batch sender stats: ${toInsert.length} inserted, ${toUpdate.length} updated, ${toDeleteIds.length} deleted`);
 }
 
 /**
@@ -1400,8 +1360,6 @@ async function performRepairSync(
   accountId: string,
   email: string
 ) {
-  console.log('Repair sync: fetching all emails from database...');
-
   // Get all emails for this account (include labels for newsletter/promotional detection)
   const { data: emails, error: emailsError } = await supabase
     .from('emails')
@@ -1414,7 +1372,6 @@ async function performRepairSync(
   }
 
   if (!emails || emails.length === 0) {
-    console.log('Repair sync: no emails found, deleting all senders');
     await supabase.from('email_senders').delete().eq('email_account_id', accountId);
     return res.status(200).json({
       success: true,
@@ -1422,8 +1379,6 @@ async function performRepairSync(
       syncType: 'repair'
     });
   }
-
-  console.log(`Repair sync: rebuilding stats from ${emails.length} emails...`);
 
   // Aggregate emails by sender (name + email composite key)
   const senderStats = new Map<string, {
@@ -1468,8 +1423,6 @@ async function performRepairSync(
     }
   }
 
-  console.log(`Repair sync: deleting old senders and inserting ${senderStats.size} rebuilt records...`);
-
   // Delete all existing senders for this account (clean slate)
   const { error: deleteError } = await supabase
     .from('email_senders')
@@ -1509,8 +1462,6 @@ async function performRepairSync(
       insertedCount += batch.length;
     }
   }
-
-  console.log(`Repair sync: inserted ${insertedCount} senders with correct stats`);
 
   // Log activity
   await supabase.from('activity_log').insert({

@@ -166,7 +166,6 @@ async function handler(
         // If we have local emails, use them for deletion (fast path)
         if (localEmails && localEmails.length > 0) {
           messageIds = localEmails.map(e => e.gmail_message_id);
-          console.log(`Deleting ${messageIds.length} emails for ${senderEmail}${senderName ? ` (${senderName})` : ''} from local DB`);
 
           // Delete from email provider using stored message IDs
           const { success } = isOutlook
@@ -188,7 +187,6 @@ async function handler(
           await deleteQuery;
         } else {
           // Fallback: no local emails found, use Gmail API directly
-          console.log(`No local emails found for ${senderEmail}, falling back to Gmail API`);
           const result = await deleteEmailsFromSender(accessToken, senderEmail);
           deletedCount = result.deletedCount;
           messageIds = result.messageIds;

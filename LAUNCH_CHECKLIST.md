@@ -23,8 +23,8 @@ These are actual problems in the code that should be fixed.
 - [x] **Refresh token rotation** — fixed in `00cd8ba` (old token revoked, new token issued on each refresh)
 - [x] **Random encryption salts** — fixed in `00cd8ba` (replaced hardcoded 'gmail-salt'/'outlook-salt' with random 16-byte salts)
 - [x] **Move email.ts out of frontend** — fixed in `00cd8ba` (merged src/lib/email.ts into api/lib/email.ts)
-- [ ] **HTTP-only cookies for tokens** — deferred (requires full auth architecture rewrite, separate task)
-- [ ] **Remove OAuth tokens from URL fragment** — deferred (intertwined with cookie migration, separate task)
+- [x] **HTTP-only cookies for tokens** — fixed in `c509e0c` (full auth rewrite: localStorage → HTTP-only cookies)
+- [x] **Remove OAuth tokens from URL fragment** — fixed in `c509e0c` (OAuth callback now uses `?success=true`, no tokens in URL)
 
 ### Key Rotation (Secrets Were Exposed in Git History)
 - [x] **JWT_SECRET** — rotated
@@ -37,9 +37,9 @@ These are actual problems in the code that should be fixed.
 - [ ] **Outlook keys** — not set up yet. When you add Outlook support, set `OUTLOOK_CLIENT_SECRET` and `OUTLOOK_TOKEN_ENCRYPTION_KEY` on Vercel.
 
 ### Code Cleanup
-- [ ] **Remove console.logs from API code** — there are 200+ `console.log` statements scattered across the API files. These are debug messages that clutter logs and could accidentally leak info. Remove them or replace critical ones with Sentry error tracking.
-- [ ] **Delete unused CleanInbox.tsx** — `src/pages/CleanInbox.tsx` exists but isn't used anywhere. The real page is `EmailCleanup.tsx`. It's just dead code sitting there.
-- [ ] **Add a 404 page** — if someone visits a URL that doesn't exist (like `/asdfasdf`), there's no "page not found" screen. Add a catch-all route.
+- [x] **Remove console.logs from API code** — removed all `console.log` from 10 API files. Kept `console.error` and `console.warn` for real error handling.
+- [x] **Delete unused CleanInbox.tsx** — deleted `src/pages/CleanInbox.tsx` and its redirect route from `App.tsx`.
+- [x] **Add a 404 page** — added `src/pages/NotFound.tsx` with catch-all `*` route in `App.tsx`.
 
 ---
 
@@ -107,7 +107,7 @@ Go through each of these on the live production site. Check them off as you go.
 ## Good-to-Have (Won't Block Launch, But Do Soon)
 
 ### Security Improvements
-- [ ] **Revoke refresh tokens on logout** — logging out just clears the browser. The old refresh token still works until it expires. Lower risk now that access tokens are 15min and refresh tokens rotate on each use, but still worth adding an API call on logout to revoke. (There's a TODO comment in `AuthContext.tsx` for this.)
+- [x] **Revoke refresh tokens on logout** — fixed in `c509e0c` (new `api/auth/logout.ts` endpoint revokes all refresh tokens + clears cookies)
 - [ ] **Set up Sentry monitoring** — add `VITE_SENTRY_DSN` and `SENTRY_DSN` env vars so you get emailed when errors happen in production. The code is already wired up — you just need the Sentry account and the DSN values.
 - [ ] **Check past-due subscriptions** — if someone's payment fails and their subscription goes to "past_due" status, they might still be able to use cleanup features. Add a check for this.
 

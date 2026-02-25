@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import * as Sentry from '@sentry/react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
@@ -18,6 +18,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import OAuthCallback from './pages/OAuthCallback';
+import NotFound from './pages/NotFound';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -54,7 +55,7 @@ function AppWithAuth() {
               <Dashboard />
             </ProtectedRoute>
           } />
-          <Route path="/clean-inbox" element={<Navigate to="/email-cleanup" replace />} />
+
           <Route path="/checkout" element={
             <ProtectedRoute>
               <Checkout />
@@ -62,6 +63,7 @@ function AppWithAuth() {
           } />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       <Footer />

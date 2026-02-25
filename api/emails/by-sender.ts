@@ -99,9 +99,6 @@ export default async function handler(
       isUnread: email.is_unread || false
     }));
 
-    const nameFilter = senderName ? ` (name: ${senderName})` : '';
-    console.log(`by-sender: ${senderEmail}${nameFilter} - returned ${emails.length} emails from local DB`);
-
     // Get total count for this sender (may be more than returned)
     let countQuery = supabase
       .from('emails')

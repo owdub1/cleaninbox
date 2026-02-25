@@ -169,8 +169,6 @@ export async function listInboxMessages(
 
   const endpoint = `/me/mailFolders('Inbox')/messages?${params.toString()}`;
   const result = await graphRequest(accessToken, endpoint);
-  const messageCount = result?.value?.length || 0;
-  console.log(`Graph API: listed ${messageCount} messages`);
   return result;
 }
 
@@ -206,8 +204,6 @@ export async function batchGetMessages(
   const BATCH_SIZE = RATE_LIMIT.BATCH_SIZE;
   const results: OutlookMessage[] = [];
   let failedCount = 0;
-
-  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE}...`);
 
   for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
     const batch = messageIds.slice(i, i + BATCH_SIZE);
@@ -245,10 +241,6 @@ export async function batchGetMessages(
       await sleep(RATE_LIMIT.DELAY_BETWEEN_BATCHES);
     }
 
-    const processed = Math.min(i + BATCH_SIZE, messageIds.length);
-    if (processed % 100 === 0 || processed >= messageIds.length) {
-      console.log(`Processed ${processed}/${messageIds.length} messages`);
-    }
   }
 
   if (failedCount > 0) {
@@ -502,8 +494,6 @@ function getSenderKey(email: string, name: string): string {
 export function aggregateBySender(messages: OutlookMessage[]): Map<string, SenderStats> {
   const senderMap = new Map<string, SenderStats>();
 
-  console.log(`Aggregating ${messages.length} Outlook messages by sender...`);
-
   let skippedNoFrom = 0;
   for (const message of messages) {
     if (!message.from?.emailAddress?.address) {
@@ -568,7 +558,6 @@ export function aggregateBySender(messages: OutlookMessage[]): Map<string, Sende
     if (hasUnsubscribe) stats.isNewsletter = true;
   }
 
-  console.log(`Aggregation complete: ${senderMap.size} senders, skipped ${skippedNoFrom} messages without From`);
   return senderMap;
 }
 

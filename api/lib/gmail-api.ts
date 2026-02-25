@@ -179,8 +179,6 @@ export async function listMessages(
   const endpoint = `/messages${queryString ? `?${queryString}` : ''}`;
 
   const result = await gmailRequest(accessToken, endpoint);
-  const messageCount = result?.messages?.length || 0;
-  console.log(`Gmail API: listed ${messageCount} messages`);
   return result;
 }
 
@@ -262,7 +260,6 @@ export async function getHistoryChanges(
   } catch (error: any) {
     // History may be expired (Gmail only keeps ~30 days)
     if (error.message?.includes('404') || error.message?.includes('historyId')) {
-      console.log('History expired, will need full sync');
       return { addedMessageIds: [], deletedMessageIds: [], newHistoryId: startHistoryId, historyExpired: true };
     }
     throw error;
@@ -352,8 +349,6 @@ export async function batchGetMessages(
   const results: GmailMessage[] = [];
   let failedCount = 0;
 
-  console.log(`Fetching ${messageIds.length} message details in batches of ${BATCH_SIZE} with ${DELAY_MS}ms delay (format: ${format})...`);
-
   for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
     const batch = messageIds.slice(i, i + BATCH_SIZE);
 
@@ -372,11 +367,6 @@ export async function batchGetMessages(
       await sleep(DELAY_MS);
     }
 
-    // Log progress every 100 messages or at the end
-    const processed = Math.min(i + BATCH_SIZE, messageIds.length);
-    if (processed % 100 === 0 || processed >= messageIds.length) {
-      console.log(`Processed ${processed}/${messageIds.length} messages`);
-    }
   }
 
   if (failedCount > 0) {
@@ -677,18 +667,6 @@ function getSenderKey(email: string, name: string): string {
 export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderStats> {
   const senderMap = new Map<string, SenderStats>();
 
-  console.log(`Aggregating ${messages.length} messages by sender (name+email)...`);
-
-  // Debug: log first message structure
-  if (messages.length > 0) {
-    const firstMsg = messages[0];
-    console.log('First message structure:', JSON.stringify({
-      id: firstMsg?.id,
-      hasPayload: !!firstMsg?.payload,
-      headers: firstMsg?.payload?.headers?.map(h => h.name) || 'no headers'
-    }));
-  }
-
   let skippedNoFrom = 0;
   for (const message of messages) {
     const fromHeader = getHeader(message, 'From');
@@ -755,7 +733,6 @@ export function aggregateBySender(messages: GmailMessage[]): Map<string, SenderS
     if (isPromotional(message)) stats.isPromotional = true;
   }
 
-  console.log(`Aggregation complete: ${senderMap.size} senders (by name+email), skipped ${skippedNoFrom} messages without From header`);
   return senderMap;
 }
 
@@ -874,7 +851,6 @@ export async function fetchSenderStats(
     // Gmail's after: operator accepts epoch seconds for exact timestamp matching
     const epochSeconds = Math.floor(afterDate.getTime() / 1000);
     query += ` after:${epochSeconds}`;
-    console.log(`Incremental sync: fetching emails after ${afterDate.toISOString()} (epoch: ${epochSeconds})`);
   }
 
   while (allMessageRefs.length < maxMessages) {
@@ -896,19 +872,14 @@ export async function fetchSenderStats(
   }
 
   if (allMessageRefs.length === 0) {
-    console.log('No messages found in Gmail' + (afterDate ? ' since last sync' : ''));
     return { senders: [], emails: [] };
   }
-
-  console.log(`Gmail API listed ${allMessageRefs.length} messages to fetch` + (afterDate ? ' (incremental)' : ' (full)'));
 
   // Get message details - use 'metadata' format with explicit headers for performance
   // This is much faster than 'full' format and avoids rate limiting issues
   const messageIds = allMessageRefs.map(m => m.id);
   const requiredHeaders = ['From', 'List-Unsubscribe', 'List-Unsubscribe-Post', 'Date', 'Subject'];
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
-
-  console.log(`Successfully fetched ${messages.length} of ${messageIds.length} messages (${messageIds.length - messages.length} failed)`);
 
   // Aggregate by sender (using composite key: name + email)
   const senderMap = aggregateBySender(messages);

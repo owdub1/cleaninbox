@@ -37,7 +37,6 @@ export async function performOutlookFullSync(
   email: string
 ) {
   const maxMessages = Math.min(10000, emailLimit);
-  console.log(`Outlook full sync: fetching up to ${maxMessages} emails`);
 
   // Step 1: Fetch all message IDs from inbox
   const allMessages: OutlookMessage[] = [];
@@ -57,8 +56,6 @@ export async function performOutlookFullSync(
     nextLink = response['@odata.nextLink'];
   }
 
-  console.log(`Outlook full sync: found ${allMessages.length} messages`);
-
   if (allMessages.length === 0) {
     console.warn('Outlook full sync: returned 0 messages - keeping existing data');
     return res.status(200).json({
@@ -75,10 +72,8 @@ export async function performOutlookFullSync(
   // The list response doesn't include internetMessageHeaders, so we need to fetch individually
   const messageIds = allMessages.map(m => m.id);
   const messagesWithHeaders = await batchGetMessages(accessToken, messageIds);
-  console.log(`Outlook full sync: fetched ${messagesWithHeaders.length} message details`);
 
   // Step 3: Delete existing emails and senders
-  console.log('Outlook full sync: clearing existing data');
   await supabase.from('emails').delete().eq('email_account_id', accountId);
   await supabase.from('email_senders').delete().eq('email_account_id', accountId);
 
@@ -170,7 +165,6 @@ export async function performOutlookFullSync(
   }
 
   // Step 5: Insert emails in batches
-  console.log(`Outlook full sync: inserting ${emailsToInsert.length} emails`);
   for (let i = 0; i < emailsToInsert.length; i += BATCH_SIZE) {
     const batch = emailsToInsert.slice(i, i + BATCH_SIZE);
     const { error } = await supabase.from('emails').insert(batch);
@@ -185,7 +179,6 @@ export async function performOutlookFullSync(
     updated_at: new Date().toISOString()
   }));
 
-  console.log(`Outlook full sync: inserting ${sendersToInsert.length} senders`);
   for (let i = 0; i < sendersToInsert.length; i += BATCH_SIZE) {
     const batch = sendersToInsert.slice(i, i + BATCH_SIZE);
     const { error } = await supabase.from('email_senders').insert(batch);
@@ -252,13 +245,9 @@ export async function performOutlookIncrementalSync(
   let allSendersWithUnsubscribe = new Map<string, { unsubscribeLink: string; mailtoLink: string | null; hasOneClick: boolean; receivedAt: string }>();
 
   if (storedDeltaLink) {
-    console.log('Outlook incremental sync: using delta query');
-
     try {
       const deltaResult = await getDeltaMessages(accessToken, storedDeltaLink);
       newDeltaLink = deltaResult.newDeltaLink;
-
-      console.log(`Delta query: ${deltaResult.messages.length} added/modified, ${deltaResult.removedIds.length} removed`);
 
       // Process new/modified messages
       if (deltaResult.messages.length > 0) {
@@ -286,7 +275,6 @@ export async function performOutlookIncrementalSync(
       syncMethod = 'timestamp';
     }
   } else {
-    console.log('Outlook incremental sync: no delta link, using timestamp-based sync');
     syncMethod = 'timestamp';
   }
 
@@ -295,8 +283,6 @@ export async function performOutlookIncrementalSync(
     const lastSyncDate = new Date(lastSyncedAt);
     const bufferDate = new Date(lastSyncDate.getTime() - 60 * 60 * 1000);
     const filterDate = bufferDate.toISOString();
-
-    console.log(`Timestamp sync: fetching emails after ${filterDate}`);
 
     const allMessages: OutlookMessage[] = [];
     let nextLink: string | undefined;
@@ -316,8 +302,6 @@ export async function performOutlookIncrementalSync(
       nextLink = response['@odata.nextLink'];
     }
 
-    console.log(`Timestamp sync: found ${allMessages.length} messages since last sync`);
-
     if (allMessages.length > 0) {
       const messageIds = allMessages.map(m => m.id);
 
@@ -335,7 +319,6 @@ export async function performOutlookIncrementalSync(
       }
 
       const newMessageIds = messageIds.filter(id => !existingIds.has(id));
-      console.log(`Timestamp sync: ${newMessageIds.length} new emails to add`);
 
       if (newMessageIds.length > 0) {
         const messagesWithHeaders = await batchGetMessages(accessToken, newMessageIds);
@@ -520,7 +503,6 @@ async function processDeletedMessages(
     }
   }
 
-  console.log(`Deleted ${deletedCount} emails from DB based on delta removals`);
   return { deletedCount };
 }
 

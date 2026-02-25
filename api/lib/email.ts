@@ -42,8 +42,7 @@ async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> 
       return false;
     }
 
-    const data: any = await response.json();
-    console.log('Email sent successfully:', data.id);
+    await response.json();
     return true;
   } catch (error) {
     console.error('Error sending email:', error);
