@@ -96,13 +96,14 @@ export default async function handler(
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId);
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('subscription')
-        .eq('id', userId)
+      const { data: subData } = await supabase
+        .from('subscriptions')
+        .select('plan, status')
+        .eq('user_id', userId)
         .single();
 
-      const planKey = (userData?.subscription?.toLowerCase() || 'free') as keyof typeof PLAN_LIMITS;
+      const isActiveSub = subData && ['active', 'past_due'].includes(subData.status);
+      const planKey = (isActiveSub ? subData.plan?.toLowerCase() : 'free') as keyof typeof PLAN_LIMITS;
       const limit = (PLAN_LIMITS[planKey] || PLAN_LIMITS.free).emailLimit;
 
       if ((accountCount || 0) >= limit) {
