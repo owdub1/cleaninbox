@@ -20,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: emailAccounts, error: accountsError } = await supabase
       .from('email_accounts')
       .select('id, email, provider, connection_status, last_synced, total_emails, processed_emails, unsubscribed')
-      .eq('user_id', user.userId);
+      .eq('user_id', user.userId)
+      .neq('connection_status', 'disconnected');
 
     if (accountsError) {
       console.error('Error fetching email accounts:', accountsError);
