@@ -101,10 +101,11 @@ export const useGmailConnection = () => {
     const errorParam = params.get('error');
     if (errorParam) {
       const errorMessages: Record<string, string> = {
-        oauth_denied: 'Gmail access was denied. Please try again.',
+        oauth_denied: 'Email access was denied. Please try again.',
         invalid_callback: 'Invalid OAuth callback. Please try again.',
         invalid_state: 'Session expired. Please try connecting again.',
-        email_already_connected: 'This Gmail account is already connected to another user.',
+        email_already_connected: 'This email account is already connected to another user.',
+        account_limit_reached: 'Your plan only allows 1 email account. Upgrade to connect more.',
         callback_failed: 'Connection failed. Please try again.',
       };
       return {
