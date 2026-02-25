@@ -8,6 +8,7 @@ import { useEmailAccounts } from '../hooks/useEmailAccounts';
 import { useSubscription } from '../hooks/useSubscription';
 import { useActivity } from '../hooks/useActivity';
 import ConnectEmailModal from '../components/modals/ConnectEmailModal';
+import { StatsCardsSkeleton, SubscriptionSkeleton, ActivitySkeleton } from '../components/dashboard/DashboardSkeletons';
 const Dashboard = () => {
   const { stats: dbStats, emailAccounts: dbEmailAccounts, loading: statsLoading, refetch: refetchDashboard } = useDashboardData();
   const { addEmailAccount, removeEmailAccount } = useEmailAccounts();
@@ -464,6 +465,7 @@ const Dashboard = () => {
           <div className="mt-6">
             {/* Overview Tab */}
             {activeTab === 'overview' && <div>
+                {statsLoading ? <StatsCardsSkeleton /> : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
                     <div className="flex items-center">
@@ -496,6 +498,8 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
+                )}
+                {subscriptionLoading ? <SubscriptionSkeleton /> : (
                 <div className="mt-8 bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
                   <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
@@ -553,9 +557,7 @@ const Dashboard = () => {
                       </h4>
                       <div className="space-y-2">
                         {activityLoading ? (
-                          <div className="flex items-center justify-center py-4">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-                          </div>
+                          <ActivitySkeleton />
                         ) : activities.length > 0 ? (
                           activities.map((activity) => (
                             <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -590,6 +592,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
+                )}
               </div>}
             {/* Email Accounts Tab (formerly My Emails) */}
             {activeTab === 'myemails' && <div>
