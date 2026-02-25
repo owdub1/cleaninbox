@@ -13,7 +13,7 @@ export const API_URL = import.meta.env.VITE_API_URL ??
  * Get CSRF header (still uses localStorage — this is intentional,
  * the CSRF token is NOT a secret, it's one half of a double-submit check)
  */
-function getCSRFHeaders(): Record<string, string> {
+export function getCSRFHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   const csrfToken = localStorage.getItem('csrf_token');
   if (csrfToken) {

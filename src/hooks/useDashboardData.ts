@@ -52,7 +52,7 @@ export const useDashboardData = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch email accounts
+      // Fetch email accounts (read-only, scoped to user)
       const { data: accountsData, error: accountsError } = await supabase
         .from('email_accounts')
         .select('*')
@@ -82,22 +82,22 @@ export const useDashboardData = () => {
         });
       }
 
-      // Get unsubscribed and deleted counts from user_stats
+      // Get unsubscribed and deleted counts from user_stats (read-only, scoped to user)
       const { data: userStats } = await supabase
         .from('user_stats')
         .select('unsubscribed, emails_processed')
         .eq('user_id', user.id)
         .single();
 
-      // Fetch recent activity
-      const { data: activityData } = await supabase
-        .from('activity_log')
-        .select('id, action_type, description, created_at, metadata')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // Fetch recent activity via server-side API (authenticated)
+      const activityResponse = await fetch(`${API_URL}/api/activity/get?limit=10`, {
+        credentials: 'include',
+      });
 
-      setRecentActivity(activityData || []);
+      if (activityResponse.ok) {
+        const activityData = await activityResponse.json();
+        setRecentActivity(activityData.activities || []);
+      }
 
       // Update stats
       setStats({

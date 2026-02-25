@@ -295,7 +295,21 @@ export function validateOrigin(req: VercelRequest): boolean {
     'https://cleaninbox.com'
   ].filter(Boolean) as string[];
 
-  return allowedOrigins.some(allowed => origin.startsWith(allowed));
+  // Parse origin to compare just scheme+host (exact match, not startsWith)
+  try {
+    const originUrl = new URL(origin);
+    const originBase = `${originUrl.protocol}//${originUrl.host}`;
+    return allowedOrigins.some(allowed => {
+      try {
+        const allowedUrl = new URL(allowed);
+        return originBase === `${allowedUrl.protocol}//${allowedUrl.host}`;
+      } catch {
+        return originBase === allowed;
+      }
+    });
+  } catch {
+    return false;
+  }
 }
 
 /**

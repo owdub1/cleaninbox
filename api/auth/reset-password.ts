@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 import { isExpired, validatePassword, hashPassword, hashToken } from '../lib/auth-utils.js';
 import { sendPasswordChangedEmail } from '../lib/email.js';
 
@@ -62,22 +63,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Check if password was used recently (last 5 passwords)
+    // bcrypt hashes are different each time, so we must use bcrypt.compare() not SQL equality
+    const { data: recentHashes } = await supabase
+      .from('password_history')
+      .select('password_hash')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (recentHashes) {
+      for (const row of recentHashes) {
+        const isReused = await bcrypt.compare(password, row.password_hash);
+        if (isReused) {
+          return res.status(400).json({
+            error: 'Password was used recently. Please choose a different password that you haven\'t used before.'
+          });
+        }
+      }
+    }
+
     // Hash the new password
     const passwordHash = await hashPassword(password, 10);
-
-    // Check if password was used recently (last 5 passwords)
-    const { data: passwordUsed } = await supabase
-      .rpc('is_password_used_recently', {
-        p_user_id: user.id,
-        p_password_hash: passwordHash,
-        p_history_limit: 5
-      });
-
-    if (passwordUsed) {
-      return res.status(400).json({
-        error: 'Password was used recently. Please choose a different password that you haven\'t used before.'
-      });
-    }
 
     // Start transaction-like operations
     // 1. Mark token as used

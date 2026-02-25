@@ -45,7 +45,7 @@ export default async function handler(
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload;
 
     // Collect all Stripe customer IDs for this user
     const customerIds = new Set<string>();

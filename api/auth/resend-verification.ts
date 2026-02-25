@@ -44,9 +44,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Check if already verified
+    // If already verified, return same generic response (prevent enumeration)
     if (user.email_verified) {
-      return res.status(400).json({ error: 'Email is already verified' });
+      return res.status(200).json({
+        message: 'If an account exists with this email, a verification email will be sent.'
+      });
     }
 
     // Invalidate any existing verification tokens for this user
@@ -89,8 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({
-      message: 'Verification email sent successfully',
-      expiresAt: expiresAt.toISOString()
+      message: 'If an account exists with this email, a verification email will be sent.'
     });
 
   } catch (error: any) {

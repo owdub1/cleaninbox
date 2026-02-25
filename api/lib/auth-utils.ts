@@ -80,16 +80,16 @@ export function validateEmail(email: string): boolean {
  * Get client IP address from request
  */
 export function getClientIP(req: any): string {
-  // Check various headers for IP address (in order of preference)
-  const ip =
-    req.headers['cf-connecting-ip'] || // Cloudflare
-    req.headers['x-real-ip'] || // nginx
-    req.headers['x-forwarded-for']?.split(',')[0] || // Most proxies
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    '0.0.0.0';
+  // Use the last value of x-forwarded-for (the one added by the edge proxy, not client-settable)
+  // This works for both Railway and Vercel deployments
+  const forwardedFor = req.headers['x-forwarded-for'];
+  if (forwardedFor) {
+    const ips = forwardedFor.split(',').map((ip: string) => ip.trim());
+    // Last IP is the one added by the trusted proxy (Railway/Vercel edge)
+    return ips[ips.length - 1] || '0.0.0.0';
+  }
 
-  return ip;
+  return req.socket?.remoteAddress || '0.0.0.0';
 }
 
 /**

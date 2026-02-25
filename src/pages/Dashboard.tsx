@@ -199,7 +199,7 @@ const Dashboard = () => {
   const confirmDisconnectEmail = async () => {
     if (emailToDisconnect) {
       try {
-        await removeEmailAccount(emailToDisconnect.id);
+        await removeEmailAccount(emailToDisconnect.id, emailToDisconnect.email, emailToDisconnect.provider);
         setShowDisconnectModal(false);
         setEmailToDisconnect(null);
         await refetchDashboard();

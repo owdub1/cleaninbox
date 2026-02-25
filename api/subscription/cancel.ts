@@ -55,7 +55,7 @@ export default async function handler(
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload;
 
     // Get current subscription
     const { data: subscription, error: fetchError } = await supabase

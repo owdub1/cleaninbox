@@ -57,7 +57,7 @@ export default async function handler(
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload;
 
     // Get limit from query params (default 10)
     const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);

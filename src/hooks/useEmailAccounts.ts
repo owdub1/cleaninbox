@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../lib/api';
+import { API_URL, getCSRFHeaders } from '../lib/api';
 
 export const useEmailAccounts = () => {
   const { user } = useAuth();
@@ -13,39 +12,13 @@ export const useEmailAccounts = () => {
       throw new Error('User must be authenticated');
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: insertError } = await supabase
-        .from('email_accounts')
-        .insert([
-          {
-            user_id: user.id,
-            email: email,
-            provider: provider,
-            last_synced: new Date().toISOString(),
-            total_emails: 0,
-            processed_emails: 0,
-            unsubscribed: 0
-          }
-        ])
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      return data;
-    } catch (err: any) {
-      console.error('Error adding email account:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
+    // Email accounts are created server-side during OAuth callback.
+    // This is a no-op placeholder — the actual creation happens in
+    // api/gmail/callback.ts or api/outlook/callback.ts.
+    return { email, provider };
   };
 
-  const removeEmailAccount = async (accountId: string) => {
+  const removeEmailAccount = async (accountId: string, email?: string, provider?: string) => {
     if (!user) {
       throw new Error('User must be authenticated');
     }
@@ -54,13 +27,26 @@ export const useEmailAccounts = () => {
       setLoading(true);
       setError(null);
 
-      const { error: deleteError } = await supabase
-        .from('email_accounts')
-        .delete()
-        .eq('id', accountId)
-        .eq('user_id', user.id);
+      // Use the server-side disconnect endpoints which revoke OAuth tokens
+      // and delete the account row with proper authentication
+      const endpoint = provider?.toLowerCase() === 'outlook'
+        ? '/api/outlook/disconnect'
+        : '/api/gmail/disconnect';
 
-      if (deleteError) throw deleteError;
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getCSRFHeaders(),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to disconnect email account');
+      }
 
       return true;
     } catch (err: any) {
@@ -87,29 +73,19 @@ export const useEmailAccounts = () => {
       setLoading(true);
       setError(null);
 
-      // Get the email address if not provided
-      let emailAddress = email;
-      if (!emailAddress) {
-        const { data: account } = await supabase
-          .from('email_accounts')
-          .select('email')
-          .eq('id', accountId)
-          .single();
-        emailAddress = account?.email;
+      if (!email) {
+        throw new Error('Email address is required for sync');
       }
 
-      if (!emailAddress) {
-        throw new Error('Email account not found');
-      }
-
-      // Call the actual sync API
+      // Call the server-side sync API
       const response = await fetch(`${API_URL}/api/emails/sync`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...getCSRFHeaders(),
         },
         credentials: 'include',
-        body: JSON.stringify({ email: emailAddress, fullSync })
+        body: JSON.stringify({ email, fullSync })
       });
 
       const data = await response.json();

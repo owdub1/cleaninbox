@@ -118,7 +118,10 @@ export default async function handler(
       if (filter === 'newsletter') pageQuery = pageQuery.eq('is_newsletter', true);
       else if (filter === 'promotional') pageQuery = pageQuery.eq('is_promotional', true);
       else if (filter === 'unsubscribable') pageQuery = pageQuery.eq('has_unsubscribe', true);
-      if (searchTerm) pageQuery = pageQuery.or(`sender_email.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%`);
+      if (searchTerm) {
+        const escaped = searchTerm.replace(/[%_\\]/g, '\\$&');
+        pageQuery = pageQuery.or(`sender_email.ilike.%${escaped}%,sender_name.ilike.%${escaped}%`);
+      }
 
       // Tiebreaker sort by id ensures stable pagination — without it,
       // PostgreSQL's unstable sort can skip rows at page boundaries

@@ -92,7 +92,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (existingUser) {
-      return res.status(400).json({ error: 'An account with this email already exists' });
+      // Return same message as success to prevent email enumeration
+      return res.status(200).json({
+        message: 'Please check your email to verify your account.'
+      });
     }
 
     // Hash password

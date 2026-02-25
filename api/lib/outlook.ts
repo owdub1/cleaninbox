@@ -116,7 +116,7 @@ export function generateOutlookOAuthState(userId: string): string {
  */
 export function verifyOutlookOAuthState(state: string): { userId: string } | null {
   try {
-    const decoded = jwt.verify(state, JWT_SECRET) as any;
+    const decoded = jwt.verify(state, JWT_SECRET, { algorithms: ['HS256'] }) as any;
     if (decoded.purpose !== 'outlook_oauth') {
       return null;
     }

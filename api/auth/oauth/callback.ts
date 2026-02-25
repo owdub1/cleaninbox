@@ -45,7 +45,7 @@ interface GoogleProfile {
  */
 function verifyAuthState(state: string): boolean {
   try {
-    const decoded = jwt.verify(state, JWT_SECRET) as any;
+    const decoded = jwt.verify(state, JWT_SECRET, { algorithms: ['HS256'] }) as any;
     return decoded.purpose === 'google_auth';
   } catch {
     return false;

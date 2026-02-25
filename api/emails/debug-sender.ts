@@ -80,14 +80,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('email_senders')
       .select('*')
       .eq('email_account_id', account.id)
-      .ilike('sender_email', `%${sender}%`);
+      .ilike('sender_email', `%${(sender as string).replace(/[%_\\]/g, '\\$&')}%`);
 
     // Get emails from database for this sender
+    const escapedSender = (sender as string).replace(/[%_\\]/g, '\\$&');
     const { data: dbEmails } = await supabase
       .from('emails')
       .select('gmail_message_id, subject, received_at, sender_email, sender_name')
       .eq('email_account_id', account.id)
-      .ilike('sender_email', `%${sender}%`)
+      .ilike('sender_email', `%${escapedSender}%`)
       .order('received_at', { ascending: false })
       .limit(10);
 

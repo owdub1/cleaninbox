@@ -37,7 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Verify the refresh token
     let decoded: any;
     try {
-      decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+      decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
     } catch (error) {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
@@ -57,14 +57,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Refresh token not found' });
     }
 
-    // Check if token is revoked
-    if (tokenRecord.revoked) {
-      return res.status(401).json({ error: 'Refresh token has been revoked' });
-    }
-
     // Check if token is expired
     if (new Date(tokenRecord.expires_at) < new Date()) {
       return res.status(401).json({ error: 'Refresh token has expired' });
+    }
+
+    // Atomically revoke the token — if already revoked (race condition), reject
+    const { data: revokedRows, error: revokeError } = await supabase
+      .from('refresh_tokens')
+      .update({ revoked: true, revoked_at: new Date().toISOString() })
+      .eq('token_hash', tokenHash)
+      .eq('revoked', false)
+      .select('id');
+
+    if (revokeError || !revokedRows || revokedRows.length === 0) {
+      // Token was already revoked by a concurrent request — possible token theft
+      return res.status(401).json({ error: 'Refresh token has been revoked' });
     }
 
     // Get user details
@@ -128,12 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'] }
     );
 
-    // Rotate refresh token: revoke old, issue new
-    await supabase
-      .from('refresh_tokens')
-      .update({ revoked: true })
-      .eq('token_hash', tokenHash);
-
+    // Issue new refresh token (old one was already atomically revoked above)
     const newRefreshToken = jwt.sign(
       { userId: user.id },
       JWT_REFRESH_SECRET,

@@ -138,14 +138,20 @@ export const AuthProvider: React.FC<{
 
     const data = await response.json();
 
-    setUser(data.user);
-    if (data.csrfToken) {
-      localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
+    // If server returned a generic "check your email" message (existing user or new user),
+    // handle it without crashing — only set user if data.user exists
+    if (data.user) {
+      setUser(data.user);
+      if (data.csrfToken) {
+        localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      // Redirect to pricing to purchase a plan
+      navigate('/pricing');
+    } else {
+      // Generic "check your email" response — redirect to login
+      navigate('/login', { state: { message: data.message || 'Please check your email to verify your account.' } });
     }
-    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-
-    // Redirect to pricing to purchase a plan
-    navigate('/pricing');
   };
 
   const login = async (email: string, password: string, rememberMe: boolean = false, captchaToken?: string) => {

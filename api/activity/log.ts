@@ -63,7 +63,7 @@ export default async function handler(
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload;
 
     const { action_type, description, metadata } = req.body as ActivityLogEntry;
 

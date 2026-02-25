@@ -75,15 +75,26 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
 
-    // Allow all Vercel preview/production URLs
-    if (origin.includes('vercel.app') || origin.includes('cleaninbox')) {
-      return callback(null, true);
-    }
+    // Check exact origin match (parse URL to avoid substring attacks)
+    try {
+      const originUrl = new URL(origin);
+      const originBase = `${originUrl.protocol}//${originUrl.host}`;
 
-    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
-      callback(null, true);
-    } else {
-      console.warn('CORS blocked origin:', origin);
+      // Allow Vercel preview deployments (must end with .vercel.app)
+      if (originUrl.host.endsWith('.vercel.app') || originUrl.host === 'cleaninbox.ca' || originUrl.host === 'www.cleaninbox.ca') {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.some(allowed => {
+        try { return originBase === new URL(allowed).origin; } catch { return originBase === allowed; }
+      })) {
+        callback(null, true);
+      } else {
+        console.warn('CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    } catch {
+      console.warn('CORS blocked invalid origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

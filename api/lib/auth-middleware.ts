@@ -50,7 +50,7 @@ export function extractToken(req: VercelRequest): any {
 
   try {
     // Verify and decode JWT
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     return decoded;
   } catch (error) {
     // Token is invalid or expired

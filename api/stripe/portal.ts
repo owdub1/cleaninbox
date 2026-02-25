@@ -49,7 +49,7 @@ export default async function handler(
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JWTPayload;
 
     // Get the user's stripe_customer_id from subscriptions table
     const { data: subscription, error: fetchError } = await supabase

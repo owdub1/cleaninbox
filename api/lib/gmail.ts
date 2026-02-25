@@ -130,7 +130,7 @@ export function generateOAuthState(userId: string): string {
  */
 export function verifyOAuthState(state: string): { userId: string } | null {
   try {
-    const decoded = jwt.verify(state, JWT_SECRET) as any;
+    const decoded = jwt.verify(state, JWT_SECRET, { algorithms: ['HS256'] }) as any;
     if (decoded.purpose !== 'gmail_oauth') {
       return null;
     }
