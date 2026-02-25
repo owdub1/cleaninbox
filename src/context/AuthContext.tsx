@@ -49,7 +49,13 @@ export const AuthProvider: React.FC<{
       });
 
       if (!response.ok) {
-        console.warn('Token refresh failed with status:', response.status);
+        // 400 = no refresh cookie, 401 = invalid/expired — session is dead
+        if (response.status === 400 || response.status === 401) {
+          console.warn('Refresh failed (clearing session):', response.status);
+          localStorage.removeItem(CSRF_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          setUser(null);
+        }
         return false;
       }
 
@@ -91,9 +97,11 @@ export const AuthProvider: React.FC<{
             const data = await response.json();
             setUser(data.user);
             localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-          } else if (response.status === 401) {
-            // Refresh token is definitely invalid — clear session
-            console.warn('Refresh token rejected (401), clearing session');
+          } else if (response.status === 400 || response.status === 401) {
+            // 400 = no refresh token cookie (pre-cookie-migration session)
+            // 401 = refresh token invalid/expired
+            // Either way, session is unrecoverable — clear and redirect to login
+            console.warn('Refresh failed (clearing session):', response.status);
             localStorage.removeItem(CSRF_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             setUser(null);
