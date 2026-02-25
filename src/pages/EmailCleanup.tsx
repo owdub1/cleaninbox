@@ -209,11 +209,13 @@ const EmailCleanup = () => {
 
   const hasEmailConnected = emailAccounts && emailAccounts.length > 0;
 
-  // OAuth callback
+  // OAuth callback — after connecting an account, go straight to cleanup with delete tool
   useEffect(() => {
     const result = handleOAuthCallback();
     if (result.success && result.email) {
       clearCallbackParams();
+      setSelectedTool('delete');
+      setCurrentView('cleanup');
       syncEmails(result.email);
     } else if (result.error) {
       setNotification({ type: 'error', message: result.error });
