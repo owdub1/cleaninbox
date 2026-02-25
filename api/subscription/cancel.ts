@@ -30,11 +30,7 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', process.env.VITE_APP_URL || '');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // CORS is handled by Express middleware in server.ts (Railway)
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
