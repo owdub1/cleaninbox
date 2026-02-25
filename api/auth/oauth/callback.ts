@@ -25,8 +25,12 @@ const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
 const JWT_SECRET = requireEnv('JWT_SECRET');
 const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
-const API_URL = process.env.API_URL || 'https://cleaninbox.ca';
+const API_URL = process.env.API_URL || process.env.VITE_APP_URL || 'https://cleaninbox.ca';
 const APP_URL = process.env.VITE_APP_URL || 'https://cleaninbox.ca';
+
+if (!process.env.API_URL) {
+  console.warn('API_URL env var not set — OAuth redirect_uri will use fallback:', API_URL);
+}
 
 const limiter = rateLimit(RateLimitPresets.STANDARD);
 
@@ -183,10 +187,22 @@ export default async function handler(
     }
 
     // Exchange authorization code for tokens
-    const tokens = await exchangeCodeForTokens(code);
+    let tokens;
+    try {
+      tokens = await exchangeCodeForTokens(code);
+    } catch (err: any) {
+      console.error('Token exchange failed:', err.message);
+      return res.redirect(`${APP_URL}/oauth/callback?error=token_exchange_failed`);
+    }
 
     // Get user profile from Google
-    const profile = await getGoogleProfile(tokens.access_token);
+    let profile;
+    try {
+      profile = await getGoogleProfile(tokens.access_token);
+    } catch (err: any) {
+      console.error('Profile fetch failed:', err.message);
+      return res.redirect(`${APP_URL}/oauth/callback?error=profile_fetch_failed`);
+    }
 
     if (!profile.email) {
       console.error('No email in Google profile');

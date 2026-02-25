@@ -12,6 +12,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   account_deleted: 'Your account has been deleted.',
   account_inactive: 'Your account is not active. Please contact support.',
   signup_failed: 'Failed to create account. Please try again.',
+  token_exchange_failed: 'Could not verify with Google. Please try again.',
+  profile_fetch_failed: 'Could not get your Google profile. Please try again.',
   callback_failed: 'Sign-in failed. Please try again.'
 };
 
