@@ -54,7 +54,8 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const { isAuthenticated, refreshToken } = useAuth();
   const [senders, setSenders] = useState<Sender[]>([]);
   const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [syncPhase, setSyncPhase] = useState<'idle' | 'initial' | 'full'>('idle');
+  const syncing = syncPhase !== 'idle';
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -152,9 +153,68 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       return { success: false };
     }
 
+    // Detect first-time sync: we've fetched senders but found none
+    const isFirstTimeSync = hasFetched && !hasSendersRef.current && !fullSync && !repair;
+
     try {
-      setSyncing(true);
       setError(null);
+
+      // === Two-phase sync for first-time users ===
+      if (isFirstTimeSync) {
+        // Phase 1: Fetch 500 most recent emails quickly
+        setSyncPhase('initial');
+
+        const phase1Response = await fetchWithAuth('/api/emails/sync', {
+          method: 'POST',
+          body: JSON.stringify({ email, initialBatch: true }),
+        }, refreshToken);
+
+        const phase1Data = await phase1Response.json();
+
+        if (phase1Response.ok && phase1Data.totalSenders > 0) {
+          // Partial senders are now in DB — fetch and display them
+          await fetchSenders();
+        }
+
+        // Phase 2: Full sync to rebuild everything with accurate totals
+        setSyncPhase('full');
+
+        const phase2Response = await fetchWithAuth('/api/emails/sync', {
+          method: 'POST',
+          body: JSON.stringify({ email, fullSync: true }),
+        }, refreshToken);
+
+        const phase2Data = await phase2Response.json();
+
+        if (!phase2Response.ok) {
+          if (phase2Response.status === 429 && phase2Data.code === 'SYNC_LIMIT_REACHED') {
+            // Phase 1 data is still visible, just can't complete full sync yet
+            setError(phase2Data.error);
+            return {
+              success: false,
+              limitReached: true,
+              nextSyncAvailable: phase2Data.nextSyncAvailable,
+              upgradeMessage: phase2Data.upgradeMessage
+            };
+          }
+          // Phase 2 failed but Phase 1 data stays visible
+          // last_synced is still null, so full sync retries next time
+          console.error('Phase 2 sync failed:', phase2Data.error);
+        }
+
+        // Refresh senders with complete data
+        await fetchSenders();
+
+        return {
+          success: phase2Response.ok,
+          syncMessage: phase2Data.message,
+          addedEmails: phase2Data.addedEmails || phase2Data.totalEmails,
+          syncMethod: 'two-phase',
+        };
+      }
+
+      // === Standard single-request sync (incremental or manual full) ===
+      setSyncPhase('full');
 
       const response = await fetchWithAuth('/api/emails/sync', {
         method: 'POST',
@@ -179,7 +239,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       // Refresh senders after sync - fetch ALL senders (not just this account)
       // The frontend filters by selectedAccountEmail, so we need all accounts' data
-      const updatedSenders = await fetchSenders();
+      await fetchSenders();
 
       return {
         success: true,
@@ -193,9 +253,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       setError(err.message);
       return { success: false };
     } finally {
-      setSyncing(false);
+      setSyncPhase('idle');
     }
-  }, [isAuthenticated, fetchSenders]);
+  }, [isAuthenticated, hasFetched, fetchSenders]);
 
   /**
    * Get senders grouped by year
@@ -422,6 +482,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     senders,
     loading,
     syncing,
+    syncPhase,
     error,
     pagination,
     fetchSenders,

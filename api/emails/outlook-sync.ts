@@ -224,6 +224,170 @@ export async function performOutlookFullSync(
 }
 
 /**
+ * Outlook Initial Batch: Fetch only 500 most recent emails for fast first-load.
+ * Does NOT set last_synced or delta_link — the account stays in "needs full sync" state
+ * so Phase 2 (full sync) rebuilds everything with accurate totals.
+ */
+export async function performOutlookInitialBatch(
+  res: VercelResponse,
+  userId: string,
+  accountId: string,
+  accessToken: string,
+  userEmail: string,
+  email: string
+) {
+  const INITIAL_BATCH_LIMIT = 500;
+
+  // Fetch up to 500 most recent messages
+  const allMessages: OutlookMessage[] = [];
+  let nextLink: string | undefined;
+
+  while (allMessages.length < INITIAL_BATCH_LIMIT) {
+    const response = await listInboxMessages(accessToken, {
+      top: Math.min(100, INITIAL_BATCH_LIMIT - allMessages.length),
+      nextLink,
+      orderBy: 'receivedDateTime desc',
+    });
+
+    if (!response.value || response.value.length === 0) break;
+    allMessages.push(...response.value);
+
+    if (!response['@odata.nextLink']) break;
+    nextLink = response['@odata.nextLink'];
+  }
+
+  if (allMessages.length === 0) {
+    return res.status(200).json({
+      success: true,
+      totalSenders: 0,
+      totalEmails: 0,
+      syncType: 'initialBatch'
+    });
+  }
+
+  // Batch fetch message details with headers
+  const messageIds = allMessages.map(m => m.id);
+  const messagesWithHeaders = await batchGetMessages(accessToken, messageIds);
+
+  // Process messages and build sender stats (same logic as performOutlookFullSync)
+  const emailsToInsert: any[] = [];
+  const senderStats = new Map<string, {
+    sender_email: string;
+    sender_name: string;
+    email_count: number;
+    unread_count: number;
+    first_email_date: string;
+    last_email_date: string;
+    unsubscribe_link: string | null;
+    mailto_unsubscribe_link: string | null;
+    has_unsubscribe: boolean;
+    has_one_click_unsubscribe: boolean;
+    is_newsletter: boolean;
+    is_promotional: boolean;
+    _unsub_link_date?: string;
+    _mailto_unsub_link_date?: string;
+  }>();
+
+  for (const msg of messagesWithHeaders) {
+    if (!msg.from?.emailAddress?.address) continue;
+
+    const senderEmail = msg.from.emailAddress.address.toLowerCase();
+    const senderName = msg.from.emailAddress.name || senderEmail;
+    if (senderEmail === userEmail) continue;
+
+    const receivedAt = new Date(msg.receivedDateTime).toISOString();
+    const isUnread = !msg.isRead;
+
+    emailsToInsert.push({
+      gmail_message_id: msg.id,
+      email_account_id: accountId,
+      sender_email: senderEmail,
+      sender_name: senderName,
+      subject: msg.subject || '(No Subject)',
+      snippet: msg.bodyPreview || '',
+      received_at: receivedAt,
+      is_unread: isUnread,
+      thread_id: msg.conversationId || msg.id,
+      labels: [],
+    });
+
+    // Update sender stats
+    const senderKey = `${senderEmail}|||${senderName}`;
+    const existing = senderStats.get(senderKey);
+    const unsubscribeLink = extractUnsubscribeLink(msg);
+    const mailtoUnsubscribeLink = extractMailtoUnsubscribeLink(msg);
+    const unsubscribePostHeader = msg.internetMessageHeaders?.find(
+      h => h.name.toLowerCase() === 'list-unsubscribe-post'
+    )?.value || '';
+    const hasOneClick = unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click');
+
+    if (existing) {
+      existing.email_count++;
+      if (isUnread) existing.unread_count++;
+      if (receivedAt < existing.first_email_date) existing.first_email_date = receivedAt;
+      if (receivedAt > existing.last_email_date) existing.last_email_date = receivedAt;
+      if (unsubscribeLink && (!existing._unsub_link_date || receivedAt > existing._unsub_link_date)) {
+        existing.unsubscribe_link = unsubscribeLink;
+        existing.has_unsubscribe = true;
+        existing.has_one_click_unsubscribe = hasOneClick;
+        existing._unsub_link_date = receivedAt;
+      }
+      if (mailtoUnsubscribeLink && (!existing._mailto_unsub_link_date || receivedAt > existing._mailto_unsub_link_date)) {
+        existing.mailto_unsubscribe_link = mailtoUnsubscribeLink;
+        existing._mailto_unsub_link_date = receivedAt;
+      }
+    } else {
+      senderStats.set(senderKey, {
+        sender_email: senderEmail,
+        sender_name: senderName,
+        email_count: 1,
+        unread_count: isUnread ? 1 : 0,
+        first_email_date: receivedAt,
+        last_email_date: receivedAt,
+        unsubscribe_link: unsubscribeLink || null,
+        mailto_unsubscribe_link: mailtoUnsubscribeLink || null,
+        has_unsubscribe: !!unsubscribeLink,
+        has_one_click_unsubscribe: hasOneClick,
+        is_newsletter: !!unsubscribeLink,
+        is_promotional: false,
+        _unsub_link_date: unsubscribeLink ? receivedAt : undefined,
+        _mailto_unsub_link_date: mailtoUnsubscribeLink ? receivedAt : undefined,
+      });
+    }
+  }
+
+  // Insert emails in batches
+  for (let i = 0; i < emailsToInsert.length; i += BATCH_SIZE) {
+    const batch = emailsToInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('emails').insert(batch);
+    if (error) console.error('Initial batch email insert error:', error.message);
+  }
+
+  // Insert senders
+  const sendersToInsert = Array.from(senderStats.values()).map(({ _unsub_link_date, _mailto_unsub_link_date, ...s }) => ({
+    user_id: userId,
+    email_account_id: accountId,
+    ...s,
+    updated_at: new Date().toISOString()
+  }));
+
+  for (let i = 0; i < sendersToInsert.length; i += BATCH_SIZE) {
+    const batch = sendersToInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('email_senders').insert(batch);
+    if (error) console.error('Initial batch sender insert error:', error.message);
+  }
+
+  // Do NOT set last_synced or delta_link — keeps account in "needs full sync" state
+
+  return res.status(200).json({
+    success: true,
+    totalSenders: sendersToInsert.length,
+    totalEmails: emailsToInsert.length,
+    syncType: 'initialBatch'
+  });
+}
+
+/**
  * Outlook Incremental Sync: Use delta query for reliable sync
  */
 export async function performOutlookIncrementalSync(

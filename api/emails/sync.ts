@@ -32,7 +32,7 @@ import { rateLimit } from '../lib/rate-limiter.js';
 import { getValidAccessToken } from '../lib/gmail.js';
 import { getValidOutlookAccessToken } from '../lib/outlook.js';
 import { listMessages, batchGetMessages, getProfile, getHistoryChanges } from '../lib/gmail-api.js';
-import { performOutlookFullSync, performOutlookIncrementalSync } from './outlook-sync.js';
+import { performOutlookFullSync, performOutlookIncrementalSync, performOutlookInitialBatch } from './outlook-sync.js';
 import { PLAN_LIMITS } from '../subscription/get.js';
 import { withSentry } from '../lib/sentry.js';
 
@@ -65,7 +65,7 @@ async function handler(
   const user = requireAuth(req as AuthenticatedRequest, res);
   if (!user) return;
 
-  const { email, fullSync = false, repair = false } = req.body;
+  const { email, fullSync = false, repair = false, initialBatch = false } = req.body;
 
   if (!email) {
     return res.status(400).json({
@@ -108,8 +108,8 @@ async function handler(
       totalEmails < planLimits.emailProcessingLimit &&
       previousPlanCaps.includes(totalEmails);
 
-    // Check if enough time has passed since last sync (skip if user just upgraded)
-    if (syncIntervalMinutes > 0 && account.last_synced && !wasLimitedByPreviousPlan) {
+    // Check if enough time has passed since last sync (skip if user just upgraded or initial batch)
+    if (syncIntervalMinutes > 0 && account.last_synced && !wasLimitedByPreviousPlan && !initialBatch) {
       const lastSyncTime = new Date(account.last_synced).getTime();
       const now = Date.now();
       const minutesSinceLastSync = (now - lastSyncTime) / (1000 * 60);
@@ -173,6 +173,10 @@ async function handler(
 
       const outlookUserEmail = email.toLowerCase();
 
+      if (initialBatch && isFirstSync) {
+        return await performOutlookInitialBatch(res, user.userId, account.id, outlookAccessToken, outlookUserEmail, email);
+      }
+
       if (isFullSync) {
         return await performOutlookFullSync(res, user.userId, account.id, outlookAccessToken, outlookUserEmail, planLimits.emailProcessingLimit, email);
       } else {
@@ -227,6 +231,10 @@ async function handler(
 
     const userEmail = (account.gmail_email || email).toLowerCase();
     const syncType = isFullSync ? 'full' : 'incremental';
+
+    if (initialBatch && isFirstSync) {
+      return await performGmailInitialBatch(res, user.userId, account.id, accessToken, userEmail, email);
+    }
 
     if (isFullSync) {
       // ==================== FULL SYNC ====================
@@ -479,6 +487,176 @@ async function performFullSync(
     deletedEmails: 0,
     message: 'Full sync completed successfully',
     syncType: 'full'
+  });
+}
+
+/**
+ * Gmail Initial Batch: Fetch only 500 most recent emails for fast first-load.
+ * Does NOT set last_synced or history_id — the account stays in "needs full sync" state
+ * so Phase 2 (full sync) rebuilds everything with accurate totals.
+ */
+async function performGmailInitialBatch(
+  res: VercelResponse,
+  userId: string,
+  accountId: string,
+  accessToken: string,
+  userEmail: string,
+  email: string
+) {
+  const INITIAL_BATCH_LIMIT = 500;
+  const query = '-in:sent -in:drafts -in:trash -in:spam';
+
+  // Fetch up to 500 most recent message IDs (5 pages of 100)
+  const allMessageRefs: Array<{ id: string; threadId: string }> = [];
+  let pageToken: string | undefined;
+
+  while (allMessageRefs.length < INITIAL_BATCH_LIMIT) {
+    const response = await listMessages(accessToken, {
+      maxResults: Math.min(100, INITIAL_BATCH_LIMIT - allMessageRefs.length),
+      pageToken,
+      q: query,
+    });
+
+    if (!response.messages || response.messages.length === 0) break;
+    allMessageRefs.push(...response.messages);
+
+    if (!response.nextPageToken) break;
+    pageToken = response.nextPageToken;
+  }
+
+  if (allMessageRefs.length === 0) {
+    return res.status(200).json({
+      success: true,
+      totalSenders: 0,
+      totalEmails: 0,
+      syncType: 'initialBatch'
+    });
+  }
+
+  // Fetch message details
+  const messageIds = allMessageRefs.map(m => m.id);
+  const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
+  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
+
+  // Process messages (same logic as performFullSync Step 4)
+  const emailsToInsert: any[] = [];
+  const senderStats = new Map<string, {
+    sender_email: string;
+    sender_name: string;
+    email_count: number;
+    unread_count: number;
+    first_email_date: string;
+    last_email_date: string;
+    unsubscribe_link: string | null;
+    mailto_unsubscribe_link: string | null;
+    has_unsubscribe: boolean;
+    has_one_click_unsubscribe: boolean;
+    is_newsletter: boolean;
+    is_promotional: boolean;
+    _unsub_link_date?: string;
+    _mailto_unsub_link_date?: string;
+  }>();
+
+  for (const msg of messages) {
+    const labels = msg.labelIds || [];
+    if (labels.includes('SPAM') || labels.includes('TRASH')) continue;
+
+    const fromHeader = msg.payload?.headers?.find((h: any) => h.name === 'From')?.value || '';
+    const subjectHeader = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || '';
+    const unsubscribeHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe')?.value || '';
+    const unsubscribePostHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe-Post')?.value || '';
+
+    const { senderEmail, senderName } = parseSender(fromHeader);
+    if (senderEmail === userEmail || !senderEmail) continue;
+
+    const internalDateMs = parseInt(msg.internalDate);
+    const receivedAt = new Date(internalDateMs).toISOString();
+    const isUnread = labels.includes('UNREAD');
+
+    emailsToInsert.push({
+      gmail_message_id: msg.id,
+      email_account_id: accountId,
+      sender_email: senderEmail,
+      sender_name: senderName,
+      subject: subjectHeader || '(No Subject)',
+      snippet: msg.snippet || '',
+      received_at: receivedAt,
+      is_unread: isUnread,
+      thread_id: msg.threadId,
+      labels,
+    });
+
+    // Update sender stats
+    const senderKey = `${senderEmail}|||${senderName}`;
+    const existing = senderStats.get(senderKey);
+    const unsubscribeLink = extractUnsubscribeLink(unsubscribeHeader);
+    const mailtoUnsubscribeLink = extractMailtoUnsubscribeLink(unsubscribeHeader);
+    const hasOneClick = unsubscribePostHeader.toLowerCase().includes('list-unsubscribe=one-click');
+
+    if (existing) {
+      existing.email_count++;
+      if (isUnread) existing.unread_count++;
+      if (receivedAt < existing.first_email_date) existing.first_email_date = receivedAt;
+      if (receivedAt > existing.last_email_date) existing.last_email_date = receivedAt;
+      if (unsubscribeLink && (!existing._unsub_link_date || receivedAt > existing._unsub_link_date)) {
+        existing.unsubscribe_link = unsubscribeLink;
+        existing.has_unsubscribe = true;
+        existing.has_one_click_unsubscribe = hasOneClick;
+        existing._unsub_link_date = receivedAt;
+      }
+      if (mailtoUnsubscribeLink && (!existing._mailto_unsub_link_date || receivedAt > existing._mailto_unsub_link_date)) {
+        existing.mailto_unsubscribe_link = mailtoUnsubscribeLink;
+        existing._mailto_unsub_link_date = receivedAt;
+      }
+    } else {
+      senderStats.set(senderKey, {
+        sender_email: senderEmail,
+        sender_name: senderName,
+        email_count: 1,
+        unread_count: isUnread ? 1 : 0,
+        first_email_date: receivedAt,
+        last_email_date: receivedAt,
+        unsubscribe_link: unsubscribeLink,
+        mailto_unsubscribe_link: mailtoUnsubscribeLink,
+        has_unsubscribe: !!unsubscribeLink,
+        has_one_click_unsubscribe: hasOneClick,
+        is_newsletter: labels.includes('CATEGORY_UPDATES') && !!unsubscribeLink,
+        is_promotional: labels.includes('CATEGORY_PROMOTIONS'),
+        _unsub_link_date: unsubscribeLink ? receivedAt : undefined,
+        _mailto_unsub_link_date: mailtoUnsubscribeLink ? receivedAt : undefined,
+      });
+    }
+  }
+
+  // Insert emails in batches (tables are empty for first sync, no delete needed)
+  for (let i = 0; i < emailsToInsert.length; i += BATCH_SIZE) {
+    const batch = emailsToInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('emails').insert(batch);
+    if (error) console.error('Initial batch email insert error:', error.message);
+  }
+
+  // Insert senders (strip tracking fields)
+  const sendersToInsert = Array.from(senderStats.values()).map(({ _unsub_link_date, _mailto_unsub_link_date, ...s }) => ({
+    user_id: userId,
+    email_account_id: accountId,
+    ...s,
+    updated_at: new Date().toISOString()
+  }));
+
+  for (let i = 0; i < sendersToInsert.length; i += BATCH_SIZE) {
+    const batch = sendersToInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('email_senders').insert(batch);
+    if (error) console.error('Initial batch sender insert error:', error.message);
+  }
+
+  // Do NOT set last_synced or history_id — keeps account in "needs full sync" state
+  // Phase 2 (full sync) will rebuild everything with accurate totals
+
+  return res.status(200).json({
+    success: true,
+    totalSenders: sendersToInsert.length,
+    totalEmails: emailsToInsert.length,
+    syncType: 'initialBatch'
   });
 }
 

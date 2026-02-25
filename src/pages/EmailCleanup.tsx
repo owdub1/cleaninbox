@@ -30,6 +30,7 @@ import {
   filterPendingBulkDeletions,
 } from '../components/email/cleanup/emailCleanupUtils';
 import SenderSkeleton from '../components/email/cleanup/SenderSkeleton';
+import SyncProgressBar from '../components/email/cleanup/SyncProgressBar';
 import UndoToast from '../components/email/cleanup/UndoToast';
 import UpgradeModal from '../components/email/cleanup/UpgradeModal';
 import SearchAndFilterBar from '../components/email/cleanup/SearchAndFilterBar';
@@ -119,6 +120,7 @@ const EmailCleanup = () => {
     senders,
     loading: sendersLoading,
     syncing,
+    syncPhase,
     error: sendersError,
     fetchSenders,
     syncEmails,
@@ -719,14 +721,16 @@ const EmailCleanup = () => {
               selectedTool={selectedTool}
             />
 
-            {/* Loading/Syncing state */}
+            {/* Compact progress bar when syncing with senders visible (Phase 2) */}
+            {syncing && senders.length > 0 && (
+              <SyncProgressBar syncPhase={syncPhase} hasSenders={true} />
+            )}
+
+            {/* Loading/Syncing state when no senders yet */}
             {(sendersLoading || syncing) && senders.length === 0 && (
               <div className="px-4 py-3 space-y-3">
                 {syncing && (
-                  <div className="flex items-center justify-center py-4 mb-2">
-                    <RefreshCw className="w-5 h-5 animate-spin text-indigo-600 mr-2" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Syncing your emails...</span>
-                  </div>
+                  <SyncProgressBar syncPhase={syncPhase} hasSenders={false} />
                 )}
                 {[...Array(6)].map((_, i) => <SenderSkeleton key={i} />)}
               </div>
@@ -823,6 +827,12 @@ const EmailCleanup = () => {
           to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         .animate-slide-up { animation: slide-up 0.3s ease-out; }
+        @keyframes progress-indeterminate {
+          0% { transform: translateX(-100%); width: 40%; }
+          50% { width: 60%; }
+          100% { transform: translateX(250%); width: 40%; }
+        }
+        .animate-progress-indeterminate { animation: progress-indeterminate 1.5s ease-in-out infinite; }
       `}</style>
     </div>
   );
