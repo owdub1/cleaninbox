@@ -156,10 +156,9 @@ const EmailCleanup = () => {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token || freeActionsLoaded) return;
+    if (!isAuthenticated || freeActionsLoaded) return;
     fetch(`${API_URL}/api/user/free-actions`, {
-      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
     })
       .then(r => r.json())
       .then(data => {
@@ -173,7 +172,7 @@ const EmailCleanup = () => {
         setFreeActionsLoaded(true);
       })
       .catch(() => setFreeActionsLoaded(true));
-  }, [freeActionsLoaded]);
+  }, [isAuthenticated, freeActionsLoaded]);
 
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;

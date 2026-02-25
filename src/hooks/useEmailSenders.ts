@@ -51,7 +51,7 @@ interface UseSendersOptions {
 }
 
 export const useEmailSenders = (options: UseSendersOptions = {}) => {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [senders, setSenders] = useState<Sender[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -76,7 +76,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const fetchSenders = useCallback(async (
     fetchOptions?: Partial<UseSendersOptions>
   ): Promise<Sender[]> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return [];
     }
@@ -108,9 +108,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
         }
       );
 
@@ -135,7 +135,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [token, optEmail, optSortBy, optSortDirection, optFilter, optLimit]);
+  }, [isAuthenticated, optEmail, optSortBy, optSortDirection, optFilter, optLimit]);
 
   /**
    * Sync emails from Gmail
@@ -152,7 +152,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   ): Promise<{ success: boolean; limitReached?: boolean; nextSyncAvailable?: string; upgradeMessage?: string; syncMessage?: string; addedEmails?: number; syncMethod?: string; orphansFixed?: number }> => {
     const { maxMessages = 1000, fullSync = false, repair = false } = options;
 
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return { success: false };
     }
@@ -164,9 +164,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       const response = await fetch(`${API_URL}/api/emails/sync`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email, maxMessages, fullSync, repair }),
       });
 
@@ -204,7 +204,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     } finally {
       setSyncing(false);
     }
-  }, [token, fetchSenders]);
+  }, [isAuthenticated, fetchSenders]);
 
   /**
    * Get senders grouped by year
@@ -309,7 +309,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     limit: number = 50,
     senderName?: string
   ): Promise<EmailMessage[]> => {
-    if (!token) {
+    if (!isAuthenticated) {
       console.error('Authentication required to fetch emails');
       return [];
     }
@@ -331,9 +331,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
         }
       );
 
@@ -362,15 +362,15 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       console.error('Fetch emails by sender error:', err);
       return [];
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   // Auto-fetch on mount if enabled (only once)
   useEffect(() => {
-    if (options.autoFetch && token && !hasFetched) {
+    if (options.autoFetch && isAuthenticated && !hasFetched) {
       setHasFetched(true);
       fetchSenders();
     }
-  }, [options.autoFetch, token, hasFetched, fetchSenders]);
+  }, [options.autoFetch, isAuthenticated, hasFetched, fetchSenders]);
 
   /**
    * Update a sender's email count locally (for immediate UI feedback)

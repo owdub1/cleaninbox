@@ -30,7 +30,7 @@ export interface ActivityItem {
 }
 
 export const useDashboardData = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     emailsProcessed: 0,
     unsubscribed: 0,
@@ -43,7 +43,7 @@ export const useDashboardData = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!user || !token) {
+    if (!user) {
       setLoading(false);
       return;
     }
@@ -64,9 +64,7 @@ export const useDashboardData = () => {
 
       // Fetch senders to get actual email count (same source as Email Cleanup page)
       const sendersResponse = await fetch(`${API_URL}/api/emails/senders`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include',
       });
 
       let totalEmailsLoaded = 0;
@@ -127,7 +125,7 @@ export const useDashboardData = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, token]);
+  }, [user]);
 
   useEffect(() => {
     fetchDashboardData();

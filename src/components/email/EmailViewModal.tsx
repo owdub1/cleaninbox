@@ -34,7 +34,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
   accountEmail,
   onDelete,
 }) => {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
   const [email, setEmail] = useState<FullEmail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,9 +54,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
       const response = await fetch(
         `${API_URL}/api/emails/get?messageId=${encodeURIComponent(messageId)}&accountEmail=${encodeURIComponent(accountEmail)}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include',
         }
       );
 

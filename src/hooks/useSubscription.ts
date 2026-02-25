@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 export interface Subscription {
   plan: string;
@@ -37,13 +38,13 @@ const DEFAULT_FREE_SUBSCRIPTION: Subscription = {
 };
 
 export function useSubscription() {
+  const { isAuthenticated } = useAuth();
   const [subscription, setSubscription] = useState<Subscription>(DEFAULT_FREE_SUBSCRIPTION);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSubscription = useCallback(async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setSubscription(DEFAULT_FREE_SUBSCRIPTION);
       setLoading(false);
       return;
@@ -54,7 +55,6 @@ export function useSubscription() {
       const response = await fetch(`${API_URL}/api/subscription/get`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include'
@@ -80,15 +80,14 @@ export function useSubscription() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     fetchSubscription();
   }, [fetchSubscription]);
 
   const cancelSubscription = useCallback(async (): Promise<{ success: boolean; error?: string; accessUntil?: string }> => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       return { success: false, error: 'Not authenticated' };
     }
 
@@ -96,7 +95,6 @@ export function useSubscription() {
       const response = await fetch(`${API_URL}/api/subscription/cancel`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include'
@@ -119,7 +117,7 @@ export function useSubscription() {
       console.error('Error cancelling subscription:', err);
       return { success: false, error: err.message || 'Failed to cancel subscription' };
     }
-  }, [fetchSubscription]);
+  }, [fetchSubscription, isAuthenticated]);
 
   return {
     subscription,

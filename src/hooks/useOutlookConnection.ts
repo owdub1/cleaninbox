@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../lib/api';
 
 export const useOutlookConnection = () => {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -11,7 +11,7 @@ export const useOutlookConnection = () => {
    * Start Outlook OAuth flow - returns the authorization URL
    */
   const connectOutlook = useCallback(async (): Promise<string | null> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return null;
     }
@@ -23,9 +23,9 @@ export const useOutlookConnection = () => {
       const response = await fetch(`${API_URL}/api/outlook/connect`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -42,13 +42,13 @@ export const useOutlookConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Disconnect Outlook account
    */
   const disconnectOutlook = useCallback(async (email: string): Promise<boolean> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return false;
     }
@@ -60,9 +60,9 @@ export const useOutlookConnection = () => {
       const response = await fetch(`${API_URL}/api/outlook/disconnect`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email }),
       });
 
@@ -80,7 +80,7 @@ export const useOutlookConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   return {
     connectOutlook,

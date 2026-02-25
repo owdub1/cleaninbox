@@ -61,7 +61,7 @@ export class CleanupError extends Error {
 }
 
 export const useCleanupActions = () => {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +73,7 @@ export const useCleanupActions = () => {
     messageId: string,
     senderEmail?: string
   ): Promise<DeleteSingleResult | null> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return null;
     }
@@ -85,9 +85,9 @@ export const useCleanupActions = () => {
       const response = await fetch(`${API_URL}/api/cleanup/delete-single`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           accountEmail,
           messageId,
@@ -113,7 +113,7 @@ export const useCleanupActions = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Delete all emails from specified senders
@@ -126,7 +126,7 @@ export const useCleanupActions = () => {
     senderEmails: string[],
     senderNames?: string[]
   ): Promise<DeleteResult | null> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return null;
     }
@@ -153,9 +153,9 @@ export const useCleanupActions = () => {
       const response = await fetch(`${API_URL}/api/cleanup/delete`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
 
@@ -177,7 +177,7 @@ export const useCleanupActions = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Archive all emails from specified senders
@@ -190,7 +190,7 @@ export const useCleanupActions = () => {
     senderEmails: string[],
     senderNames?: string[]
   ): Promise<ArchiveResult | null> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return null;
     }
@@ -217,9 +217,9 @@ export const useCleanupActions = () => {
       const response = await fetch(`${API_URL}/api/cleanup/archive`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
 
@@ -241,7 +241,7 @@ export const useCleanupActions = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Unsubscribe from a sender
@@ -252,7 +252,7 @@ export const useCleanupActions = () => {
     unsubscribeLink?: string,
     hasOneClickUnsubscribe?: boolean
   ): Promise<UnsubscribeResult | null> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return null;
     }
@@ -264,9 +264,9 @@ export const useCleanupActions = () => {
       const response = await fetch(`${API_URL}/api/cleanup/unsubscribe`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           accountEmail,
           senderEmail,
@@ -298,7 +298,7 @@ export const useCleanupActions = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Execute bulk cleanup action

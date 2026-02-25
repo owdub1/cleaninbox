@@ -12,6 +12,7 @@ import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
 import { verifyTurnstile } from '../lib/turnstile.js';
 import { requireEnv } from '../lib/env.js';
+import { setAuthCookies } from '../lib/auth-cookies.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -307,9 +308,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Issue CSRF token for security
     const csrfToken = issueCSRFToken(res);
 
+    // Set HTTP-only auth cookies (browser sends them automatically)
+    setAuthCookies(res, { accessToken: token, refreshToken });
+
     return res.status(200).json({
-      token,
-      refreshToken,
       csrfToken,
       user: {
         id: user.id,

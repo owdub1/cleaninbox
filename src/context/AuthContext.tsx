@@ -17,15 +17,12 @@ type AuthContextType = {
   signup: (email: string, password: string, firstName: string, lastName: string, captchaToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
-  updateUser: (updates: Partial<User>, newToken?: string) => void;
+  updateUser: (updates: Partial<User>) => void;
   loading: boolean;
-  token: string | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'auth_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
 const CSRF_TOKEN_KEY = 'csrf_token';
 const USER_KEY = 'auth_user';
 
@@ -36,49 +33,33 @@ export const AuthProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   /**
-   * Refresh the access token using the refresh token
-   * Does NOT logout on failure - keeps existing session to avoid disruption
+   * Refresh the access token using the refresh token cookie.
+   * The browser sends the refresh_token cookie automatically.
    */
   const refreshToken = async (): Promise<boolean> => {
-    const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-
-    if (!savedRefreshToken) {
-      return false;
-    }
-
     try {
       const response = await fetch(`${API_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ refreshToken: savedRefreshToken }),
       });
 
       if (!response.ok) {
-        // Don't logout on refresh failure - token might still be valid
-        // Only log the error and return false
         console.warn('Token refresh failed with status:', response.status);
         return false;
       }
 
       const data = await response.json();
 
-      setToken(data.token);
       setUser(data.user);
-      localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-      if (data.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-      }
 
       return true;
     } catch (error) {
-      // Network error - don't logout, just log and return false
       console.warn('Error refreshing token (keeping session):', error);
       return false;
     }
@@ -87,19 +68,13 @@ export const AuthProvider: React.FC<{
   useEffect(() => {
     // Check for existing session and refresh token if needed
     const initializeAuth = async () => {
-      const savedToken = localStorage.getItem(TOKEN_KEY);
-      const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
       const savedUser = localStorage.getItem(USER_KEY);
 
-      if (savedRefreshToken && savedUser) {
-        // First, restore the user from localStorage immediately
-        // This allows OAuth callbacks to work without waiting for refresh
+      if (savedUser) {
+        // Restore the user from localStorage immediately for instant UI
         try {
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
-          if (savedToken) {
-            setToken(savedToken);
-          }
         } catch (e) {
           console.error('Failed to parse saved user:', e);
         }
@@ -110,34 +85,23 @@ export const AuthProvider: React.FC<{
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ refreshToken: savedRefreshToken }),
           });
 
           if (response.ok) {
             const data = await response.json();
-            setToken(data.token);
             setUser(data.user);
-            localStorage.setItem(TOKEN_KEY, data.token);
             localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-            if (data.refreshToken) {
-              localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-            }
           } else if (response.status === 401) {
-            // Only clear on explicit 401 (unauthorized) - token is definitely invalid
+            // Refresh token is definitely invalid — clear session
             console.warn('Refresh token rejected (401), clearing session');
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(CSRF_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             setUser(null);
-            setToken(null);
           } else {
             // For other errors (404, 500, etc.), keep the existing session
-            // The token might still be valid, refresh endpoint might just be down
             console.warn('Refresh endpoint error, keeping existing session:', response.status);
           }
         } catch (error) {
-          // Network error - keep existing session, don't clear tokens
           console.error('Error refreshing token on load (keeping session):', error);
         }
       }
@@ -149,7 +113,7 @@ export const AuthProvider: React.FC<{
 
   // Auto-refresh token before expiry
   useEffect(() => {
-    if (!token || !user) return;
+    if (!user) return;
 
     const refreshInterval = setInterval(() => {
       console.log('Auto-refreshing access token...');
@@ -157,7 +121,7 @@ export const AuthProvider: React.FC<{
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(refreshInterval);
-  }, [token, user]);
+  }, [user]);
 
   const signup = async (email: string, password: string, firstName: string, lastName: string, captchaToken?: string) => {
     const response = await fetch(`${API_URL}/api/auth/signup`, {
@@ -174,10 +138,10 @@ export const AuthProvider: React.FC<{
 
     const data = await response.json();
 
-    setToken(data.token);
     setUser(data.user);
-    localStorage.setItem(TOKEN_KEY, data.token);
-    localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
+    if (data.csrfToken) {
+      localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
+    }
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
     // Redirect to pricing to purchase a plan
@@ -199,34 +163,35 @@ export const AuthProvider: React.FC<{
 
     const data = await response.json();
 
-    setToken(data.token);
     setUser(data.user);
-    localStorage.setItem(TOKEN_KEY, data.token);
-    localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-    localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
+    if (data.csrfToken) {
+      localStorage.setItem(CSRF_TOKEN_KEY, data.csrfToken);
+    }
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
     navigate('/dashboard');
   };
 
-  const updateUser = (updates: Partial<User>, newToken?: string) => {
+  const updateUser = (updates: Partial<User>) => {
     const updatedUser = user ? { ...user, ...updates } : null;
     setUser(updatedUser);
     if (updatedUser) {
       localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
     }
-    if (newToken) {
-      setToken(newToken);
-      localStorage.setItem(TOKEN_KEY, newToken);
-    }
   };
 
   const logout = async () => {
-    // TODO: Call API to revoke refresh token in database
+    // Call backend to revoke refresh tokens and clear cookies
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // Even if the API call fails, clear local state
+    }
+
     setUser(null);
-    setToken(null);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(CSRF_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     navigate('/');
@@ -236,7 +201,6 @@ export const AuthProvider: React.FC<{
     <AuthContext.Provider
       value={{
         user,
-        token,
         isAuthenticated: !!user,
         login,
         signup,

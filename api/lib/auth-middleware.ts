@@ -23,20 +23,30 @@ export interface AuthenticatedRequest extends VercelRequest {
 }
 
 /**
- * Extract and verify JWT token from Authorization header
+ * Extract and verify JWT token from cookie or Authorization header
+ *
+ * Checks (in order):
+ * 1. auth_token HTTP-only cookie (new — cookies)
+ * 2. Authorization: Bearer header (legacy — localStorage)
  *
  * @param req - Vercel request object
  * @returns Decoded JWT payload or null if invalid
  */
 export function extractToken(req: VercelRequest): any {
-  // Get token from Authorization header
-  const authHeader = req.headers.authorization;
+  // 1. Try HTTP-only cookie first
+  let token = req.cookies?.['auth_token'];
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  // 2. Fall back to Authorization header (backwards compat during rollout)
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
   }
 
-  const token = authHeader.substring(7); // Remove "Bearer " prefix
+  if (!token) {
+    return null;
+  }
 
   try {
     // Verify and decode JWT

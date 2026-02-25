@@ -9,7 +9,7 @@ interface ConnectionStatus {
 }
 
 export const useGmailConnection = () => {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,7 +17,7 @@ export const useGmailConnection = () => {
    * Start Gmail OAuth flow - returns the authorization URL
    */
   const connectGmail = useCallback(async (): Promise<string | null> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return null;
     }
@@ -29,9 +29,9 @@ export const useGmailConnection = () => {
       const response = await fetch(`${API_URL}/api/gmail/connect`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -48,13 +48,13 @@ export const useGmailConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Disconnect Gmail account
    */
   const disconnectGmail = useCallback(async (email: string): Promise<boolean> => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Authentication required');
       return false;
     }
@@ -66,9 +66,9 @@ export const useGmailConnection = () => {
       const response = await fetch(`${API_URL}/api/gmail/disconnect`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email }),
       });
 
@@ -86,7 +86,7 @@ export const useGmailConnection = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [isAuthenticated]);
 
   /**
    * Handle OAuth callback query parameters

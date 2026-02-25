@@ -10,14 +10,11 @@ export const API_URL = import.meta.env.VITE_API_URL ??
   (import.meta.env.PROD ? '' : 'http://localhost:5173');
 
 /**
- * Get standard auth headers (Authorization + CSRF token)
+ * Get CSRF header (still uses localStorage — this is intentional,
+ * the CSRF token is NOT a secret, it's one half of a double-submit check)
  */
-export function getAuthHeaders(): Record<string, string> {
+function getCSRFHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
   const csrfToken = localStorage.getItem('csrf_token');
   if (csrfToken) {
     headers['x-csrf-token'] = csrfToken;
@@ -26,7 +23,8 @@ export function getAuthHeaders(): Record<string, string> {
 }
 
 /**
- * Helper function to make API calls with proper URL
+ * Helper function to make API calls with proper URL.
+ * Auth is handled via HTTP-only cookies (sent automatically by the browser).
  */
 export async function apiRequest(
   endpoint: string,
@@ -38,7 +36,7 @@ export async function apiRequest(
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      ...getCSRFHeaders(),
       ...options?.headers,
     },
     credentials: 'include', // Important for cookies

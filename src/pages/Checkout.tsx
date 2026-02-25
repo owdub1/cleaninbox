@@ -7,7 +7,7 @@ import { API_URL } from '../lib/api';
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState({
     name: 'Pro',
     price: '$14.99',
@@ -51,7 +51,7 @@ const Checkout = () => {
   }, [location]);
 
   const handleCheckout = async () => {
-    if (!token) {
+    if (!isAuthenticated) {
       setError('Please log in to continue');
       return;
     }
@@ -68,7 +68,6 @@ const Checkout = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({

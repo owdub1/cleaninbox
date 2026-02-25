@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 export interface Activity {
   id: string;
@@ -10,13 +11,13 @@ export interface Activity {
 }
 
 export function useActivity(limit: number = 10) {
+  const { isAuthenticated } = useAuth();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchActivity = useCallback(async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
+    if (!isAuthenticated) {
       setActivities([]);
       setLoading(false);
       return;
@@ -27,7 +28,6 @@ export function useActivity(limit: number = 10) {
       const response = await fetch(`${API_URL}/api/activity/get?limit=${limit}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include'
@@ -51,7 +51,7 @@ export function useActivity(limit: number = 10) {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, isAuthenticated]);
 
   useEffect(() => {
     fetchActivity();
@@ -62,14 +62,12 @@ export function useActivity(limit: number = 10) {
     description: string,
     metadata?: Record<string, any>
   ) => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
+    if (!isAuthenticated) return;
 
     try {
       await fetch(`${API_URL}/api/activity/log`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include',
@@ -85,7 +83,7 @@ export function useActivity(limit: number = 10) {
     } catch (err) {
       console.error('Error logging activity:', err);
     }
-  }, [fetchActivity]);
+  }, [fetchActivity, isAuthenticated]);
 
   // Format relative time (e.g., "2 hours ago", "Yesterday at 2:30 PM")
   const formatRelativeTime = useCallback((dateString: string): string => {

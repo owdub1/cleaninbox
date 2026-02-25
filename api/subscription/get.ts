@@ -129,13 +129,12 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Get token from Authorization header
+  // Get token from cookie or Authorization header
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const token = req.cookies?.['auth_token'] || (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null);
+  if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
-
-  const token = authHeader.substring(7);
 
   try {
     // Verify token

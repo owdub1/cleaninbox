@@ -51,17 +51,16 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const {
     user,
-    token,
     updateUser,
     logout
   } = useAuth();
 
   // Fetch invoices when Payment History tab is selected
   useEffect(() => {
-    if (activeTab === 'payments' && !invoicesFetched && token) {
+    if (activeTab === 'payments' && !invoicesFetched) {
       setInvoicesLoading(true);
       fetch(`${API_URL}/api/stripe/invoices`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include',
       })
         .then(res => res.json())
         .then(data => {
@@ -74,7 +73,7 @@ const Dashboard = () => {
         })
         .finally(() => setInvoicesLoading(false));
     }
-  }, [activeTab, invoicesFetched, token]);
+  }, [activeTab, invoicesFetched]);
 
   // Settings tab state
   const [settingsFirstName, setSettingsFirstName] = useState(user?.firstName || '');
@@ -177,7 +176,6 @@ const Dashboard = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         credentials: 'include'
       });
@@ -255,8 +253,8 @@ const Dashboard = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify(body)
       });
 
@@ -268,7 +266,7 @@ const Dashboard = () => {
       updateUser({
         firstName: data.user.firstName,
         lastName: data.user.lastName
-      }, data.token);
+      });
 
       setCurrentPassword('');
       setNewPassword('');
@@ -294,8 +292,8 @@ const Dashboard = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ confirmText: 'DELETE' })
       });
 

@@ -15,6 +15,16 @@ These are actual problems in the code that should be fixed.
 - [x] **Remove hardcoded JWT secret fallbacks** — fixed in `9fb7dbd` (17 files now use `requireEnv()`)
 - [x] **Remove frontend discount code** — fixed in `9fb7dbd` (removed `clean25` from Checkout.tsx)
 - [x] **Harden account deletion** — fixed in `9fb7dbd` (Gmail/Outlook tokens revoked before DB deletion)
+- [x] **Shorten access token expiry** — fixed in `00cd8ba` (7 days → 15 minutes, env-configurable)
+- [x] **CSRF protection on POST endpoints** — fixed in `00cd8ba` (12 sensitive endpoints + frontend sends token header)
+- [x] **Tighten rate limits** — fixed in `00cd8ba` (login 5/15min, password reset 3/hr)
+- [x] **SSRF protection on unsubscribe** — fixed in `00cd8ba` (block private IPs, non-HTTP schemes)
+- [x] **Server-side email account limits** — fixed in `00cd8ba` (Gmail/Outlook callbacks check plan limits)
+- [x] **Refresh token rotation** — fixed in `00cd8ba` (old token revoked, new token issued on each refresh)
+- [x] **Random encryption salts** — fixed in `00cd8ba` (replaced hardcoded 'gmail-salt'/'outlook-salt' with random 16-byte salts)
+- [x] **Move email.ts out of frontend** — fixed in `00cd8ba` (merged src/lib/email.ts into api/lib/email.ts)
+- [ ] **HTTP-only cookies for tokens** — deferred (requires full auth architecture rewrite, separate task)
+- [ ] **Remove OAuth tokens from URL fragment** — deferred (intertwined with cookie migration, separate task)
 
 ### Key Rotation (Secrets Were Exposed in Git History)
 - [x] **JWT_SECRET** — rotated
@@ -83,6 +93,7 @@ Go through each of these on the live production site. Check them off as you go.
 - [ ] `VITE_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`
 - [ ] `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `STRIPE_PRODUCT_ID`
 - [ ] `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+- [ ] `ACCESS_TOKEN_EXPIRY` (optional, defaults to `15m`)
 - [ ] `PASSWORD_RESET_TOKEN_EXPIRY` (should be `1h`)
 - [ ] `EMAIL_VERIFICATION_TOKEN_EXPIRY` (should be `24h`)
 - [ ] Stripe webhook URL in Stripe Dashboard points to your production domain
@@ -96,7 +107,7 @@ Go through each of these on the live production site. Check them off as you go.
 ## Good-to-Have (Won't Block Launch, But Do Soon)
 
 ### Security Improvements
-- [ ] **Revoke refresh tokens on logout** — right now, logging out just clears the browser. The old login token still works until it naturally expires. Low risk since tokens expire on their own, but better to kill them right away. (There's a TODO comment in `AuthContext.tsx` for this.)
+- [ ] **Revoke refresh tokens on logout** — logging out just clears the browser. The old refresh token still works until it expires. Lower risk now that access tokens are 15min and refresh tokens rotate on each use, but still worth adding an API call on logout to revoke. (There's a TODO comment in `AuthContext.tsx` for this.)
 - [ ] **Set up Sentry monitoring** — add `VITE_SENTRY_DSN` and `SENTRY_DSN` env vars so you get emailed when errors happen in production. The code is already wired up — you just need the Sentry account and the DSN values.
 - [ ] **Check past-due subscriptions** — if someone's payment fails and their subscription goes to "past_due" status, they might still be able to use cleanup features. Add a check for this.
 

@@ -1,19 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import {
   validateEmail,
   validatePassword,
   hashPassword,
   sanitizeInput,
   generateToken,
-  getExpirationDate
+  getExpirationDate,
+  getClientIP,
+  getUserAgent
 } from '../lib/auth-utils.js';
 import { sendVerificationEmail } from '../lib/email.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { issueCSRFToken } from '../lib/csrf.js';
 import { verifyTurnstile } from '../lib/turnstile.js';
 import { requireEnv } from '../lib/env.js';
+import { setAuthCookies } from '../lib/auth-cookies.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -21,8 +25,16 @@ const supabase = createClient(
 );
 
 const JWT_SECRET = requireEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = requireEnv('JWT_REFRESH_SECRET');
 const APP_URL = process.env.VITE_APP_URL || '';
 const EMAIL_VERIFICATION_EXPIRY = process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY || '24h';
+
+/**
+ * Hash a refresh token for secure storage
+ */
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 // Rate limit: 3 signups per hour per IP
 const limiter = rateLimit(RateLimitPresets.SIGNUP);
@@ -149,14 +161,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         email: user.email,
         emailVerified: user.email_verified
       },
-      JWT_SECRET
+      JWT_SECRET,
+      { expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || '15m') as jwt.SignOptions['expiresIn'] }
     );
+
+    // Generate refresh token (7 days)
+    const ipAddress = getClientIP(req);
+    const userAgent = getUserAgent(req);
+    const refreshToken = jwt.sign(
+      { userId: user.id },
+      JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Store refresh token hash in database
+    const tokenHash = hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await supabase
+      .from('refresh_tokens')
+      .insert([{
+        user_id: user.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt.toISOString(),
+        ip_address: ipAddress,
+        user_agent: userAgent
+      }]);
 
     // Issue CSRF token for security
     const csrfToken = issueCSRFToken(res);
 
+    // Set HTTP-only auth cookies
+    setAuthCookies(res, { accessToken: token, refreshToken });
+
     return res.status(201).json({
-      token,
       csrfToken,
       user: {
         id: user.id,

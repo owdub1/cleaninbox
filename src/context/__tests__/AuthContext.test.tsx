@@ -54,8 +54,6 @@ describe('AuthContext', () => {
   });
 
   it('restores user from localStorage', async () => {
-    localStorage.setItem('auth_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
     localStorage.setItem('auth_user', JSON.stringify({ id: '1', email: 'test@test.com' }));
 
     // Mock the refresh call to fail (but user should still be restored)
@@ -73,8 +71,6 @@ describe('AuthContext', () => {
   });
 
   it('clears user on 401 refresh response', async () => {
-    localStorage.setItem('auth_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
     localStorage.setItem('auth_user', JSON.stringify({ id: '1', email: 'test@test.com' }));
 
     global.fetch = vi.fn().mockResolvedValue({

@@ -14,6 +14,7 @@ import crypto from 'crypto';
 import { rateLimit, RateLimitPresets } from '../../lib/rate-limiter.js';
 import { getClientIP, getUserAgent } from '../../lib/auth-utils.js';
 import { requireEnv } from '../../lib/env.js';
+import { setAuthCookies } from '../../lib/auth-cookies.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -349,12 +350,10 @@ export default async function handler(
     // Generate refresh token (7 days)
     const refreshToken = await generateRefreshToken(user.id, ipAddress, userAgent);
 
-    // Redirect to app with tokens in URL hash (fragment)
-    // The frontend will extract these and store them
-    const redirectUrl = new URL(`${APP_URL}/oauth/callback`);
-    redirectUrl.hash = `token=${accessToken}&refreshToken=${refreshToken}&userId=${user.id}&email=${encodeURIComponent(user.email)}&firstName=${encodeURIComponent(user.first_name || '')}&lastName=${encodeURIComponent(user.last_name || '')}`;
+    // Set HTTP-only auth cookies (no tokens in URL)
+    setAuthCookies(res, { accessToken, refreshToken });
 
-    return res.redirect(redirectUrl.toString());
+    return res.redirect(`${APP_URL}/oauth/callback?success=true`);
 
   } catch (error: any) {
     console.error('Google OAuth callback error:', error);

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { requireEnv } from '../lib/env.js';
 import { getClientIP, getUserAgent } from '../lib/auth-utils.js';
+import { setAuthCookies } from '../lib/auth-cookies.js';
 
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
@@ -26,7 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { refreshToken } = req.body;
+    // Read refresh token from cookie (new) or body (backwards compat)
+    const refreshToken = req.cookies?.['refresh_token'] || req.body?.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({ error: 'Refresh token is required' });
@@ -151,9 +153,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user_agent: getUserAgent(req)
       }]);
 
+    // Set HTTP-only auth cookies with the new tokens
+    setAuthCookies(res, { accessToken: newAccessToken, refreshToken: newRefreshToken });
+
     return res.status(200).json({
-      token: newAccessToken,
-      refreshToken: newRefreshToken,
       user: {
         id: user.id,
         email: user.email,

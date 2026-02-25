@@ -103,11 +103,9 @@ export const useEmailAccounts = () => {
       }
 
       // Call the actual sync API
-      const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/api/emails/sync`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         credentials: 'include',
