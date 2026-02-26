@@ -312,10 +312,11 @@ async function performFullSync(
   }
 
   // Write total for progress bar polling
-  await supabase.from('email_accounts').update({
+  const { error: progressError } = await supabase.from('email_accounts').update({
     sync_progress_total: allMessageRefs.length,
     sync_progress_current: 0
   }).eq('id', accountId);
+  if (progressError) console.error('Failed to write sync progress:', progressError.message);
 
   // Safety check: Don't delete existing data if Gmail returned nothing
   if (allMessageRefs.length === 0) {

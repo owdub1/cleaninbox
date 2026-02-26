@@ -170,9 +170,11 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
           if (data.total) {
             setSyncProgress({ current: data.current || 0, total: data.total });
           }
+        } else {
+          console.warn('Sync progress poll failed:', resp.status);
         }
-      } catch {
-        // Polling failure is non-critical — ignore
+      } catch (e) {
+        console.warn('Sync progress poll error:', e);
       }
     }, 2000);
 

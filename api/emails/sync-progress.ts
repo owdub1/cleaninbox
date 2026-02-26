@@ -37,12 +37,27 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userId = user.userId;
 
-  const { data: account } = await supabase
+  const { data: account, error } = await supabase
     .from('email_accounts')
     .select('sync_progress_total, sync_progress_current')
     .eq('user_id', userId)
     .eq('email', email)
     .single();
+
+  if (error) {
+    // Column might not exist in PostgREST schema cache yet — try raw select
+    const { data: fallback } = await supabase
+      .from('email_accounts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('email', email)
+      .single();
+
+    return res.status(200).json({
+      total: fallback?.sync_progress_total ?? null,
+      current: fallback?.sync_progress_current ?? null,
+    });
+  }
 
   return res.status(200).json({
     total: account?.sync_progress_total ?? null,
