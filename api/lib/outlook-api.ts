@@ -199,7 +199,8 @@ export async function getFullMessage(
  */
 export async function batchGetMessages(
   accessToken: string,
-  messageIds: string[]
+  messageIds: string[],
+  onProgress?: (processed: number, total: number) => void
 ): Promise<OutlookMessage[]> {
   const BATCH_SIZE = RATE_LIMIT.BATCH_SIZE;
   const results: OutlookMessage[] = [];
@@ -234,6 +235,10 @@ export async function batchGetMessages(
     } catch (err) {
       console.error('Batch request failed:', err);
       failedCount += batch.length;
+    }
+
+    if (onProgress) {
+      onProgress(results.length, messageIds.length);
     }
 
     // Delay between batches

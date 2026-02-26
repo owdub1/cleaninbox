@@ -56,6 +56,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const [loading, setLoading] = useState(false);
   const [syncPhase, setSyncPhase] = useState<'idle' | 'initial' | 'full'>('idle');
   const syncing = syncPhase !== 'idle';
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -156,6 +157,25 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     // Detect first-time sync: we've fetched senders but found none
     const isFirstTimeSync = hasFetched && !hasSendersRef.current && !fullSync && !repair;
 
+    // Start polling sync progress every 2s
+    const pollInterval = setInterval(async () => {
+      try {
+        const resp = await fetchWithAuth(
+          `/api/emails/sync-progress?email=${encodeURIComponent(email)}`,
+          { method: 'GET' },
+          refreshToken
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.total) {
+            setSyncProgress({ current: data.current || 0, total: data.total });
+          }
+        }
+      } catch {
+        // Polling failure is non-critical — ignore
+      }
+    }, 2000);
+
     try {
       setError(null);
 
@@ -253,9 +273,11 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       setError(err.message);
       return { success: false };
     } finally {
+      clearInterval(pollInterval);
+      setSyncProgress(null);
       setSyncPhase('idle');
     }
-  }, [isAuthenticated, hasFetched, fetchSenders]);
+  }, [isAuthenticated, hasFetched, refreshToken, fetchSenders]);
 
   /**
    * Get senders grouped by year
@@ -483,6 +505,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     loading,
     syncing,
     syncPhase,
+    syncProgress,
     error,
     pagination,
     fetchSenders,

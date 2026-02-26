@@ -121,6 +121,7 @@ const EmailCleanup = () => {
     loading: sendersLoading,
     syncing,
     syncPhase,
+    syncProgress,
     error: sendersError,
     fetchSenders,
     syncEmails,
@@ -725,14 +726,14 @@ const EmailCleanup = () => {
 
             {/* Compact progress bar when syncing with senders visible (Phase 2) */}
             {syncing && senders.length > 0 && (
-              <SyncProgressBar syncPhase={syncPhase} hasSenders={true} />
+              <SyncProgressBar syncPhase={syncPhase} hasSenders={true} syncProgress={syncProgress} />
             )}
 
             {/* Loading/Syncing state when no senders yet */}
             {(sendersLoading || syncing) && senders.length === 0 && (
               <div className="px-4 py-3 space-y-3">
                 {syncing && (
-                  <SyncProgressBar syncPhase={syncPhase} hasSenders={false} />
+                  <SyncProgressBar syncPhase={syncPhase} hasSenders={false} syncProgress={syncProgress} />
                 )}
                 {[...Array(6)].map((_, i) => <SenderSkeleton key={i} />)}
               </div>

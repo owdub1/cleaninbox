@@ -311,6 +311,12 @@ async function performFullSync(
     pageToken = response.nextPageToken;
   }
 
+  // Write total for progress bar polling
+  await supabase.from('email_accounts').update({
+    sync_progress_total: allMessageRefs.length,
+    sync_progress_current: 0
+  }).eq('id', accountId);
+
   // Safety check: Don't delete existing data if Gmail returned nothing
   if (allMessageRefs.length === 0) {
     console.warn('Full sync: Gmail returned 0 messages - keeping existing data');
@@ -327,7 +333,17 @@ async function performFullSync(
   // Step 2: Fetch message details
   const messageIds = allMessageRefs.map(m => m.id);
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
-  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
+  let lastProgressUpdate = 0;
+  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders,
+    (processed, total) => {
+      if (processed - lastProgressUpdate >= 100 || processed === total) {
+        lastProgressUpdate = processed;
+        supabase.from('email_accounts').update({
+          sync_progress_current: processed
+        }).eq('id', accountId).then(() => {});
+      }
+    }
+  );
 
   // Step 3: Delete existing emails and senders
   await supabase.from('emails').delete().eq('email_account_id', accountId);
@@ -460,7 +476,7 @@ async function performFullSync(
     console.warn('Could not get historyId:', e);
   }
 
-  // Step 8: Update account stats
+  // Step 8: Update account stats and clear sync progress
   const totalEmails = emailsToInsert.length;
   await supabase
     .from('email_accounts')
@@ -468,6 +484,8 @@ async function performFullSync(
       total_emails: totalEmails,
       last_synced: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      sync_progress_total: null,
+      sync_progress_current: null,
       ...(historyId && { history_id: historyId })
     })
     .eq('id', accountId);
@@ -533,10 +551,26 @@ async function performGmailInitialBatch(
     });
   }
 
+  // Write total for progress bar polling
+  await supabase.from('email_accounts').update({
+    sync_progress_total: allMessageRefs.length,
+    sync_progress_current: 0
+  }).eq('id', accountId);
+
   // Fetch message details
   const messageIds = allMessageRefs.map(m => m.id);
   const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
-  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders);
+  let lastInitialProgressUpdate = 0;
+  const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders,
+    (processed, total) => {
+      if (processed - lastInitialProgressUpdate >= 100 || processed === total) {
+        lastInitialProgressUpdate = processed;
+        supabase.from('email_accounts').update({
+          sync_progress_current: processed
+        }).eq('id', accountId).then(() => {});
+      }
+    }
+  );
 
   // Process messages (same logic as performFullSync Step 4)
   const emailsToInsert: any[] = [];
@@ -651,6 +685,11 @@ async function performGmailInitialBatch(
 
   // Do NOT set last_synced or history_id — keeps account in "needs full sync" state
   // Phase 2 (full sync) will rebuild everything with accurate totals
+  // Clear progress — Phase 2 will set its own progress
+  await supabase.from('email_accounts').update({
+    sync_progress_total: null,
+    sync_progress_current: null
+  }).eq('id', accountId);
 
   return res.status(200).json({
     success: true,

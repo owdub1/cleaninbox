@@ -339,7 +339,8 @@ export async function batchGetMessages(
   accessToken: string,
   messageIds: string[],
   format: 'full' | 'metadata' | 'minimal' = 'metadata',
-  metadataHeaders?: string[]
+  metadataHeaders?: string[],
+  onProgress?: (processed: number, total: number) => void
 ): Promise<GmailMessage[]> {
   // Conservative rate limiting to stay well under Gmail's limits
   // - 10 concurrent requests (Gmail allows ~25)
@@ -361,6 +362,10 @@ export async function batchGetMessages(
     );
 
     results.push(...batchResults.filter(Boolean) as GmailMessage[]);
+
+    if (onProgress) {
+      onProgress(results.length, messageIds.length);
+    }
 
     // Delay between batches to respect rate limits
     if (i + BATCH_SIZE < messageIds.length) {

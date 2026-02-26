@@ -56,6 +56,12 @@ export async function performOutlookFullSync(
     nextLink = response['@odata.nextLink'];
   }
 
+  // Write total for progress bar polling
+  await supabase.from('email_accounts').update({
+    sync_progress_total: allMessages.length,
+    sync_progress_current: 0
+  }).eq('id', accountId);
+
   if (allMessages.length === 0) {
     console.warn('Outlook full sync: returned 0 messages - keeping existing data');
     return res.status(200).json({
@@ -71,7 +77,17 @@ export async function performOutlookFullSync(
   // Step 2: Batch fetch message details with headers
   // The list response doesn't include internetMessageHeaders, so we need to fetch individually
   const messageIds = allMessages.map(m => m.id);
-  const messagesWithHeaders = await batchGetMessages(accessToken, messageIds);
+  let lastOutlookProgressUpdate = 0;
+  const messagesWithHeaders = await batchGetMessages(accessToken, messageIds,
+    (processed, total) => {
+      if (processed - lastOutlookProgressUpdate >= 100 || processed === total) {
+        lastOutlookProgressUpdate = processed;
+        supabase.from('email_accounts').update({
+          sync_progress_current: processed
+        }).eq('id', accountId).then(() => {});
+      }
+    }
+  );
 
   // Step 3: Delete existing emails and senders
   await supabase.from('emails').delete().eq('email_account_id', accountId);
@@ -193,7 +209,7 @@ export async function performOutlookFullSync(
     console.warn('Could not get initial delta link:', e);
   }
 
-  // Step 8: Update account stats
+  // Step 8: Update account stats and clear sync progress
   const totalEmails = emailsToInsert.length;
   await supabase
     .from('email_accounts')
@@ -201,6 +217,8 @@ export async function performOutlookFullSync(
       total_emails: totalEmails,
       last_synced: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      sync_progress_total: null,
+      sync_progress_current: null,
       ...(deltaLink && { delta_link: deltaLink })
     })
     .eq('id', accountId);
@@ -265,9 +283,25 @@ export async function performOutlookInitialBatch(
     });
   }
 
+  // Write total for progress bar polling
+  await supabase.from('email_accounts').update({
+    sync_progress_total: allMessages.length,
+    sync_progress_current: 0
+  }).eq('id', accountId);
+
   // Batch fetch message details with headers
   const messageIds = allMessages.map(m => m.id);
-  const messagesWithHeaders = await batchGetMessages(accessToken, messageIds);
+  let lastInitialOutlookProgressUpdate = 0;
+  const messagesWithHeaders = await batchGetMessages(accessToken, messageIds,
+    (processed, total) => {
+      if (processed - lastInitialOutlookProgressUpdate >= 100 || processed === total) {
+        lastInitialOutlookProgressUpdate = processed;
+        supabase.from('email_accounts').update({
+          sync_progress_current: processed
+        }).eq('id', accountId).then(() => {});
+      }
+    }
+  );
 
   // Process messages and build sender stats (same logic as performOutlookFullSync)
   const emailsToInsert: any[] = [];
@@ -378,6 +412,11 @@ export async function performOutlookInitialBatch(
   }
 
   // Do NOT set last_synced or delta_link — keeps account in "needs full sync" state
+  // Clear progress — Phase 2 will set its own progress
+  await supabase.from('email_accounts').update({
+    sync_progress_total: null,
+    sync_progress_current: null
+  }).eq('id', accountId);
 
   return res.status(200).json({
     success: true,
