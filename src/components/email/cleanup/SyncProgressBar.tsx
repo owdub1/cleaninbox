@@ -75,7 +75,7 @@ const SyncProgressBar: React.FC<SyncProgressBarProps> = ({ syncPhase, hasSenders
           {isFinishing
             ? 'Processing senders...'
             : hasRealProgress
-              ? `Loading ${syncProgress.current.toLocaleString()} of ${syncProgress.total.toLocaleString()} recent emails...`
+              ? `Syncing ${syncProgress.current.toLocaleString()}...`
               : 'Preparing sync...'}
         </span>
       </div>
