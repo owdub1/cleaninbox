@@ -24,6 +24,7 @@ const SyncProgressBar: React.FC<SyncProgressBarProps> = ({ syncPhase, hasSenders
   const progressPercent = hasRealProgress
     ? Math.min(100, Math.round((syncProgress.current / syncProgress.total) * 100))
     : 0;
+  const isFinishing = hasRealProgress && progressPercent >= 95;
 
   // Phase 2 or any sync when senders are already visible: compact top bar
   if (hasSenders) {
@@ -42,9 +43,11 @@ const SyncProgressBar: React.FC<SyncProgressBarProps> = ({ syncPhase, hasSenders
         <div className="flex items-center gap-2">
           <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500 dark:text-indigo-400" />
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {hasRealProgress
-              ? `Syncing ${syncProgress.current.toLocaleString()} of ${syncProgress.total.toLocaleString()} emails...`
-              : 'Starting sync...'}
+            {isFinishing
+              ? 'Processing senders...'
+              : hasRealProgress
+                ? `Syncing ${syncProgress.current.toLocaleString()} of ${syncProgress.total.toLocaleString()} emails...`
+                : 'Starting sync...'}
           </span>
         </div>
       </div>
@@ -69,9 +72,11 @@ const SyncProgressBar: React.FC<SyncProgressBarProps> = ({ syncPhase, hasSenders
       <div className="flex items-center gap-2">
         <RefreshCw className="w-5 h-5 animate-spin text-indigo-600 dark:text-indigo-400" />
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {hasRealProgress
-            ? `Loading ${syncProgress.current.toLocaleString()} of ${syncProgress.total.toLocaleString()} recent emails...`
-            : 'Preparing sync...'}
+          {isFinishing
+            ? 'Processing senders...'
+            : hasRealProgress
+              ? `Loading ${syncProgress.current.toLocaleString()} of ${syncProgress.total.toLocaleString()} recent emails...`
+              : 'Preparing sync...'}
         </span>
       </div>
     </div>
