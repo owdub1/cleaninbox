@@ -161,7 +161,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     const pollInterval = setInterval(async () => {
       try {
         const resp = await fetchWithAuth(
-          `/api/emails/sync-progress?email=${encodeURIComponent(email)}`,
+          `/api/emails/sync?email=${encodeURIComponent(email)}`,
           { method: 'GET' },
           refreshToken
         );
