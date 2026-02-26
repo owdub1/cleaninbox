@@ -69,18 +69,25 @@ export const useDashboardData = () => {
       }
 
       // Process senders for email counts
-      let totalEmailsLoaded = 0;
+      let totalEmailsFromSenders = 0;
       let emailCountsByAccount: Record<string, number> = {};
       if (sendersRes.ok) {
         const sendersData = await sendersRes.json();
         sendersData.senders?.forEach((sender: any) => {
           const count = sender.emailCount || 0;
-          totalEmailsLoaded += count;
+          totalEmailsFromSenders += count;
           if (sender.accountEmail) {
             emailCountsByAccount[sender.accountEmail] = (emailCountsByAccount[sender.accountEmail] || 0) + count;
           }
         });
       }
+
+      // Use total_emails from accounts (set after full sync completes) as primary source,
+      // fall back to sender sum during initial batch when total_emails hasn't been set yet
+      const totalEmailsFromAccounts = accountsData.reduce(
+        (sum: number, a: any) => sum + (a.total_emails || 0), 0
+      );
+      const totalEmailsLoaded = Math.max(totalEmailsFromAccounts, totalEmailsFromSenders);
 
       // Process activity
       if (activityRes.ok) {
