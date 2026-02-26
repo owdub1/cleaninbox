@@ -57,6 +57,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const [syncPhase, setSyncPhase] = useState<'idle' | 'initial' | 'full'>('idle');
   const syncing = syncPhase !== 'idle';
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
+  const phase1CountRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -156,6 +157,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
     // Detect first-time sync: we've fetched senders but found none
     const isFirstTimeSync = hasFetched && !hasSendersRef.current && !fullSync && !repair;
+    phase1CountRef.current = 0;
 
     // Start polling sync progress every 2s
     const pollInterval = setInterval(async () => {
@@ -168,7 +170,11 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         if (resp.ok) {
           const data = await resp.json();
           if (data.total) {
-            setSyncProgress({ current: data.current || 0, total: data.total });
+            const offset = phase1CountRef.current;
+            setSyncProgress({
+              current: (data.current || 0) + offset,
+              total: data.total + offset,
+            });
           }
         } else {
           console.warn('Sync progress poll failed:', resp.status);
@@ -197,6 +203,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
           // Partial senders are now in DB — fetch and display them
           await fetchSenders();
         }
+
+        // Store Phase 1 count so Phase 2 progress starts where Phase 1 left off
+        phase1CountRef.current = phase1Data.totalEmails || 0;
 
         // Phase 2: Full sync to rebuild everything with accurate totals
         setSyncPhase('full');

@@ -103,14 +103,14 @@ export const useDashboardData = () => {
         emailAccounts: accountsData.length
       });
 
-      // Update email accounts - use actual sender counts instead of stored total_emails
+      // Update email accounts - use max of account total_emails and sender counts
       setEmailAccounts(accountsData.map((account: any) => ({
         id: account.id,
         email: account.email,
         provider: account.provider || 'Unknown',
         connection_status: account.connection_status || 'disconnected',
         lastSynced: account.last_synced || '',
-        totalEmails: emailCountsByAccount[account.email] || 0,
+        totalEmails: Math.max(account.total_emails || 0, emailCountsByAccount[account.email] || 0),
         processedEmails: account.processed_emails || 0,
         unsubscribed: account.unsubscribed || 0
       })));
