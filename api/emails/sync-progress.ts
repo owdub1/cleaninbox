@@ -27,16 +27,15 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const limitResult = await limiter(req, res);
   if (limitResult) return;
 
-  const authReq = req as AuthenticatedRequest;
-  const authResult = requireAuth(authReq, res);
-  if (authResult) return;
+  const user = requireAuth(req as AuthenticatedRequest, res);
+  if (!user) return;
 
   const email = req.query.email as string;
   if (!email) {
     return res.status(400).json({ error: 'email parameter required' });
   }
 
-  const userId = authReq.user!.userId;
+  const userId = user.userId;
 
   const { data: account } = await supabase
     .from('email_accounts')

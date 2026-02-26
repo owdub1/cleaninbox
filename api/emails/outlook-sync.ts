@@ -80,7 +80,7 @@ export async function performOutlookFullSync(
   let lastOutlookProgressUpdate = 0;
   const messagesWithHeaders = await batchGetMessages(accessToken, messageIds,
     (processed, total) => {
-      if (processed - lastOutlookProgressUpdate >= 100 || processed === total) {
+      if (processed - lastOutlookProgressUpdate >= 50 || processed === total) {
         lastOutlookProgressUpdate = processed;
         supabase.from('email_accounts').update({
           sync_progress_current: processed
@@ -294,7 +294,7 @@ export async function performOutlookInitialBatch(
   let lastInitialOutlookProgressUpdate = 0;
   const messagesWithHeaders = await batchGetMessages(accessToken, messageIds,
     (processed, total) => {
-      if (processed - lastInitialOutlookProgressUpdate >= 100 || processed === total) {
+      if (processed - lastInitialOutlookProgressUpdate >= 50 || processed === total) {
         lastInitialOutlookProgressUpdate = processed;
         supabase.from('email_accounts').update({
           sync_progress_current: processed

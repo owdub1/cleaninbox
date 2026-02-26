@@ -336,7 +336,7 @@ async function performFullSync(
   let lastProgressUpdate = 0;
   const messages = await batchGetMessages(accessToken, messageIds, 'metadata', requiredHeaders,
     (processed, total) => {
-      if (processed - lastProgressUpdate >= 100 || processed === total) {
+      if (processed - lastProgressUpdate >= 50 || processed === total) {
         lastProgressUpdate = processed;
         supabase.from('email_accounts').update({
           sync_progress_current: processed
