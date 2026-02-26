@@ -33,6 +33,7 @@ import emailsSenders from './api/emails/senders.js';
 import emailsBySender from './api/emails/by-sender.js';
 import emailsGet from './api/emails/get.js';
 import emailsDebugSender from './api/emails/debug-sender.js';
+import emailsSyncProgress from './api/emails/sync-progress.js';
 
 // Cleanup routes
 import cleanupDelete from './api/cleanup/delete.js';
@@ -166,6 +167,7 @@ app.get('/api/emails/senders', wrapHandler(emailsSenders));
 app.get('/api/emails/by-sender', wrapHandler(emailsBySender));
 app.get('/api/emails/get', wrapHandler(emailsGet));
 app.get('/api/emails/debug-sender', wrapHandler(emailsDebugSender));
+app.get('/api/emails/sync-progress', wrapHandler(emailsSyncProgress));
 
 // Cleanup routes
 app.post('/api/cleanup/delete', wrapHandler(cleanupDelete));

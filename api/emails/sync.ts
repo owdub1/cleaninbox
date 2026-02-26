@@ -56,11 +56,6 @@ async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // GET = poll sync progress, POST = run sync
-  if (req.method === 'GET') {
-    return handleSyncProgress(req, res);
-  }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -1698,32 +1693,6 @@ async function performRepairSync(
     sendersRebuilt: insertedCount,
     emailsProcessed: emails.length,
     syncType: 'repair'
-  });
-}
-
-/**
- * GET /api/emails/sync — Lightweight sync progress polling
- * Returns { total: number | null, current: number | null }
- */
-async function handleSyncProgress(req: VercelRequest, res: VercelResponse) {
-  const user = requireAuth(req as AuthenticatedRequest, res);
-  if (!user) return;
-
-  const email = req.query.email as string;
-  if (!email) {
-    return res.status(400).json({ error: 'email parameter required' });
-  }
-
-  const { data: account } = await supabase
-    .from('email_accounts')
-    .select('sync_progress_total, sync_progress_current')
-    .eq('user_id', user.userId)
-    .eq('email', email)
-    .single();
-
-  return res.status(200).json({
-    total: account?.sync_progress_total ?? null,
-    current: account?.sync_progress_current ?? null,
   });
 }
 
