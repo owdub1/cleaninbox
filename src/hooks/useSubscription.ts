@@ -55,11 +55,6 @@ export function useSubscription() {
       const response = await fetchWithAuth('/api/subscription/get', { method: 'GET' }, refreshToken);
 
       if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired or invalid
-          setSubscription(DEFAULT_FREE_SUBSCRIPTION);
-          return;
-        }
         throw new Error('Failed to fetch subscription');
       }
 
@@ -69,8 +64,7 @@ export function useSubscription() {
     } catch (err: any) {
       console.error('Error fetching subscription:', err);
       setError(err.message);
-      // Use default free subscription on error
-      setSubscription(DEFAULT_FREE_SUBSCRIPTION);
+      // Keep current subscription on network error — don't reset to Free
     } finally {
       setLoading(false);
     }
