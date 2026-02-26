@@ -55,7 +55,7 @@ const OAuthCallback = () => {
         updateUser(userData);
 
         // Navigate to dashboard (no page reload needed)
-        navigate('/dashboard', { replace: true });
+        navigate('/email-cleanup', { replace: true });
       } catch (e) {
         console.error('Failed to parse OAuth user data:', e);
         setError('Sign-in failed. Invalid user data. Please try again.');
@@ -63,7 +63,7 @@ const OAuthCallback = () => {
     } else if (success === 'true') {
       // Fallback: success but no user data param (shouldn't happen with updated backend)
       // Do a full page reload to let AuthContext handle it via refresh
-      window.location.href = '/dashboard';
+      window.location.href = '/email-cleanup';
     } else {
       setError('Sign-in incomplete. Please try again.');
       setTimeout(() => {

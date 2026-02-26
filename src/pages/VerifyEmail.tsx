@@ -46,7 +46,7 @@ export default function VerifyEmail() {
 
         // Redirect to dashboard after 2 seconds
         setTimeout(() => {
-          window.location.href = '/dashboard'; // Use window.location to trigger full reload so AuthContext picks up the new data
+          window.location.href = '/email-cleanup'; // Use window.location to trigger full reload so AuthContext picks up the new data
         }, 2000);
       } catch (error: any) {
         setStatus('error');

@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<{
     setUser(data.user);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
 
-    navigate('/dashboard');
+    navigate('/email-cleanup');
   };
 
   const updateUser = (updates: Partial<User>) => {
