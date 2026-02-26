@@ -36,12 +36,12 @@ export const PLAN_LIMITS = {
   },
   basic: {
     name: 'Basic',
-    emailLimit: 2,
+    emailLimit: 1,
     emailProcessingLimit: 5000,
     syncIntervalMinutes: 240, // 4 hours - 6 syncs per day
     features: [
       'Import up to 5,000 emails total',
-      'Connect up to 2 email accounts',
+      'Connect 1 email account',
       'Sync every 4 hours',
       'Standard unsubscribe speed',
       'Email support',
@@ -50,12 +50,12 @@ export const PLAN_LIMITS = {
   },
   pro: {
     name: 'Pro',
-    emailLimit: 3,
+    emailLimit: 2,
     emailProcessingLimit: 15000,
     syncIntervalMinutes: 60, // 1 hour - 24 syncs per day
     features: [
       'Import up to 15,000 emails total',
-      'Connect up to 3 email accounts',
+      'Connect up to 2 email accounts',
       'Sync every hour',
       'Faster unsubscribe speed',
       'Priority email support',
@@ -65,12 +65,12 @@ export const PLAN_LIMITS = {
   },
   unlimited: {
     name: 'Unlimited',
-    emailLimit: 5,
+    emailLimit: 3,
     emailProcessingLimit: 999999999,
     syncIntervalMinutes: 0, // No limit
     features: [
       'Unlimited email importing',
-      'Connect up to 5 email accounts',
+      'Connect up to 3 email accounts',
       'Unlimited syncing',
       'Fastest unsubscribe speed',
       'Priority phone & email support',
