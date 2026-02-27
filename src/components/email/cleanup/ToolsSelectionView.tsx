@@ -48,6 +48,7 @@ export { cleanupTools };
 
 interface ToolsSelectionViewProps {
   hasPaidPlan: boolean;
+  isFreeTrial?: boolean;
   subscriptionLoading: boolean;
   freeActionsRemaining: number;
   notification: { type: 'success' | 'error'; message: string } | null;
@@ -56,6 +57,7 @@ interface ToolsSelectionViewProps {
 
 const ToolsSelectionView: React.FC<ToolsSelectionViewProps> = ({
   hasPaidPlan,
+  isFreeTrial = false,
   subscriptionLoading,
   freeActionsRemaining,
   notification,
@@ -83,7 +85,7 @@ const ToolsSelectionView: React.FC<ToolsSelectionViewProps> = ({
 
       <section className="pt-10 pb-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {!hasPaidPlan && !subscriptionLoading && (
+          {isFreeTrial && !subscriptionLoading && (
             <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">

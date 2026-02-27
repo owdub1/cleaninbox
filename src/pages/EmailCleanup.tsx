@@ -177,7 +177,8 @@ const EmailCleanup = () => {
 
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
-  const hasPaidPlan = hasFullTools;
+  const hasPaidPlan = hasFullTools;  // gates archive/unsubscribe tools (Pro+)
+  const isFreeTrial = !isPaid;        // gates free action counting (Basic+ exempt)
 
   // Connected accounts
   const connectedGmailAccounts = emailAccounts?.filter(
@@ -317,11 +318,11 @@ const EmailCleanup = () => {
   };
 
   const handleCleanupAction = (action: 'delete' | 'archive' | 'unsubscribe', senderList: Sender[]) => {
-    if (!hasPaidPlan && !hasFreeTries) {
+    if (isFreeTrial && !hasFreeTries) {
       setShowUpgradeModal(true);
       return;
     }
-    if (!hasPaidPlan) {
+    if (isFreeTrial) {
       const totalEmails = senderList.reduce((sum, s) => sum + s.emailCount, 0);
       if (totalEmails > freeActionsRemaining) {
         setNotification({ type: 'error', message: `Not enough free actions. This requires ${totalEmails} but you have ${freeActionsRemaining} left. Upgrade for unlimited cleanup.` });
@@ -348,7 +349,7 @@ const EmailCleanup = () => {
             actionSenders[0].hasOneClickUnsubscribe
           );
           if (result?.success) {
-            if (result.freeTrialRemaining !== undefined && !hasPaidPlan) {
+            if (result.freeTrialRemaining !== undefined && isFreeTrial) {
               setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
             }
             fetchSenders();
@@ -398,7 +399,7 @@ const EmailCleanup = () => {
     setPendingDeletions(prev => new Map(prev).set(actionId, newPendingDeletion));
     setUndoActions(prev => [...prev, { id: actionId, type: action, count: totalCount, senderEmails: senderEmailsList, timestamp: Date.now() }]);
 
-    if (!hasPaidPlan) {
+    if (isFreeTrial) {
       setFreeActionsUsed(prev => prev + totalCount);
     }
 
@@ -436,7 +437,7 @@ const EmailCleanup = () => {
           });
         }
       }
-      if (result?.freeTrialRemaining !== undefined && !hasPaidPlan) {
+      if (result?.freeTrialRemaining !== undefined && isFreeTrial) {
         setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
       }
     } catch (error) {
@@ -456,7 +457,7 @@ const EmailCleanup = () => {
 
   const handleDeleteSingleEmail = (email: EmailMessage, senderEmail: string, senderName: string) => {
     if (!connectedGmailAccount) return;
-    if (!hasPaidPlan && !hasFreeTries) { setShowUpgradeModal(true); return; }
+    if (isFreeTrial && !hasFreeTries) { setShowUpgradeModal(true); return; }
 
     const senderKey = `${senderName}|||${senderEmail}`;
     const originalEmails = senderEmails[senderKey] || [];
@@ -480,7 +481,7 @@ const EmailCleanup = () => {
 
     setPendingDeletions(prev => new Map(prev).set(actionId, newPending));
     setUndoActions(prev => [...prev, { id: actionId, type: 'delete', count: 1, senderEmails: [senderEmail], messageIds: [email.id], timestamp: Date.now() }]);
-    if (!hasPaidPlan) setFreeActionsUsed(prev => prev + 1);
+    if (isFreeTrial) setFreeActionsUsed(prev => prev + 1);
   };
 
   const handleUndo = (actionId: string) => {
@@ -498,9 +499,9 @@ const EmailCleanup = () => {
           updateSenderLastEmailDate(pd.senderEmail, pd.senderName, sorted[0].date);
         }
       }
-      if (!hasPaidPlan) setFreeActionsUsed(prev => Math.max(0, prev - 1));
+      if (isFreeTrial) setFreeActionsUsed(prev => Math.max(0, prev - 1));
     } else if (pd.type === 'bulk') {
-      if (!hasPaidPlan && pd.senders) {
+      if (isFreeTrial && pd.senders) {
         const count = pd.senders.reduce((sum, s) => sum + s.emailCount, 0);
         setFreeActionsUsed(prev => Math.max(0, prev - count));
       }
@@ -566,7 +567,7 @@ const EmailCleanup = () => {
     );
   }
 
-  const shouldShowOnboarding = (!isAuthenticated || !dashboardLoading) && (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && !hasPaidPlan));
+  const shouldShowOnboarding = (!isAuthenticated || !dashboardLoading) && (currentStep < 3 || (currentStep === 3 && currentView === 'onboarding' && isFreeTrial));
   if (shouldShowOnboarding) {
     return (
       <OnboardingView
@@ -585,6 +586,7 @@ const EmailCleanup = () => {
     return (
       <ToolsSelectionView
         hasPaidPlan={hasPaidPlan}
+        isFreeTrial={isFreeTrial}
         subscriptionLoading={subscriptionLoading}
         freeActionsRemaining={freeActionsRemaining}
         notification={notification}
@@ -649,7 +651,7 @@ const EmailCleanup = () => {
 
       <section className="pt-10 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {!hasPaidPlan && (
+          {isFreeTrial && (
             <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
