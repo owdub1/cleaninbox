@@ -417,18 +417,31 @@ export async function performOutlookInitialBatch(
     if (error) console.error('Initial batch sender insert error:', error.message);
   }
 
-  // Do NOT set last_synced or delta_link — keeps account in "needs full sync" state
-  // Clear progress — Phase 2 will set its own progress
-  await supabase.from('email_accounts').update({
-    sync_progress_total: null,
-    sync_progress_current: null
-  }).eq('id', accountId);
+  // If the initial batch already covers the full plan limit, mark account as fully synced
+  const INITIAL_BATCH_LIMIT = Math.min(500, emailLimit);
+  const fullSyncNeeded = emailLimit > INITIAL_BATCH_LIMIT;
+
+  if (!fullSyncNeeded) {
+    await supabase.from('email_accounts').update({
+      last_synced: new Date().toISOString(),
+      total_emails: emailsToInsert.length,
+      sync_progress_total: null,
+      sync_progress_current: null
+    }).eq('id', accountId);
+  } else {
+    // Clear progress — Phase 2 will set its own progress
+    await supabase.from('email_accounts').update({
+      sync_progress_total: null,
+      sync_progress_current: null
+    }).eq('id', accountId);
+  }
 
   return res.status(200).json({
     success: true,
     totalSenders: sendersToInsert.length,
     totalEmails: emailsToInsert.length,
-    syncType: 'initialBatch'
+    syncType: 'initialBatch',
+    fullSyncNeeded
   });
 }
 

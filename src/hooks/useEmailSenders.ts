@@ -203,11 +203,16 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
           await fetchSenders();
         }
 
-        // Store Phase 1 count so Phase 2 progress can continue from where Phase 1 left off.
-        // Only use offset if Phase 2 will fetch MORE emails than Phase 1 (i.e., plan limit > initial batch).
-        // If they're the same (e.g., free tier: limit=100, batch=100), Phase 2 replaces Phase 1 data entirely.
-        const phase1Count = phase1Data.totalEmails || 0;
-        phase1CountRef.current = phase1Count;
+        // Skip Phase 2 if the initial batch already covered the full plan limit
+        // (e.g., free tier: limit=100, batch=100 — Phase 1 is the complete sync)
+        if (phase1Data.fullSyncNeeded === false) {
+          return {
+            success: phase1Response.ok,
+            syncMessage: `Synced ${phase1Data.totalEmails} emails`,
+            addedEmails: phase1Data.totalEmails,
+            syncMethod: 'single-phase',
+          };
+        }
 
         // Phase 2: Full sync to rebuild everything with accurate totals
         setSyncPhase('full');
