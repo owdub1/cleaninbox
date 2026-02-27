@@ -128,6 +128,17 @@ app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Security headers (mirrors vercel.json — needed for Railway/Express)
+app.use((req: Request, res: Response, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  next();
+});
+
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
   res.json({
