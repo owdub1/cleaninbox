@@ -51,9 +51,10 @@ const EmailCleanup = () => {
 
   const { subscription, isPaid, isUnlimited, hasFullTools, loading: subscriptionLoading } = useSubscription();
 
+  const restoredTool = sessionStorage.getItem('cleaninbox_selected_tool');
   const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
-    shouldStartWithTools ? 'tools' : 'onboarding'
+    restoredTool ? 'cleanup' : shouldStartWithTools ? 'tools' : 'onboarding'
   );
   const [viewInitialized, setViewInitialized] = useState(false);
 
@@ -72,7 +73,17 @@ const EmailCleanup = () => {
 
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
-  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [selectedTool, setSelectedToolRaw] = useState<string | null>(() => {
+    return sessionStorage.getItem('cleaninbox_selected_tool') || null;
+  });
+  const setSelectedTool = (tool: string | null) => {
+    if (tool) {
+      sessionStorage.setItem('cleaninbox_selected_tool', tool);
+    } else {
+      sessionStorage.removeItem('cleaninbox_selected_tool');
+    }
+    setSelectedToolRaw(tool);
+  };
   const [expandedSenders, setExpandedSenders] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date');
@@ -651,7 +662,7 @@ const EmailCleanup = () => {
 
       <section className="pt-10 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {isFreeTrial && (
+          {isFreeTrial && !subscriptionLoading && (
             <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
