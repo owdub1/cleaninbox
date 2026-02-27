@@ -413,7 +413,13 @@ async function updateSubscriptionStatus(userId: string, subscription: Stripe.Sub
     trialing: 'active',
   };
 
-  const status = statusMap[subscription.status] || subscription.status;
+  let status = statusMap[subscription.status] || subscription.status;
+
+  // If Stripe subscription is active but set to cancel at period end,
+  // keep our local status as 'cancelled' so the UI reflects the pending cancellation
+  if (subscription.status === 'active' && subscription.cancel_at_period_end) {
+    status = 'cancelled';
+  }
   const periodEnd = (subscription as any).current_period_end;
   let currentPeriodEnd: string;
   if (typeof periodEnd === 'number') {
