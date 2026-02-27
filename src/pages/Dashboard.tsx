@@ -516,7 +516,7 @@ const Dashboard = () => {
                         </p>
                       </div>
                       {userData.subscription.nextBilling && <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Next Billing</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{isCancelled ? 'Access Until' : 'Next Billing'}</p>
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
                           <p className="text-gray-900 dark:text-gray-100">
@@ -673,7 +673,7 @@ const Dashboard = () => {
                         </p>
                       </div>
                       {userData.subscription.nextBilling && <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Next Billing</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{isCancelled ? 'Access Until' : 'Next Billing'}</p>
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
                           <p className="text-gray-900 dark:text-gray-100">
