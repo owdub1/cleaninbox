@@ -252,9 +252,10 @@ export async function performOutlookInitialBatch(
   accountId: string,
   accessToken: string,
   userEmail: string,
-  email: string
+  email: string,
+  emailLimit: number = 500
 ) {
-  const INITIAL_BATCH_LIMIT = 500;
+  const INITIAL_BATCH_LIMIT = Math.min(500, emailLimit);
 
   // Fetch up to 500 most recent messages
   const allMessages: OutlookMessage[] = [];

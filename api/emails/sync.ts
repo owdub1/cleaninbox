@@ -174,7 +174,7 @@ async function handler(
       const outlookUserEmail = email.toLowerCase();
 
       if (initialBatch && isFirstSync) {
-        return await performOutlookInitialBatch(res, user.userId, account.id, outlookAccessToken, outlookUserEmail, email);
+        return await performOutlookInitialBatch(res, user.userId, account.id, outlookAccessToken, outlookUserEmail, email, planLimits.emailProcessingLimit);
       }
 
       if (isFullSync) {
@@ -233,7 +233,7 @@ async function handler(
     const syncType = isFullSync ? 'full' : 'incremental';
 
     if (initialBatch && isFirstSync) {
-      return await performGmailInitialBatch(res, user.userId, account.id, accessToken, userEmail, email);
+      return await performGmailInitialBatch(res, user.userId, account.id, accessToken, userEmail, email, planLimits.emailProcessingLimit);
     }
 
     if (isFullSync) {
@@ -520,9 +520,10 @@ async function performGmailInitialBatch(
   accountId: string,
   accessToken: string,
   userEmail: string,
-  email: string
+  email: string,
+  emailLimit: number = 500
 ) {
-  const INITIAL_BATCH_LIMIT = 500;
+  const INITIAL_BATCH_LIMIT = Math.min(500, emailLimit);
   const query = '-in:sent -in:drafts -in:trash -in:spam';
 
   // Fetch up to 500 most recent message IDs (5 pages of 100)
