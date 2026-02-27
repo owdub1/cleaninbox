@@ -418,7 +418,6 @@ export async function performOutlookInitialBatch(
   }
 
   // If the initial batch already covers the full plan limit, mark account as fully synced
-  const INITIAL_BATCH_LIMIT = Math.min(500, emailLimit);
   const fullSyncNeeded = emailLimit > INITIAL_BATCH_LIMIT;
 
   if (!fullSyncNeeded) {
