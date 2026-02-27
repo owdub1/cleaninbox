@@ -290,16 +290,18 @@ async function performFullSync(
   emailLimit: number,
   email: string
 ) {
-  const maxMessages = Math.min(10000, emailLimit);
+  // Over-fetch by 10% to account for filtered emails (self-sent, no sender, etc.)
+  // so the stored count hits the plan limit instead of falling short
+  const fetchLimit = Math.min(10000, Math.ceil(emailLimit * 1.1));
 
   // Step 1: Fetch all message IDs from Gmail
   const allMessageRefs: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
   const query = '-in:sent -in:drafts -in:trash -in:spam';
 
-  while (allMessageRefs.length < maxMessages) {
+  while (allMessageRefs.length < fetchLimit) {
     const response = await listMessages(accessToken, {
-      maxResults: Math.min(100, maxMessages - allMessageRefs.length),
+      maxResults: Math.min(100, fetchLimit - allMessageRefs.length),
       pageToken,
       q: query,
     });
@@ -370,6 +372,9 @@ async function performFullSync(
   }>();
 
   for (const msg of messages) {
+    // Stop once we've hit the plan's email limit
+    if (emailsToInsert.length >= emailLimit) break;
+
     const labels = msg.labelIds || [];
     if (labels.includes('SPAM') || labels.includes('TRASH')) continue;
 

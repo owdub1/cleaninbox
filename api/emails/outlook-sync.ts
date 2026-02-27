@@ -36,15 +36,17 @@ export async function performOutlookFullSync(
   emailLimit: number,
   email: string
 ) {
-  const maxMessages = Math.min(10000, emailLimit);
+  // Over-fetch by 10% to account for filtered emails (self-sent, no sender, etc.)
+  // so the stored count hits the plan limit instead of falling short
+  const fetchLimit = Math.min(10000, Math.ceil(emailLimit * 1.1));
 
   // Step 1: Fetch all message IDs from inbox
   const allMessages: OutlookMessage[] = [];
   let nextLink: string | undefined;
 
-  while (allMessages.length < maxMessages) {
+  while (allMessages.length < fetchLimit) {
     const response = await listInboxMessages(accessToken, {
-      top: Math.min(100, maxMessages - allMessages.length),
+      top: Math.min(100, fetchLimit - allMessages.length),
       nextLink,
       orderBy: 'receivedDateTime desc',
     });
@@ -113,6 +115,9 @@ export async function performOutlookFullSync(
   }>();
 
   for (const msg of messagesWithHeaders) {
+    // Stop once we've hit the plan's email limit
+    if (emailsToInsert.length >= emailLimit) break;
+
     if (!msg.from?.emailAddress?.address) continue;
 
     const senderEmail = msg.from.emailAddress.address.toLowerCase();
