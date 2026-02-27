@@ -239,6 +239,7 @@ export default async function handler(
     console.error('Error creating checkout session:', error);
     return res.status(500).json({
       error: 'Failed to create checkout session',
+      detail: error.message,
     });
   }
 }
