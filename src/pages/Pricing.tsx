@@ -10,7 +10,7 @@ const Pricing = () => {
     name: 'Basic',
     description: 'For individuals with light email usage',
     price: billingCycle === 'monthly' ? '$7.99' : '$6.39',
-    features: ['Import up to 5,000 emails total', 'Connect 1 email account', 'One-click unsubscribe', 'Email support', 'Sender statistics and email counts'],
+    features: ['Import up to 5,000 emails total', 'Connect 1 email account', 'Delete emails by sender', 'Email support', 'Sender statistics and email counts'],
     notIncluded: [],
     popular: false,
     gradient: 'from-blue-500 to-cyan-500'

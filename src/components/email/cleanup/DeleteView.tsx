@@ -12,6 +12,7 @@ interface DeleteViewProps {
   senderEmails: Record<string, EmailMessage[]>;
   loadingEmails: string | null;
   deletingEmailId: string | null;
+  hasPaidPlan?: boolean;
   onToggleSenderExpand: (sender: Sender) => void;
   onToggleSenderSelection: (sender: Sender) => void;
   onDeleteSingleEmail: (email: EmailMessage, senderEmail: string, senderName: string) => void;
@@ -33,6 +34,7 @@ const DeleteView: React.FC<DeleteViewProps> = ({
   onDeleteSingleEmail,
   onViewEmail,
   onCleanupAction,
+  hasPaidPlan = true,
 }) => {
   if (sortBy === 'date') {
     return (
@@ -53,12 +55,14 @@ const DeleteView: React.FC<DeleteViewProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    className="px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded"
-                    onClick={() => onCleanupAction('archive', periodSenders)}
-                  >
-                    Archive All
-                  </button>
+                  {hasPaidPlan && (
+                    <button
+                      className="px-2 py-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded"
+                      onClick={() => onCleanupAction('archive', periodSenders)}
+                    >
+                      Archive All
+                    </button>
+                  )}
                   <button
                     className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                     onClick={() => onCleanupAction('delete', periodSenders)}
@@ -83,12 +87,14 @@ const DeleteView: React.FC<DeleteViewProps> = ({
                     onViewEmail={onViewEmail}
                     actions={
                       <>
-                        <button
-                          className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition-colors"
-                          onClick={() => onCleanupAction('archive', [sender])}
-                        >
-                          Archive
-                        </button>
+                        {hasPaidPlan && (
+                          <button
+                            className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition-colors"
+                            onClick={() => onCleanupAction('archive', [sender])}
+                          >
+                            Archive
+                          </button>
+                        )}
                         <button
                           className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
                           onClick={() => onCleanupAction('delete', [sender])}
@@ -126,12 +132,14 @@ const DeleteView: React.FC<DeleteViewProps> = ({
           showDate
           actions={
             <>
-              <button
-                className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition-colors"
-                onClick={() => onCleanupAction('archive', [sender])}
-              >
-                Archive
-              </button>
+              {hasPaidPlan && (
+                <button
+                  className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition-colors"
+                  onClick={() => onCleanupAction('archive', [sender])}
+                >
+                  Archive
+                </button>
+              )}
               <button
                 className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
                 onClick={() => onCleanupAction('delete', [sender])}

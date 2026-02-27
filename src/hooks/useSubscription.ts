@@ -110,6 +110,7 @@ export function useSubscription() {
     isPro: subscription.plan.toLowerCase() === 'pro',
     isUnlimited: subscription.plan.toLowerCase() === 'unlimited',
     isPaid: subscription.plan.toLowerCase() !== 'free',
+    hasFullTools: ['pro', 'unlimited', 'onetime'].includes(subscription.plan.toLowerCase()),
     isCancelled: subscription.status === 'cancelled',
     isExpired: subscription.status === 'expired',
     isExpiring: !!subscription.expiringWarning,

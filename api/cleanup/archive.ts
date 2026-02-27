@@ -131,6 +131,23 @@ async function handler(
       }
     }
 
+    // Plan tier check: archive requires Pro, Unlimited, or Quick Clean
+    {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('plan')
+        .eq('user_id', user.userId)
+        .in('status', ['active', 'trialing'])
+        .single();
+      const plan = (sub?.plan || 'free').toLowerCase();
+      if (!['pro', 'unlimited', 'onetime'].includes(plan)) {
+        return res.status(403).json({
+          error: 'Archive requires a Pro or higher plan.',
+          code: 'PLAN_UPGRADE_REQUIRED',
+        });
+      }
+    }
+
     // Get valid access token based on provider
     const isOutlook = account.provider === 'Outlook';
     const { accessToken } = isOutlook

@@ -23,6 +23,7 @@ interface SearchAndFilterBarProps {
   onArchiveSelected: () => void;
   onDeleteSelected: () => void;
   selectedTool: string | null;
+  hasPaidPlan?: boolean;
 }
 
 const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
@@ -38,6 +39,7 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   onArchiveSelected,
   onDeleteSelected,
   selectedTool,
+  hasPaidPlan = true,
 }) => {
   return (
     <>
@@ -102,7 +104,7 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
             </span>
           </div>
           <div className="flex space-x-4">
-            {selectedTool !== 'archive' && (
+            {selectedTool !== 'archive' && hasPaidPlan && (
               <button
                 className="flex items-center text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                 onClick={onArchiveSelected}

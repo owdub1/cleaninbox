@@ -49,7 +49,7 @@ const EmailCleanup = () => {
   const { emailAccounts, loading: dashboardLoading } = useDashboardData();
   const navigate = useNavigate();
 
-  const { subscription, isPaid, isUnlimited, loading: subscriptionLoading } = useSubscription();
+  const { subscription, isPaid, isUnlimited, hasFullTools, loading: subscriptionLoading } = useSubscription();
 
   const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
@@ -177,7 +177,7 @@ const EmailCleanup = () => {
 
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
-  const hasPaidPlan = isPaid;
+  const hasPaidPlan = hasFullTools;
 
   // Connected accounts
   const connectedGmailAccounts = emailAccounts?.filter(
@@ -722,6 +722,7 @@ const EmailCleanup = () => {
               onArchiveSelected={() => handleCleanupAction('archive', getSelectedSenders())}
               onDeleteSelected={() => handleCleanupAction('delete', getSelectedSenders())}
               selectedTool={selectedTool}
+              hasPaidPlan={hasPaidPlan}
             />
 
             {/* Compact progress bar when syncing with senders visible (Phase 2) */}
@@ -775,6 +776,7 @@ const EmailCleanup = () => {
                 senderEmails={senderEmails}
                 loadingEmails={loadingEmails}
                 deletingEmailId={deletingEmailId}
+                hasPaidPlan={hasPaidPlan}
                 onToggleSenderExpand={toggleSenderExpand}
                 onToggleSenderSelection={toggleSenderSelection}
                 onDeleteSingleEmail={handleDeleteSingleEmail}

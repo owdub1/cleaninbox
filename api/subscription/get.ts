@@ -43,7 +43,7 @@ export const PLAN_LIMITS = {
       'Import up to 5,000 emails total',
       'Connect 1 email account',
       'Sync every 4 hours',
-      'Standard unsubscribe speed',
+      'Delete emails by sender',
       'Email support',
       'Basic analytics'
     ]

@@ -257,6 +257,17 @@ async function handler(
       }
     }
 
+    // Plan tier check: unsubscribe requires Pro, Unlimited, or Quick Clean
+    {
+      const plan = (subStatus?.plan || 'free').toLowerCase();
+      if (!['pro', 'unlimited', 'onetime'].includes(plan)) {
+        return res.status(403).json({
+          error: 'Unsubscribe requires a Pro or higher plan.',
+          code: 'PLAN_UPGRADE_REQUIRED',
+        });
+      }
+    }
+
     // Get unsubscribe link and one-click flag from cache if not provided
     let linkToUse = unsubscribeLink;
     let supportsOneClick = hasOneClickUnsubscribe ?? false;
