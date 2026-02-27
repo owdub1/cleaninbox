@@ -43,8 +43,8 @@ const Dashboard = () => {
       // Remove the query param from the URL
       searchParams.delete('upgraded');
       setSearchParams(searchParams, { replace: true });
-      // Auto-hide the toast after 8 seconds
-      const timer = setTimeout(() => setShowUpgradeSuccess(false), 8000);
+      // Auto-hide the toast after 3 seconds
+      const timer = setTimeout(() => setShowUpgradeSuccess(false), 3000);
       return () => clearTimeout(timer);
     }
   }, [searchParams, setSearchParams]);
@@ -153,7 +153,20 @@ const Dashboard = () => {
       emailAccounts: dbStats.emailAccounts
     }
   };
-  const handlePlanSwitch = (planId, billing = 'monthly') => {
+  const handlePlanSwitch = (planId: string, billing = 'monthly') => {
+    // If user already has a paid subscription, confirm before upgrading
+    // (Stripe will charge the prorated difference using their existing payment method)
+    const currentPlan = subscription.plan.toLowerCase();
+    const isPaidPlan = ['basic', 'pro', 'unlimited'].includes(currentPlan);
+    const prices: Record<string, string> = { basic: '$7.99', pro: '$14.99', unlimited: '$24.99' };
+
+    if (isPaidPlan && currentPlan !== planId) {
+      const confirmed = window.confirm(
+        `Switch to ${planId.charAt(0).toUpperCase() + planId.slice(1)} (${prices[planId]}/month)? You'll be charged the prorated difference using your card on file.`
+      );
+      if (!confirmed) return;
+    }
+
     navigate(`/checkout?plan=${planId}&billing=${billing}`);
   };
   const handleConnectNewEmail = () => {
