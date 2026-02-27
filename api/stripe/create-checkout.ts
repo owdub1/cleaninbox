@@ -142,7 +142,7 @@ export default async function handler(
               plan,
               billing,
             },
-            proration_behavior: 'create_prorations',
+            proration_behavior: 'always_invoice',
           }
         );
 

@@ -226,8 +226,8 @@ async function handler(
     const isFirstSync = !account.last_synced;
     const isStaleSync = account.last_synced &&
       (Date.now() - new Date(account.last_synced).getTime()) > (STALE_SYNC_DAYS * 24 * 60 * 60 * 1000);
-    // wasLimitedByPreviousPlan is computed above (before sync interval check)
-    const isFullSync = isFirstSync || isStaleSync || fullSync || wasLimitedByPreviousPlan;
+    // wasLimitedByPreviousPlan handled separately by performUpgradeSync
+    const isFullSync = isFirstSync || isStaleSync || fullSync;
 
     const userEmail = (account.gmail_email || email).toLowerCase();
     const syncType = isFullSync ? 'full' : 'incremental';
@@ -236,7 +236,11 @@ async function handler(
       return await performGmailInitialBatch(res, user.userId, account.id, accessToken, userEmail, email, planLimits.emailProcessingLimit);
     }
 
-    if (isFullSync) {
+    if (wasLimitedByPreviousPlan && !isFirstSync && !isStaleSync && !fullSync) {
+      // ==================== UPGRADE SYNC ====================
+      // Keep existing emails, only fetch new ones beyond old plan limit
+      return await performUpgradeSync(res, user.userId, account.id, accessToken, userEmail, planLimits.emailProcessingLimit, email);
+    } else if (isFullSync) {
       // ==================== FULL SYNC ====================
       // Delete all existing data and rebuild from scratch
       return await performFullSync(res, user.userId, account.id, accessToken, userEmail, planLimits.emailProcessingLimit, email);
@@ -511,6 +515,195 @@ async function performFullSync(
     deletedEmails: 0,
     message: 'Full sync completed successfully',
     syncType: 'full'
+  });
+}
+
+/**
+ * Upgrade Sync: User upgraded their plan. Keep existing emails, only fetch new ones.
+ * Fetches all message IDs from Gmail, diffs against DB, and only downloads new messages.
+ * Progress bar starts from existing email count so it feels continuous.
+ */
+async function performUpgradeSync(
+  res: VercelResponse,
+  userId: string,
+  accountId: string,
+  accessToken: string,
+  userEmail: string,
+  emailLimit: number,
+  email: string
+) {
+  const fetchLimit = Math.min(10000, Math.ceil(emailLimit * 1.1));
+
+  // Step 1: Fetch all message IDs from Gmail
+  const allMessageRefs: Array<{ id: string; threadId: string }> = [];
+  let pageToken: string | undefined;
+  const query = '-in:sent -in:drafts -in:trash -in:spam';
+
+  while (allMessageRefs.length < fetchLimit) {
+    const response = await listMessages(accessToken, {
+      maxResults: Math.min(100, fetchLimit - allMessageRefs.length),
+      pageToken,
+      q: query,
+    });
+
+    if (!response.messages || response.messages.length === 0) break;
+    allMessageRefs.push(...response.messages);
+
+    if (!response.nextPageToken) break;
+    pageToken = response.nextPageToken;
+  }
+
+  if (allMessageRefs.length === 0) {
+    return res.status(200).json({
+      success: true,
+      totalSenders: 0,
+      totalEmails: 0,
+      message: 'No emails found',
+      syncType: 'upgrade'
+    });
+  }
+
+  // Step 2: Get existing message IDs from DB to find the diff
+  const existingIds = new Set<string>();
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('emails')
+      .select('gmail_message_id')
+      .eq('email_account_id', accountId)
+      .range(offset, offset + 999);
+    if (error || !data || data.length === 0) break;
+    for (const row of data) existingIds.add(row.gmail_message_id);
+    if (data.length < 1000) break;
+    offset += 1000;
+  }
+
+  // Step 3: Filter to only new message IDs
+  const newMessageRefs = allMessageRefs.filter(m => !existingIds.has(m.id));
+  const existingCount = existingIds.size;
+
+  // Write progress: total = all Gmail messages, starting from existing count
+  await supabase.from('email_accounts').update({
+    sync_progress_total: allMessageRefs.length,
+    sync_progress_current: existingCount
+  }).eq('id', accountId);
+
+  if (newMessageRefs.length === 0) {
+    // No new messages to fetch — just update stats
+    await supabase.from('email_accounts').update({
+      total_emails: existingCount,
+      last_synced: new Date().toISOString(),
+      sync_progress_total: null,
+      sync_progress_current: null,
+    }).eq('id', accountId);
+
+    return res.status(200).json({
+      success: true,
+      totalEmails: existingCount,
+      addedEmails: 0,
+      message: 'Already up to date',
+      syncType: 'upgrade'
+    });
+  }
+
+  // Step 4: Fetch details only for new messages
+  const newMessageIds = newMessageRefs.map(m => m.id);
+  const requiredHeaders = ['From', 'Date', 'Subject', 'List-Unsubscribe', 'List-Unsubscribe-Post'];
+  let lastProgressUpdate = 0;
+  const messages = await batchGetMessages(accessToken, newMessageIds, 'metadata', requiredHeaders,
+    (processed, total) => {
+      if (processed - lastProgressUpdate >= 50 || processed === total) {
+        lastProgressUpdate = processed;
+        supabase.from('email_accounts').update({
+          sync_progress_current: existingCount + processed
+        }).eq('id', accountId).then(() => {});
+      }
+    }
+  );
+
+  // Step 5: Process new messages
+  const emailsToInsert: any[] = [];
+  for (const msg of messages) {
+    if (emailsToInsert.length + existingCount >= emailLimit) break;
+
+    const labels = msg.labelIds || [];
+    if (labels.includes('SPAM') || labels.includes('TRASH')) continue;
+
+    const fromHeader = msg.payload?.headers?.find((h: any) => h.name === 'From')?.value || '';
+    const subjectHeader = msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value || '';
+    const unsubscribeHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe')?.value || '';
+    const unsubscribePostHeader = msg.payload?.headers?.find((h: any) => h.name === 'List-Unsubscribe-Post')?.value || '';
+
+    const { senderEmail, senderName } = parseSender(fromHeader);
+    if (senderEmail === userEmail || !senderEmail) continue;
+
+    const internalDateMs = parseInt(msg.internalDate);
+    const receivedAt = new Date(internalDateMs).toISOString();
+    const isUnread = labels.includes('UNREAD');
+
+    emailsToInsert.push({
+      gmail_message_id: msg.id,
+      email_account_id: accountId,
+      sender_email: senderEmail,
+      sender_name: senderName,
+      subject: subjectHeader || '(No Subject)',
+      snippet: msg.snippet || '',
+      received_at: receivedAt,
+      is_unread: isUnread,
+      thread_id: msg.threadId,
+      labels,
+    });
+  }
+
+  // Collect affected sender keys for recalculation
+  const affectedSenderKeys = new Set<string>();
+  for (const e of emailsToInsert) {
+    affectedSenderKeys.add(`${e.sender_email}|||${e.sender_name}`);
+  }
+
+  // Step 6: Insert only new emails (keep existing ones)
+  for (let i = 0; i < emailsToInsert.length; i += BATCH_SIZE) {
+    const batch = emailsToInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('emails').insert(batch);
+    if (error) console.error('Upgrade sync email insert error:', error.message);
+  }
+
+  // Step 7: Recalculate sender stats for affected senders (preserves unsubscribe links for unchanged senders)
+  await batchRecalculateSenderStats(userId, accountId, affectedSenderKeys);
+
+  // Step 8: Update account
+  const totalEmails = existingCount + emailsToInsert.length;
+  let historyId: string | undefined;
+  try {
+    const profile = await getProfile(accessToken);
+    historyId = profile.historyId;
+  } catch (e) {
+    console.warn('Could not get historyId:', e);
+  }
+
+  await supabase.from('email_accounts').update({
+    total_emails: totalEmails,
+    last_synced: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    sync_progress_total: null,
+    sync_progress_current: null,
+    ...(historyId && { history_id: historyId })
+  }).eq('id', accountId);
+
+  await supabase.from('activity_log').insert({
+    user_id: userId,
+    action_type: 'email_sync',
+    description: `Upgrade sync: ${emailsToInsert.length.toLocaleString()} new emails added (${totalEmails.toLocaleString()} total)`,
+    metadata: { email, syncType: 'upgrade', totalEmails, addedEmails: emailsToInsert.length }
+  });
+
+  return res.status(200).json({
+    success: true,
+    totalSenders: 0,
+    totalEmails,
+    addedEmails: emailsToInsert.length,
+    message: `Upgrade sync: added ${emailsToInsert.length} new emails`,
+    syncType: 'upgrade'
   });
 }
 
