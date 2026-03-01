@@ -18,7 +18,7 @@ function escapeHtml(str: string): string {
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <noreply@cleaninbox.ca>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'CleanInbox <support@cleaninbox.ca>';
 const FRONTEND_URL = process.env.VITE_APP_URL || process.env.FRONTEND_URL || 'https://cleaninbox.vercel.app';
 
 interface EmailOptions {
