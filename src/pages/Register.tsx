@@ -1,9 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MailIcon, LockIcon, UserIcon, ShieldIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PasswordStrength from '../components/auth/PasswordStrength';
-import Turnstile, { TurnstileRef } from '../components/auth/Turnstile';
+import Turnstile from '../components/auth/Turnstile';
 import { API_URL } from '../lib/api';
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -16,7 +16,7 @@ const Register = () => {
   });
   const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
-  const turnstileRef = useRef<TurnstileRef>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const {
     signup
@@ -90,9 +90,9 @@ const Register = () => {
       await signup(formData.email, formData.password, formData.firstName, formData.lastName, captchaToken);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
-      // Reset captcha on error so user can try again
+      // Remount captcha widget so user can try again
       setCaptchaToken('');
-      turnstileRef.current?.reset();
+      setCaptchaKey(k => k + 1);
     } finally {
       setLoading(false);
     }
@@ -186,7 +186,7 @@ const Register = () => {
                   </div>
                   <div className="flex justify-center">
                     <Turnstile
-                      ref={turnstileRef}
+                      key={captchaKey}
                       onVerify={setCaptchaToken}
                       onExpire={() => setCaptchaToken('')}
                       onError={() => setCaptchaToken('')}
