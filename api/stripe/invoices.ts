@@ -74,20 +74,39 @@ export default async function handler(
       return res.status(200).json({ invoices: [] });
     }
 
-    // Fetch invoices from all customer records
+    // Fetch invoices and one-time charges from all customer records
     const allInvoices: Stripe.Invoice[] = [];
+    const allCharges: Stripe.Charge[] = [];
+    const invoiceChargeIds = new Set<string>();
+
     for (const customerId of customerIds) {
       const invoices = await stripe.invoices.list({
         customer: customerId,
         limit: 50,
       });
       allInvoices.push(...invoices.data);
+      // Track charge IDs from invoices to avoid duplicates
+      for (const inv of invoices.data) {
+        if (inv.charge) {
+          invoiceChargeIds.add(typeof inv.charge === 'string' ? inv.charge : inv.charge.id);
+        }
+      }
+
+      // Fetch one-time charges (Quick Clean payments)
+      const charges = await stripe.charges.list({
+        customer: customerId,
+        limit: 50,
+      });
+      for (const charge of charges.data) {
+        // Only include charges not already linked to an invoice
+        if (charge.paid && !charge.invoice && !invoiceChargeIds.has(charge.id)) {
+          allCharges.push(charge);
+        }
+      }
     }
 
-    // Sort by date, newest first
-    allInvoices.sort((a, b) => b.created - a.created);
-
-    const mapped = allInvoices.map((inv) => ({
+    // Map invoices
+    const mappedInvoices = allInvoices.map((inv) => ({
       id: inv.id,
       number: inv.number,
       amount_paid: inv.amount_paid,
@@ -98,7 +117,22 @@ export default async function handler(
       hosted_invoice_url: inv.hosted_invoice_url,
     }));
 
-    return res.status(200).json({ invoices: mapped });
+    // Map one-time charges
+    const mappedCharges = allCharges.map((charge) => ({
+      id: charge.id,
+      number: null,
+      amount_paid: charge.amount,
+      currency: charge.currency,
+      status: 'paid',
+      created: charge.created,
+      invoice_pdf: charge.receipt_url,
+      hosted_invoice_url: charge.receipt_url,
+    }));
+
+    // Combine and sort by date, newest first
+    const combined = [...mappedInvoices, ...mappedCharges].sort((a, b) => b.created - a.created);
+
+    return res.status(200).json({ invoices: combined });
   } catch (error: any) {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Invalid or expired token' });
