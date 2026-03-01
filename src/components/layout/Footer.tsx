@@ -31,9 +31,9 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <a href="#" className="text-gray-300 hover:text-white">
+                <Link to="/pricing#faq" className="text-gray-300 hover:text-white">
                   FAQ
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -42,11 +42,6 @@ const Footer = () => {
               Company
             </h3>
             <ul className="mt-4 space-y-2">
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white">
-                  About Us
-                </a>
-              </li>
               <li>
                 <Link to="/contact" className="text-gray-300 hover:text-white">
                   Contact
