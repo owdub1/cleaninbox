@@ -32,6 +32,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaKey, setCaptchaKey] = useState(0);
+  const [lockedOut, setLockedOut] = useState(false);
   const {
     login
   } = useAuth();
@@ -82,10 +83,16 @@ const Login = () => {
       setLoading(true);
       await login(formData.email, formData.password, formData.rememberMe, captchaToken);
     } catch (err: any) {
-      setError(err.message || 'Failed to login');
-      // Remount captcha widget so user can try again
-      setCaptchaToken('');
-      setCaptchaKey(k => k + 1);
+      const msg = err.message || 'Failed to login';
+      if (msg.includes('Too many requests') || msg.includes('temporarily locked')) {
+        setError('Too many failed attempts. Please try again in 30 minutes.');
+        setLockedOut(true);
+      } else {
+        setError(msg);
+        // Remount captcha widget so user can try again
+        setCaptchaToken('');
+        setCaptchaKey(k => k + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -120,7 +127,7 @@ const Login = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <MailIcon className="h-5 w-5 text-gray-400" />
                       </div>
-                      <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" placeholder="you@example.com" />
+                      <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} disabled={lockedOut} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 disabled:opacity-50" placeholder="you@example.com" />
                     </div>
                   </div>
                   <div>
@@ -136,7 +143,7 @@ const Login = () => {
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <LockIcon className="h-5 w-5 text-gray-400" />
                       </div>
-                      <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400" placeholder="••••••••" />
+                      <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} disabled={lockedOut} className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 disabled:opacity-50" placeholder="••••••••" />
                     </div>
                   </div>
                   <div className="flex items-center">
@@ -161,8 +168,8 @@ const Login = () => {
                     />
                   </div>
                   <div>
-                    <button type="submit" disabled={loading || !captchaToken} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                      {loading ? 'Signing in...' : 'Sign in'}
+                    <button type="submit" disabled={loading || !captchaToken || lockedOut} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {loading ? 'Signing in...' : lockedOut ? 'Account locked' : 'Sign in'}
                     </button>
                   </div>
                 </div>
