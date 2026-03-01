@@ -410,7 +410,7 @@ const Dashboard = () => {
       )}
 
       {/* Friendly Upgrade Banner for Free Users */}
-      {isFreeUser && !isExpired && !isPastDue && (
+      {isFreeUser && !isExpired && !isPastDue && !subscriptionLoading && (
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100 dark:from-gray-800 dark:to-gray-800 dark:border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
