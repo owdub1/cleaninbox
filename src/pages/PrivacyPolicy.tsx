@@ -11,11 +11,7 @@ const PrivacyPolicy = () => {
             </h1>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Last Updated:{' '}
-              {new Date().toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })}
+March 1, 2026
             </p>
           </div>
         </div>
@@ -57,12 +53,11 @@ const PrivacyPolicy = () => {
               </ul>
               <h3 className="text-lg font-medium mb-2">Email Data</h3>
               <p className="mb-4">
-                When you use our email management services, we process but do
-                not store:
+                When you use our email management services, we store the
+                following to power your dashboard and cleanup tools:
               </p>
               <ul className="list-disc pl-6 mb-4">
-                <li>Email metadata (sender, subject lines, dates)</li>
-                <li>Email content (only temporarily during processing)</li>
+                <li>Email metadata (sender names, email addresses, subject lines, dates)</li>
                 <li>Subscription information</li>
               </ul>
               <div className="bg-green-50 dark:bg-green-900/30 border border-green-100 dark:border-green-800 rounded-md p-4 my-6 flex items-start">
@@ -100,7 +95,7 @@ const PrivacyPolicy = () => {
               </p>
               <ul className="list-disc pl-6 mb-4">
                 <li>Using OAuth for secure authentication</li>
-                <li>End-to-end encryption for all data transfers</li>
+                <li>TLS/SSL encryption for all data transfers</li>
                 <li>Regular security assessments</li>
                 <li>Strict access controls for our staff</li>
               </ul>
@@ -149,7 +144,19 @@ const PrivacyPolicy = () => {
                 8. Third-Party Services
               </h2>
               <p className="mb-4">
-                Our service may contain links to third-party websites or
+                We use the following third-party services to operate CleanInbox:
+              </p>
+              <ul className="list-disc pl-6 mb-4">
+                <li>Supabase — database hosting and storage</li>
+                <li>Stripe — payment processing</li>
+                <li>Resend — transactional email delivery</li>
+                <li>Upstash — rate limiting infrastructure</li>
+                <li>Cloudflare — CAPTCHA verification and security</li>
+                <li>Google — Gmail API for email account access</li>
+                <li>Microsoft — Outlook API for email account access</li>
+              </ul>
+              <p className="mb-4">
+                Our service may also contain links to third-party websites or
                 services that are not owned or controlled by CleanInbox. We have
                 no control over, and assume no responsibility for, the content,
                 privacy policies, or practices of any third-party websites or

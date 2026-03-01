@@ -287,7 +287,7 @@ const Home = () => {
                   <CheckIcon className="h-6 w-6 text-green-500 mt-1 flex-shrink-0" />
                   <div className="ml-3">
                     <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                      No Data Retention
+                      You Control Your Data
                     </h3>
                     <p className="mt-1 text-gray-600 dark:text-gray-400">
                       You can delete your account and all stored data at any time from your settings.

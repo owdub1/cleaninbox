@@ -184,7 +184,7 @@ const Contact = () => {
                 Which email providers do you support?
               </h3>
               <p className="mt-4 text-gray-600 dark:text-gray-400">
-                We currently support Gmail. Support for Outlook and Yahoo is coming soon.
+                We currently support Gmail and Outlook.
               </p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 p-8 rounded-lg">

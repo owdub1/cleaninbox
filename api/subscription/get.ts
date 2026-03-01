@@ -59,8 +59,7 @@ export const PLAN_LIMITS = {
       'Sync every hour',
       'Faster unsubscribe speed',
       'Priority email support',
-      'Advanced analytics',
-      'Scheduled cleanup'
+      'Advanced analytics'
     ]
   },
   unlimited: {
@@ -73,11 +72,8 @@ export const PLAN_LIMITS = {
       'Connect up to 3 email accounts',
       'Unlimited syncing',
       'Fastest unsubscribe speed',
-      'Priority phone & email support',
-      'Advanced analytics',
-      'Scheduled cleanup',
-      'Custom domain support',
-      'Email cleanup service (since account creation)'
+      'Priority email support',
+      'Advanced analytics'
     ]
   },
   onetime: {

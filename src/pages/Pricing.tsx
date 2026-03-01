@@ -10,7 +10,7 @@ const Pricing = () => {
     name: 'Basic',
     description: 'For individuals with light email usage',
     price: billingCycle === 'monthly' ? '$7.99' : '$6.39',
-    features: ['Import up to 5,000 emails total', 'Connect 1 email account', 'Delete emails by sender', 'Email support', 'Sender statistics and email counts'],
+    features: ['Import up to 5,000 emails total', 'Connect 1 email account', 'Sync every 4 hours', 'Delete emails by sender', 'Email support', 'Basic analytics'],
     notIncluded: [],
     popular: false,
     gradient: 'from-blue-500 to-cyan-500'
@@ -18,7 +18,7 @@ const Pricing = () => {
     name: 'Pro',
     description: 'For professionals with moderate email volume',
     price: billingCycle === 'monthly' ? '$14.99' : '$11.99',
-    features: ['Import up to 15,000 emails total', 'Connect up to 2 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
+    features: ['Import up to 15,000 emails total', 'Connect up to 2 email accounts', 'Sync every hour', 'Faster unsubscribe speed', 'Priority email support', 'Advanced analytics'],
     notIncluded: [],
     popular: true,
     gradient: 'from-orange-500 to-red-600'
@@ -26,7 +26,7 @@ const Pricing = () => {
     name: 'Unlimited',
     description: 'For businesses with high email volume',
     price: billingCycle === 'monthly' ? '$24.99' : '$19.99',
-    features: ['Unlimited email importing', 'Connect up to 3 email accounts', 'One-click unsubscribe', 'Email support', 'Detailed sender insights and Top Senders view'],
+    features: ['Unlimited email importing', 'Connect up to 3 email accounts', 'Unlimited syncing', 'Fastest unsubscribe speed', 'Priority email support', 'Advanced analytics'],
     notIncluded: [],
     popular: false,
     gradient: 'from-gray-800 to-gray-900'
@@ -149,7 +149,7 @@ const Pricing = () => {
           <div className="space-y-8">
             {[{
             question: 'Can I change plans later?',
-            answer: 'Yes, you can upgrade or downgrade your plan at any time. Changes will be applied to your next billing cycle.'
+            answer: 'Yes, you can upgrade or downgrade your plan at any time. Upgrades take effect immediately and you only pay the prorated difference.'
           }, {
             question: 'What happens when I reach my email processing limit?',
             answer: 'Once you reach your email import limit, you can upgrade your plan to process more emails.'

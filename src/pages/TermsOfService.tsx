@@ -11,11 +11,7 @@ const TermsOfService = () => {
             </h1>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Last Updated:{' '}
-              {new Date().toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })}
+March 1, 2026
             </p>
           </div>
         </div>
@@ -113,7 +109,7 @@ const TermsOfService = () => {
               </h2>
               <p className="mb-4">
                 These Terms shall be governed and construed in accordance with
-                the laws of [Your Jurisdiction], without regard to its conflict
+                the laws of the Province of Quebec, Canada, without regard to its conflict
                 of law provisions.
               </p>
               <h2 className="text-xl font-semibold mb-4 mt-8">

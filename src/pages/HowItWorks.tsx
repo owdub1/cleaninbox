@@ -59,11 +59,11 @@ const HowItWorks = () => {
                 <CheckCircleIcon className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                3. Unsubscribe Instantly
+                3. Clean Up Your Inbox
               </h3>
               <p className="mt-4 text-gray-600 dark:text-gray-400">
-                Click the unsubscribe button next to any sender you no longer
-                want to hear from. We'll handle the rest automatically.
+                Delete unwanted emails in bulk or unsubscribe from senders you
+                no longer want to hear from. We'll handle the rest automatically.
               </p>
             </div>
           </div>
@@ -275,7 +275,7 @@ const HowItWorks = () => {
                   <li className="flex items-start">
                     <CheckIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="ml-3 text-gray-700 dark:text-gray-300">
-                      No email data is stored on our servers
+                      No email bodies or attachments are stored on our servers
                     </span>
                   </li>
                 </ul>
@@ -288,11 +288,11 @@ const HowItWorks = () => {
                   Step 3
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Unsubscribe & Verify
+                  Delete & Unsubscribe
                 </h3>
                 <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                  When you click "Unsubscribe", we handle the entire process
-                  automatically and verify it worked.
+                  Delete unwanted emails in bulk by sender, or unsubscribe from
+                  mailing lists with one click.
                 </p>
                 <ul className="mt-6 space-y-4">
                   <li className="flex items-start">
