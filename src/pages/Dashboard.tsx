@@ -814,29 +814,17 @@ const Dashboard = () => {
                                     {invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'}
                                   </span>
                                 </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-right space-x-3">
-                                  {invoice.hosted_invoice_url && (
+                                <td className="px-4 py-4 whitespace-nowrap text-right">
+                                  {(invoice.hosted_invoice_url || invoice.invoice_pdf) ? (
                                     <a
-                                      href={invoice.hosted_invoice_url}
+                                      href={invoice.hosted_invoice_url || invoice.invoice_pdf}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
                                     >
-                                      View
-                                    </a>
-                                  )}
-                                  {invoice.invoice_pdf && (
-                                    <a
-                                      href={invoice.invoice_pdf}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
-                                    >
-                                      <DownloadIcon className="h-4 w-4 mr-1" />
                                       PDF
                                     </a>
-                                  )}
-                                  {!invoice.hosted_invoice_url && !invoice.invoice_pdf && (
+                                  ) : (
                                     <span className="text-sm text-gray-400">-</span>
                                   )}
                                 </td>
