@@ -1047,7 +1047,7 @@ const Dashboard = () => {
               <div className="mt-5 sm:mt-6 flex flex-col space-y-3">
                 <button type="button" className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-yellow-500 to-red-600 text-base font-medium text-white hover:from-yellow-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 sm:text-sm" onClick={() => {
               setShowEmailLimitModal(false);
-              handlePlanSwitch('unlimited');
+              navigate('/pricing');
             }}>
                   Upgrade My Plan
                 </button>
