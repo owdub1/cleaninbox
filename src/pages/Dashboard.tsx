@@ -43,11 +43,16 @@ const Dashboard = () => {
       // Remove the query param from the URL
       searchParams.delete('upgraded');
       setSearchParams(searchParams, { replace: true });
-      // Auto-hide the toast after 3 seconds
+    }
+  }, [searchParams, setSearchParams]);
+
+  // Auto-hide upgrade toast after 3 seconds
+  useEffect(() => {
+    if (showUpgradeSuccess) {
       const timer = setTimeout(() => setShowUpgradeSuccess(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [searchParams, setSearchParams]);
+  }, [showUpgradeSuccess]);
 
   const navigate = useNavigate();
   const {
