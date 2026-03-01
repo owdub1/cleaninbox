@@ -71,7 +71,7 @@ const Footer = () => {
                 </div>
                 <div className="flex items-center text-green-400 mt-2">
                   <LockIcon className="h-5 w-5 mr-2" />
-                  <span className="text-sm">End-to-end encrypted</span>
+                  <span className="text-sm">TLS/SSL encrypted</span>
                 </div>
               </li>
             </ul>

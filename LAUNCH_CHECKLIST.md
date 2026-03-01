@@ -16,7 +16,7 @@ These are actual problems in the code that should be fixed.
 - [x] **Remove frontend discount code** — fixed in `9fb7dbd` (removed `clean25` from Checkout.tsx)
 - [x] **Harden account deletion** — fixed in `9fb7dbd` (Gmail/Outlook tokens revoked before DB deletion)
 - [x] **Shorten access token expiry** — fixed in `00cd8ba` (7 days → 15 minutes, env-configurable)
-- [x] **CSRF protection on POST endpoints** — fixed in `00cd8ba` (12 sensitive endpoints + frontend sends token header)
+- [x] **CSRF protection on POST endpoints** — removed in `b891757` (SameSite=Strict + CORS already prevents CSRF)
 - [x] **Tighten rate limits** — fixed in `00cd8ba` (login 5/15min, password reset 3/hr)
 - [x] **SSRF protection on unsubscribe** — fixed in `00cd8ba` (block private IPs, non-HTTP schemes)
 - [x] **Server-side email account limits** — fixed in `00cd8ba` (Gmail/Outlook callbacks check plan limits)
@@ -25,21 +25,35 @@ These are actual problems in the code that should be fixed.
 - [x] **Move email.ts out of frontend** — fixed in `00cd8ba` (merged src/lib/email.ts into api/lib/email.ts)
 - [x] **HTTP-only cookies for tokens** — fixed in `c509e0c` (full auth rewrite: localStorage → HTTP-only cookies)
 - [x] **Remove OAuth tokens from URL fragment** — fixed in `c509e0c` (OAuth callback now uses `?success=true`, no tokens in URL)
+- [x] **Railway security headers** — fixed in `50d0c38` (added security headers middleware to Express server)
+- [x] **Stripe webhook error sanitization** — fixed in `50d0c38` (no longer leaks err.message)
 
-### Key Rotation (Secrets Were Exposed in Git History)
+### Key Rotation (Secrets Were Exposed)
 - [x] **JWT_SECRET** — rotated
 - [x] **JWT_REFRESH_SECRET** — rotated
 - [x] **RESEND_API_KEY** — rotated
 - [x] **GMAIL_CLIENT_SECRET** — rotated
 - [x] **GMAIL_TOKEN_ENCRYPTION_KEY** — rotated
-- [ ] **Supabase keys** — `VITE_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` should be rotated. Lower risk (protected by Row Level Security), but the old keys are in git history. Requires contacting Supabase support or creating a new project.
-- [ ] **Stripe keys** — currently in test/sandbox mode so no risk. When switching to live mode, use fresh keys (don't reuse test keys).
-- [ ] **Outlook keys** — not set up yet. When you add Outlook support, set `OUTLOOK_CLIENT_SECRET` and `OUTLOOK_TOKEN_ENCRYPTION_KEY` on Vercel.
+- [x] **OUTLOOK_TOKEN_ENCRYPTION_KEY** — rotated
+- [x] **STRIPE_SECRET_KEY** — rotated
+- [x] **STRIPE_WEBHOOK_SECRET** — rotated
+- [x] **OUTLOOK_CLIENT_SECRET** — rotated
+- [ ] **Supabase keys** — `VITE_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` should be rotated. Lower risk (protected by Row Level Security), but old keys were exposed. Requires contacting Supabase support or creating a new project.
+- [ ] **Upstash Redis keys** — low priority, rate limiting only
 
 ### Code Cleanup
 - [x] **Remove console.logs from API code** — removed all `console.log` from 10 API files. Kept `console.error` and `console.warn` for real error handling.
 - [x] **Delete unused CleanInbox.tsx** — deleted `src/pages/CleanInbox.tsx` and its redirect route from `App.tsx`.
 - [x] **Add a 404 page** — added `src/pages/NotFound.tsx` with catch-all `*` route in `App.tsx`.
+
+### Content Accuracy Fixes
+- [x] **Terms of Service** — fixed "[Your Jurisdiction]" placeholder → Province of Quebec, Canada. Hardcoded "Last Updated" date.
+- [x] **Privacy Policy** — fixed "not stored" claim (metadata IS stored), "E2E encryption" → "TLS/SSL", hardcoded date, added sub-processor disclosures (Supabase, Stripe, Resend, Upstash, Cloudflare, Google, Microsoft).
+- [x] **How It Works** — fixed "No email data stored" → "No email bodies or attachments stored". Added delete as primary action alongside unsubscribe.
+- [x] **Pricing page** — aligned features with PLAN_LIMITS. Fixed FAQ "next billing cycle" → "upgrades take effect immediately".
+- [x] **Contact page** — updated "Gmail only, Outlook coming soon" → "Gmail and Outlook".
+- [x] **Home page** — "No Data Retention" → "You Control Your Data".
+- [x] **PLAN_LIMITS** — removed fake features (Scheduled cleanup, Custom domain support, Priority phone support).
 
 ---
 
@@ -48,38 +62,53 @@ These are actual problems in the code that should be fixed.
 Go through each of these on the live production site. Check them off as you go.
 
 ### Account Flows
-- [ ] Sign up with a new email → verification email arrives → click link → account verified
-- [ ] Log in with correct password → works
-- [ ] Log in with wrong password 5 times → account locks for 30 minutes
-- [ ] Request password reset → email arrives → click link → set new password → can log in
-- [ ] Delete account → all data gone
+- [x] Sign up with a new email → verification email arrives → click link → account verified
+- [x] Log in with correct password → works
+- [x] Log in with wrong password 5+ times → rate limiter blocks with "try again in 30 minutes" + form disabled
+- [x] Request password reset → email arrives → click link → set new password → can log in
+- [x] Delete account → all data gone, logged out, can't log back in
 
 ### Email Features
-- [ ] Connect Gmail → OAuth flow completes → emails sync → senders appear
-- [ ] Connect Outlook → same as above
-- [ ] Archive emails → they actually move in Gmail/Outlook
-- [ ] Delete emails → they actually get deleted
-- [ ] Unsubscribe from a sender → works
-- [ ] As a free user, do 5 cleanup actions → 6th is blocked with upgrade prompt
-- [ ] Disconnect Gmail/Outlook → access revoked
+- [x] Connect Gmail → OAuth flow completes → emails sync → senders appear
+- [x] Connect Outlook → account limit enforced on free plan (blocks 2nd account)
+- [x] Delete emails → they actually get deleted in Gmail
+- [x] Unsubscribe from a sender → works (tested previously)
+- [x] As a free user, do 5 cleanup actions → 6th is blocked with upgrade prompt
+- [x] Disconnect Gmail → access revoked
 
 ### Payments
-- [ ] Buy a monthly plan → Stripe checkout → subscription shows as active → cleanup limits removed
-- [ ] Buy an annual plan → same
-- [ ] Buy Quick Clean (one-time $19.99) → 30-day access granted
-- [ ] Upgrade from Basic to Pro → price prorated correctly
-- [ ] Cancel subscription → access continues until end of billing period
-- [ ] Use Stripe test card `4000000000000341` → payment fails → proper error shown
+- [x] Declined credit cards show proper error messages (tested 4000000000000002 + 4000000000009995)
+- [x] Buy Pro plan (monthly) → Stripe checkout → subscription shows as active
+- [x] Upgrade from Pro to Unlimited → price prorated correctly (CA$7.99 proration invoice)
+- [x] Cancel subscription → access continues until end of billing period, shows "Access Until" date
+- [x] Buy Quick Clean (one-time $19.99) → 30-day access granted, shows "Expires" label
+- [x] Quick Clean shows in payment history
+- [x] Quick Clean dashboard hides Manage Billing/Cancel buttons
+- [x] Payment history shows all invoices with PDF links
+
+### Bugs Fixed During Testing
+- [x] **CAPTCHA not resetting after failed login** — fixed with key remount approach (`e04337e`)
+- [x] **Lockout UX** — shows "try again in 30 minutes" + disables form (`f329572`)
+- [x] **Upgrade button went to Unlimited** — now goes to pricing page (`b4e466c`)
+- [x] **Success banner not auto-dismissing** — separated timer into own useEffect (`7369385`)
+- [x] **Quick Clean missing from payment history** — added checkout session fetch (`0342595`)
+- [x] **Duplicate charges in payment history** — removed charge query, use checkout sessions only (`0342595`)
+- [x] **Quick Clean showing "Next Billing"** — shows "Expires" instead (`8795669`)
+- [x] **Manage Billing/Cancel for Quick Clean** — hidden for one-time plans (`8795669`)
+- [x] **Free plan banner flash on hard refresh** — hidden while subscription loading (`f22dbb8`)
+- [x] **From email** — changed to support@cleaninbox.ca (`b58a46b`)
 
 ### Security Checks
 - [x] Try a POST request without CSRF token → should get rejected (403) — confirmed
 - [x] Hit a rate-limited endpoint many times fast → should get blocked (429) — confirmed (forgot-password, 4th request blocked)
 - [x] CAPTCHA shows on signup and login — confirmed (using Turnstile test keys, swap for real keys before launch)
 - [x] Visit securityheaders.com with your production URL → check for A or A+ rating — Grade A confirmed
+- [x] Full security audit — all measures intact after restructuring (`50d0c38`)
 
 ### Pages & Legal
-- [ ] `/terms-of-service` loads and reads correctly
-- [ ] `/privacy-policy` loads and reads correctly
+- [x] All static pages audited for accuracy and fixed
+- [x] `/terms-of-service` loads correctly with proper jurisdiction
+- [x] `/privacy-policy` loads correctly with accurate claims
 - [ ] Cookie consent banner appears for first-time visitors
 - [ ] All footer links work (Terms, Privacy, Contact)
 - [ ] Contact form sends a message successfully
@@ -98,9 +127,16 @@ Go through each of these on the live production site. Check them off as you go.
 - [ ] `EMAIL_VERIFICATION_TOKEN_EXPIRY` (should be `24h`)
 - [ ] Stripe webhook URL in Stripe Dashboard points to your production domain
 
+### Not Tested (Hard to Simulate)
+- [ ] Annual billing (same checkout flow as monthly, different interval)
+- [ ] Failed payment renewal / past-due messaging (requires Stripe to fail a renewal)
+- [ ] Account lockout full retest (rate limiter window needs to expire first)
+
 ### Final Deploy
+- [ ] Switch Stripe from sandbox to live mode with fresh keys
+- [ ] Swap Turnstile test keys for real production keys
 - [ ] Deploy to Vercel from `main`
-- [ ] Test the live URL end-to-end (signup → connect Gmail → archive an email → done)
+- [ ] Test the live URL end-to-end (signup → connect Gmail → delete emails → done)
 
 ---
 
@@ -112,7 +148,7 @@ Go through each of these on the live production site. Check them off as you go.
 - [x] **Check past-due subscriptions** — fixed in `e3a7b33` (past-due users see "payment failed" messaging, 402 `PAYMENT_PAST_DUE` on cleanup endpoints, red banner + badge on Dashboard)
 
 ### User Experience
-- [ ] **Add skeleton loaders** — some pages might flash empty before data loads. Add loading animations to the pricing page and dashboard.
+- [x] **Add skeleton loaders** — dashboard shows pulsing grey placeholders while data loads (`d6852cd`)
 - [ ] **Improve accessibility** — add `aria-label` attributes to buttons (especially icon-only buttons), `alt` text on images, and make sure everything works with keyboard navigation.
 
 ### SEO & Marketing
