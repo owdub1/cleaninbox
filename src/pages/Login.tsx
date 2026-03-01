@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { MailIcon, LockIcon, UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import Turnstile from '../components/auth/Turnstile';
+import Turnstile, { TurnstileRef } from '../components/auth/Turnstile';
 import { API_URL } from '../lib/api';
 
 // Map OAuth error codes to user-friendly messages
@@ -31,6 +31,7 @@ const Login = () => {
   const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const turnstileRef = useRef<TurnstileRef>(null);
   const {
     login
   } = useAuth();
@@ -82,8 +83,9 @@ const Login = () => {
       await login(formData.email, formData.password, formData.rememberMe, captchaToken);
     } catch (err: any) {
       setError(err.message || 'Failed to login');
-      // Reset captcha on error
+      // Reset captcha on error so user can try again
       setCaptchaToken('');
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -152,6 +154,7 @@ const Login = () => {
                   </div>
                   <div className="flex justify-center">
                     <Turnstile
+                      ref={turnstileRef}
                       onVerify={setCaptchaToken}
                       onExpire={() => setCaptchaToken('')}
                       onError={() => setCaptchaToken('')}

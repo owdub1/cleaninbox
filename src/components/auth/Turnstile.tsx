@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 
 /**
@@ -29,16 +29,28 @@ interface TurnstileProps {
 // Test site key (always passes - replace with your own in production)
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
-export default function Turnstile({
+export interface TurnstileRef {
+  reset: () => void;
+}
+
+const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(({
   onVerify,
   onError,
   onExpire,
   theme: themeProp = 'auto',
   size = 'normal'
-}: TurnstileProps) {
+}, ref) => {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      if (widgetId.current && window.turnstile) {
+        window.turnstile.reset(widgetId.current);
+      }
+    }
+  }));
 
   useEffect(() => {
     // Load Turnstile script if not already loaded
@@ -90,7 +102,9 @@ export default function Turnstile({
   };
 
   return <div ref={containerRef} />;
-}
+});
+
+export default Turnstile;
 
 // Extend Window interface for TypeScript
 declare global {
