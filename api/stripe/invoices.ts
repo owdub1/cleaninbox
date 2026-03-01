@@ -74,10 +74,8 @@ export default async function handler(
       return res.status(200).json({ invoices: [] });
     }
 
-    // Fetch invoices and one-time charges from all customer records
+    // Fetch invoices from all customer records
     const allInvoices: Stripe.Invoice[] = [];
-    const allCharges: Stripe.Charge[] = [];
-    const invoiceChargeIds = new Set<string>();
 
     for (const customerId of customerIds) {
       const invoices = await stripe.invoices.list({
@@ -85,21 +83,35 @@ export default async function handler(
         limit: 50,
       });
       allInvoices.push(...invoices.data);
-      // Track invoice IDs to filter out linked charges
-      for (const inv of invoices.data) {
-        invoiceChargeIds.add(inv.id);
-      }
+    }
 
-      // Fetch one-time charges (Quick Clean payments)
-      const charges = await stripe.charges.list({
-        customer: customerId,
-        limit: 50,
-      });
-      for (const charge of charges.data) {
-        // Only include successful charges not linked to an invoice
-        if (charge.paid && !(charge as any).invoice && !invoiceChargeIds.has(charge.id)) {
-          allCharges.push(charge);
+    // Fetch one-time checkout sessions (Quick Clean payments)
+    const oneTimePayments: { amount: number; currency: string; created: number; receipt_url: string | null }[] = [];
+    const sessions = await stripe.checkout.sessions.list({
+      limit: 50,
+    });
+    for (const session of sessions.data) {
+      if (
+        session.mode === 'payment' &&
+        session.payment_status === 'paid' &&
+        session.metadata?.user_id === decoded.userId
+      ) {
+        // Get the payment intent for the receipt URL
+        let receiptUrl: string | null = null;
+        if (session.payment_intent) {
+          const piId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id;
+          const pi = await stripe.paymentIntents.retrieve(piId, { expand: ['latest_charge'] });
+          const charge = pi.latest_charge;
+          if (charge && typeof charge !== 'string') {
+            receiptUrl = charge.receipt_url;
+          }
         }
+        oneTimePayments.push({
+          amount: session.amount_total || 0,
+          currency: session.currency || 'cad',
+          created: session.created,
+          receipt_url: receiptUrl,
+        });
       }
     }
 
@@ -115,20 +127,20 @@ export default async function handler(
       hosted_invoice_url: inv.hosted_invoice_url,
     }));
 
-    // Map one-time charges
-    const mappedCharges = allCharges.map((charge) => ({
-      id: charge.id,
+    // Map one-time payments
+    const mappedOneTime = oneTimePayments.map((p, i) => ({
+      id: `onetime_${i}`,
       number: null,
-      amount_paid: charge.amount,
-      currency: charge.currency,
+      amount_paid: p.amount,
+      currency: p.currency,
       status: 'paid',
-      created: charge.created,
-      invoice_pdf: charge.receipt_url,
-      hosted_invoice_url: charge.receipt_url,
+      created: p.created,
+      invoice_pdf: p.receipt_url,
+      hosted_invoice_url: p.receipt_url,
     }));
 
     // Combine and sort by date, newest first
-    const combined = [...mappedInvoices, ...mappedCharges].sort((a, b) => b.created - a.created);
+    const combined = [...mappedInvoices, ...mappedOneTime].sort((a, b) => b.created - a.created);
 
     return res.status(200).json({ invoices: combined });
   } catch (error: any) {
