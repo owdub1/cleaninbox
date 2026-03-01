@@ -85,11 +85,9 @@ export default async function handler(
         limit: 50,
       });
       allInvoices.push(...invoices.data);
-      // Track charge IDs from invoices to avoid duplicates
+      // Track invoice IDs to filter out linked charges
       for (const inv of invoices.data) {
-        if (inv.charge) {
-          invoiceChargeIds.add(typeof inv.charge === 'string' ? inv.charge : inv.charge.id);
-        }
+        invoiceChargeIds.add(inv.id);
       }
 
       // Fetch one-time charges (Quick Clean payments)
@@ -98,8 +96,8 @@ export default async function handler(
         limit: 50,
       });
       for (const charge of charges.data) {
-        // Only include charges not already linked to an invoice
-        if (charge.paid && !charge.invoice && !invoiceChargeIds.has(charge.id)) {
+        // Only include successful charges not linked to an invoice
+        if (charge.paid && !(charge as any).invoice && !invoiceChargeIds.has(charge.id)) {
           allCharges.push(charge);
         }
       }
