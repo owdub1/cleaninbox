@@ -73,7 +73,7 @@ const Contact = () => {
                   <MailIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Email</h3>
-                    <p className="mt-1 text-gray-600 dark:text-gray-400">support@cleaninbox.com</p>
+                    <p className="mt-1 text-gray-600 dark:text-gray-400">support@cleaninbox.ca</p>
                   </div>
                 </div>
               </div>

@@ -44,7 +44,7 @@ const Footer = () => {
             <ul className="mt-4 space-y-2">
               <li>
                 <Link to="/contact" className="text-gray-300 hover:text-white">
-                  Contact
+                  Contact Us
                 </Link>
               </li>
             </ul>
