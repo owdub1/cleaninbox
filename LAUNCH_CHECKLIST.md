@@ -174,7 +174,7 @@ These are improvements that would make the app better but aren't required to lau
 ### Low Priority
 - [ ] **Unsubscribe link in our own emails** — Our transactional emails (verification, password reset) should include a standard unsubscribe header so Gmail shows a nice "Unsubscribe" button. Not critical since these aren't marketing emails.
 - [ ] **"Match my system" dark mode** — Right now users can choose light or dark mode. A third option would automatically match whatever their phone/computer is set to.
-- [ ] **Rich Google search results** — Add structured data so Google can show enhanced search results (like FAQ dropdowns, star ratings, etc.) for CleanInbox pages.
+- [x] **Rich Google search results** — Added JSON-LD structured data: Organization + WebSite on Home page, FAQPage on Pricing page. Google can now show FAQ dropdowns and business info in search results.
 
 ### Future Features
 - [ ] **Two-factor authentication (2FA)** — Add an extra security step when logging in (like a code from an authenticator app).

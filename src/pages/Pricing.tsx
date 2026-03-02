@@ -40,7 +40,23 @@ const Pricing = () => {
     features: ['Process up to 3,000 emails', 'Connect 1 email account', 'Standard unsubscribe speed', 'One-time payment', 'Basic analytics', 'Valid for 30 days'],
     cta: 'Buy Now'
   };
-  return <><SEO title="Pricing" description="Choose a CleanInbox plan that fits your needs. Delete unwanted emails, unsubscribe from senders, and keep your inbox clean." /><div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  const faqItems = [
+    { question: 'Can I change plans later?', answer: 'Yes, you can upgrade or downgrade your plan at any time. Upgrades take effect immediately and you only pay the prorated difference.' },
+    { question: 'What happens when I reach my email processing limit?', answer: 'Once you reach your email import limit, you can upgrade your plan to process more emails.' },
+    { question: 'Is there a free trial?', answer: 'Yes! You get 5 free cleanup actions to try the service before purchasing a plan.' },
+    { question: 'How do I cancel my subscription?', answer: 'You can cancel your subscription anytime from your account dashboard. Your service will continue until the end of your current billing period.' },
+    { question: 'What payment methods do you accept?', answer: 'We accept all major credit cards through Stripe.' },
+  ];
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+    })),
+  };
+  return <><SEO title="Pricing" description="Choose a CleanInbox plan that fits your needs. Delete unwanted emails, unsubscribe from senders, and keep your inbox clean." jsonLd={faqJsonLd} /><div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -148,22 +164,7 @@ const Pricing = () => {
             </p>
           </div>
           <div className="space-y-8">
-            {[{
-            question: 'Can I change plans later?',
-            answer: 'Yes, you can upgrade or downgrade your plan at any time. Upgrades take effect immediately and you only pay the prorated difference.'
-          }, {
-            question: 'What happens when I reach my email processing limit?',
-            answer: 'Once you reach your email import limit, you can upgrade your plan to process more emails.'
-          }, {
-            question: 'Is there a free trial?',
-            answer: 'Yes! You get 5 free cleanup actions to try the service before purchasing a plan.'
-          }, {
-            question: 'How do I cancel my subscription?',
-            answer: 'You can cancel your subscription anytime from your account dashboard. Your service will continue until the end of your current billing period.'
-          }, {
-            question: 'What payment methods do you accept?',
-            answer: 'We accept all major credit cards through Stripe.'
-          }].map((faq, index) => <div key={index} className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            {faqItems.map((faq, index) => <div key={index} className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                   {faq.question}
                 </h3>
