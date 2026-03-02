@@ -109,22 +109,22 @@ Go through each of these on the live production site. Check them off as you go.
 - [x] All static pages audited for accuracy and fixed
 - [x] `/terms-of-service` loads correctly with proper jurisdiction
 - [x] `/privacy-policy` loads correctly with accurate claims
-- [ ] Cookie consent banner appears for first-time visitors
-- [ ] All footer links work (Terms, Privacy, Contact)
-- [ ] Contact form sends a message successfully
+- [x] Cookie consent banner appears for first-time visitors
+- [x] All footer links work (Terms, Privacy, Contact)
+- [x] Contact form sends a message successfully
 
-### Environment Variables (Verify in Vercel Dashboard)
-- [ ] `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] `JWT_SECRET` + `JWT_REFRESH_SECRET`
-- [ ] `RESEND_API_KEY` + `FROM_EMAIL`
-- [ ] `VITE_APP_URL` (set to your real domain, NOT localhost)
-- [ ] `VITE_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`
-- [ ] `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `STRIPE_PRODUCT_ID`
-- [ ] `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
-- [ ] `ACCESS_TOKEN_EXPIRY` (optional, defaults to `15m`)
-- [ ] `PASSWORD_RESET_TOKEN_EXPIRY` (should be `1h`)
-- [ ] `EMAIL_VERIFICATION_TOKEN_EXPIRY` (should be `24h`)
+### Environment Variables (Verify in Vercel + Railway Dashboards)
+- [x] `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`
+- [x] `SUPABASE_SERVICE_ROLE_KEY`
+- [x] `JWT_SECRET` + `JWT_REFRESH_SECRET`
+- [x] `RESEND_API_KEY` + `FROM_EMAIL`
+- [x] `VITE_APP_URL` (set to `https://cleaninbox.ca`)
+- [x] `VITE_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`
+- [x] `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` + `STRIPE_PRODUCT_ID`
+- [x] `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+- [x] `ACCESS_TOKEN_EXPIRY` (optional, defaults to `15m`)
+- [x] `PASSWORD_RESET_TOKEN_EXPIRY` (should be `1h`)
+- [x] `EMAIL_VERIFICATION_TOKEN_EXPIRY` (should be `24h`)
 - [ ] Stripe webhook URL in Stripe Dashboard points to your production domain
 
 ### Not Tested (Hard to Simulate)
@@ -149,13 +149,31 @@ Go through each of these on the live production site. Check them off as you go.
 
 ### User Experience
 - [x] **Add skeleton loaders** — dashboard shows pulsing grey placeholders while data loads (`d6852cd`)
-- [ ] **Improve accessibility** — add `aria-label` attributes to buttons (especially icon-only buttons), `alt` text on images, and make sure everything works with keyboard navigation.
+- [x] **Improve accessibility** — 25 fixes across 12 files: aria-labels on icon-only buttons/modals/form inputs, keyboard accessibility on clickable divs, role="dialog" on modals, aria-hidden on decorative SVGs (`0c98aea`)
 
 ### SEO & Marketing
-- [ ] Add Open Graph meta tags (so links look nice when shared on Twitter/Facebook/Slack)
-- [ ] Add Twitter Card meta tags
-- [ ] Add meta descriptions to each page
-- [ ] Add a proper favicon and logo
+- [x] Add Open Graph meta tags (so links look nice when shared on Twitter/Facebook/Slack) — fixed in `cb1105a`
+- [x] Add Twitter Card meta tags — fixed in `cb1105a`
+- [x] Add meta descriptions to each page — fixed in `cb1105a`
+- [x] Add a proper favicon and logo — fixed in `cb1105a` (PNG/ICO/Apple Touch Icon variants generated from SVG)
+- [x] **Add robots.txt** — guides search engine crawlers, blocks `/api/`, `/dashboard`, `/checkout`
+- [x] **Add sitemap.xml** — lists all 9 public pages for search engines
+
+### Legal & Compliance
+- [x] **GDPR data export** — "Export My Data" button on Dashboard settings tab, downloads all user data as JSON
+- [x] **CookieConsent responsive fix** — banner now fits on small phones (was hardcoded `w-96`)
+
+### Medium Priority
+- [ ] **React.lazy code splitting** — all 16 pages loaded eagerly in `App.tsx`, inflating initial bundle
+- [ ] **manifest.json for PWA** — no install prompt or app icon on mobile
+- [ ] **Canonical URLs** — prevent duplicate content across Vercel preview URLs
+- [ ] **Enhanced health check** — `/health` endpoint should verify DB/Redis/Stripe connectivity
+- [ ] **Unit/E2E tests** — vitest installed but zero test files exist
+
+### Low Priority
+- [ ] **List-Unsubscribe header** on transactional emails
+- [ ] **"Follow system" option** for dark mode toggle
+- [ ] **JSON-LD structured data** for richer Google search results
 
 ### Future Features
 - [ ] Two-factor authentication (2FA)

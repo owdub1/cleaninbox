@@ -60,6 +60,7 @@ import userUpdateProfile from './api/user/update-profile.js';
 import userDeleteAccount from './api/user/delete-account.js';
 import userFreeActions from './api/user/free-actions.js';
 import userDashboardData from './api/user/dashboard-data.js';
+import userExportData from './api/user/export-data.js';
 
 // Contact routes
 import contactSend from './api/contact/send.js';
@@ -207,6 +208,7 @@ app.post('/api/user/update-profile', wrapHandler(userUpdateProfile));
 app.post('/api/user/delete-account', wrapHandler(userDeleteAccount));
 app.get('/api/user/free-actions', wrapHandler(userFreeActions));
 app.get('/api/user/dashboard-data', wrapHandler(userDashboardData));
+app.get('/api/user/export-data', wrapHandler(userExportData));
 
 // Contact routes
 app.post('/api/contact/send', wrapHandler(contactSend));
