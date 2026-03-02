@@ -147,7 +147,10 @@ const SenderRow: React.FC<SenderRowProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div
                       className="flex-1 min-w-0"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onViewEmail(email.id, sender.accountEmail, sender.email, sender.name)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewEmail(email.id, sender.accountEmail, sender.email, sender.name); } }}
                     >
                       <div className="flex items-center gap-2">
                         {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
@@ -163,8 +166,8 @@ const SenderRow: React.FC<SenderRowProps> = ({
                     <button
                       onClick={(e) => { e.stopPropagation(); onDeleteSingleEmail(email, sender.email, sender.name); }}
                       disabled={deletingEmailId === email.id}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
-                      title="Delete email"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                      aria-label="Delete email"
                     >
                       {deletingEmailId === email.id ? (
                         <RefreshCw className="w-4 h-4 animate-spin" />

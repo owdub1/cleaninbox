@@ -50,11 +50,11 @@ const Navbar = () => {
         </div>
         {/* User menu or login icon - positioned at the top right, more subtle */}
         <div className="absolute top-4 right-4 md:right-8 hidden md:flex items-center gap-2">
-          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Toggle dark mode">
+          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
           </button>
           {isAuthenticated ? <div className="relative">
-              <button onClick={handleUserMenuToggle} className="flex items-center text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400">
+              <button onClick={handleUserMenuToggle} className="flex items-center text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400" aria-label="User menu" aria-expanded={isUserMenuOpen} aria-haspopup="true">
                 <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                   {user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
@@ -77,17 +77,17 @@ const Navbar = () => {
                     </div>
                   </button>
                 </div>}
-            </div> : <Link to="/login" className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" title="Sign in">
+            </div> : <Link to="/login" className="text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" aria-label="Sign in">
               <UserIcon className="h-5 w-5" />
             </Link>}
         </div>
         {/* Mobile menu button - positioned at the top right for mobile */}
         <div className="absolute top-4 right-4 md:hidden flex items-center">
-          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mr-1" title="Toggle dark mode">
+          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mr-1" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
           </button>
           {isAuthenticated && <div className="relative mr-2">
-              <button onClick={handleUserMenuToggle} className="flex items-center text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400">
+              <button onClick={handleUserMenuToggle} className="flex items-center text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400" aria-label="User menu" aria-expanded={isUserMenuOpen} aria-haspopup="true">
                 <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                   {user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
@@ -111,7 +111,7 @@ const Navbar = () => {
                   </button>
                 </div>}
             </div>}
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none">
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none" aria-label={isMenuOpen ? 'Close menu' : 'Open menu'} aria-expanded={isMenuOpen}>
             {isMenuOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
           </button>
         </div>

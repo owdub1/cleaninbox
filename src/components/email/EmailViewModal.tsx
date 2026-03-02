@@ -117,7 +117,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
                   onClose();
                 }}
                 className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                title="Delete email"
+                aria-label="Delete email"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -125,6 +125,7 @@ const EmailViewModal: React.FC<EmailViewModalProps> = ({
             <button
               onClick={onClose}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>

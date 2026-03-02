@@ -64,6 +64,7 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
               <input
                 type="text"
                 placeholder="Search by sender..."
+                aria-label="Search by sender"
                 className="pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm dark:bg-gray-800 dark:text-gray-100"
                 value={searchTerm}
                 onChange={e => onSearchChange(e.target.value)}
@@ -77,13 +78,14 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
               <select
                 value={sortBy}
                 onChange={e => onSortChange(e.target.value)}
+                aria-label="Sort by"
                 className="border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-indigo-500 block sm:text-sm dark:bg-gray-800 dark:text-gray-100"
               >
                 <option value="count">Email Count</option>
                 <option value="name">Sender Name</option>
                 <option value="date">Last Email Date</option>
               </select>
-              <button onClick={onToggleSortDirection} className="ml-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button onClick={onToggleSortDirection} className="ml-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={sortDirection === 'asc' ? 'Sort descending' : 'Sort ascending'}>
                 {sortDirection === 'asc' ? (
                   <SortAscIcon className="h-4 w-4 text-gray-500" />
                 ) : (

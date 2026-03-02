@@ -107,6 +107,7 @@ export default function ConnectEmailModal({
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -152,7 +153,7 @@ export default function ConnectEmailModal({
             className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
           >
             {/* Gmail Icon */}
-            <svg className="w-6 h-6" viewBox="0 0 48 48">
+            <svg className="w-6 h-6" viewBox="0 0 48 48" aria-hidden="true">
               <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
               <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z"/>
               <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/>
@@ -172,7 +173,7 @@ export default function ConnectEmailModal({
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               {/* Outlook Icon - 4 squares */}
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#0078D4" d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/>
               </svg>
               <span className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
@@ -184,7 +185,7 @@ export default function ConnectEmailModal({
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-400 cursor-not-allowed"
             >
               {/* Yahoo Mail Icon - Purple envelope */}
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
                 <defs>
                   <linearGradient id="yahooGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#7B5CC3"/>

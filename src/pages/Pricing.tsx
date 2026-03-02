@@ -55,7 +55,7 @@ const Pricing = () => {
               <span className={`mr-3 ${billingCycle === 'monthly' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
                 Monthly
               </span>
-              <button onClick={toggleBillingCycle} className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600">
+              <button onClick={toggleBillingCycle} className="relative inline-flex h-6 w-11 items-center rounded-full bg-indigo-600" aria-label="Toggle billing cycle" aria-pressed={billingCycle === 'annual'}>
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${billingCycle === 'annual' ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
               <span className={`ml-3 flex items-center ${billingCycle === 'annual' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>

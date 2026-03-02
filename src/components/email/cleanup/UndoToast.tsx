@@ -59,6 +59,7 @@ const UndoToast = ({
         <button
           onClick={onDismiss}
           className="p-1 text-gray-400 hover:text-white transition-colors"
+          aria-label="Dismiss"
         >
           <X className="w-4 h-4" />
         </button>

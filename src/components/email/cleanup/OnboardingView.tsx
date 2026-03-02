@@ -166,7 +166,7 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({
                   onClick={onConnectGmail}
                   className="flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg transition-all group"
                 >
-                  <svg className="w-10 h-10 mb-3" viewBox="0 0 48 48">
+                  <svg className="w-10 h-10 mb-3" viewBox="0 0 48 48" aria-hidden="true">
                     <path fill="#4caf50" d="M45,16.2l-5,2.75l-5,4.75L35,40h7c1.657,0,3-1.343,3-3V16.2z"/>
                     <path fill="#1e88e5" d="M3,16.2l3.614,1.71L13,23.7V40H6c-1.657,0-3-1.343-3-3V16.2z"/>
                     <polygon fill="#e53935" points="35,11.2 24,19.45 13,11.2 12,17 13,23.7 24,31.95 35,23.7 36,17"/>
@@ -179,7 +179,7 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({
                   onClick={onConnectOutlook}
                   className="flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-lg transition-all group"
                 >
-                  <svg className="w-10 h-10 mb-3" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 mb-3" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="#0078D4" d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/>
                   </svg>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Outlook</span>

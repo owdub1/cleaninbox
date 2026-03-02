@@ -314,7 +314,7 @@ const Dashboard = () => {
             <p className="font-medium">Subscription Activated!</p>
             <p className="text-sm text-green-100">Your subscription is now active. Enjoy your new plan!</p>
           </div>
-          <button onClick={() => setShowUpgradeSuccess(false)} className="ml-4 text-green-200 hover:text-white">
+          <button onClick={() => setShowUpgradeSuccess(false)} className="ml-4 text-green-200 hover:text-white" aria-label="Dismiss">
             <XIcon className="h-5 w-5" />
           </button>
         </div>
@@ -742,7 +742,10 @@ const Dashboard = () => {
                                   ? 'border-2 border-purple-400'
                                   : 'border border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 cursor-pointer transition-colors'
                               }`}
+                              role={!isCurrent ? 'button' : undefined}
+                              tabIndex={!isCurrent ? 0 : undefined}
                               onClick={() => !isCurrent && handlePlanSwitch(plan.id)}
+                              onKeyDown={(e) => { if (!isCurrent && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handlePlanSwitch(plan.id); } }}
                             >
                               {isCurrent && (
                                 <div className="absolute top-0 right-0 bg-purple-400 text-white text-xs px-2 py-1 rounded-bl-lg">
@@ -974,11 +977,11 @@ const Dashboard = () => {
         </div>
       </section>
       {/* Cancel Subscription Modal */}
-      {showCancelModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+      {showCancelModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !cancelLoading && setShowCancelModal(false)}></div>
           <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => !cancelLoading && setShowCancelModal(false)} disabled={cancelLoading}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => !cancelLoading && setShowCancelModal(false)} disabled={cancelLoading} aria-label="Close">
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
@@ -1032,11 +1035,11 @@ const Dashboard = () => {
           </div>
         </div>}
       {/* Email Limit Modal */}
-      {showEmailLimitModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+      {showEmailLimitModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowEmailLimitModal(false)}></div>
           <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => setShowEmailLimitModal(false)}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => setShowEmailLimitModal(false)} aria-label="Close">
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
@@ -1067,11 +1070,11 @@ const Dashboard = () => {
           </div>
         </div>}
       {/* Disconnect Email Modal */}
-      {showDisconnectModal && emailToDisconnect && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+      {showDisconnectModal && emailToDisconnect && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowDisconnectModal(false)}></div>
           <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => setShowDisconnectModal(false)}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => setShowDisconnectModal(false)} aria-label="Close">
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
@@ -1101,11 +1104,11 @@ const Dashboard = () => {
         </div>}
 
       {/* Delete Account Modal */}
-      {showDeleteModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+      {showDeleteModal && <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => !deleteLoading && setShowDeleteModal(false)}></div>
           <div className="relative bg-white dark:bg-gray-900 rounded-lg max-w-md w-full mx-4 shadow-xl">
             <div className="absolute top-0 right-0 pt-4 pr-4">
-              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => !deleteLoading && setShowDeleteModal(false)} disabled={deleteLoading}>
+              <button type="button" className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400" onClick={() => !deleteLoading && setShowDeleteModal(false)} disabled={deleteLoading} aria-label="Close">
                 <XIcon className="h-6 w-6" />
               </button>
             </div>
