@@ -165,14 +165,14 @@ These are improvements that would make the app better but aren't required to lau
 - [x] **Cookie banner fits on phones** — The cookie consent popup was too wide for small phone screens. Fixed. Done.
 
 ### Medium Priority
-- [ ] **Faster page loading (code splitting)** — Right now the browser downloads ALL pages upfront, even ones the user hasn't visited. Code splitting would make pages load only when needed, making the initial load faster.
+- [x] **Faster page loading (code splitting)** — Pages now load only when the user visits them, instead of downloading everything upfront. Makes the initial load much faster.
 - [ ] **"Add to Home Screen" support (PWA)** — Let users on phones install CleanInbox as an app icon on their home screen, like a native app. Requires adding a small config file.
-- [ ] **Canonical URLs** — Tell Google that `cleaninbox.ca` and `cleaninbox.vercel.app` are the same site, so it doesn't split your search rankings between them.
+- [x] **Canonical URLs** — Every page now tells Google that `cleaninbox.ca` is the real domain, so search rankings don't get split with the Vercel preview URL.
 - [ ] **Better server health check** — The server has a basic "I'm alive" check, but it doesn't verify that the database, payment system, and other services are actually working. An enhanced check would catch outages faster.
 - [ ] **Automated tests** — Right now all testing is done manually. Automated tests would catch bugs before they reach users. The testing tool (vitest) is already installed — just needs test files written.
 
 ### Low Priority
-- [ ] **Unsubscribe link in our own emails** — Our transactional emails (verification, password reset) should include a standard unsubscribe header so Gmail shows a nice "Unsubscribe" button. Not critical since these aren't marketing emails.
+- [x] **Unsubscribe link in our own emails** — All outgoing emails now include a standard unsubscribe header so Gmail shows a nice "Unsubscribe" button.
 - [ ] **"Match my system" dark mode** — Right now users can choose light or dark mode. A third option would automatically match whatever their phone/computer is set to.
 - [x] **Rich Google search results** — Added JSON-LD structured data: Organization + WebSite on Home page, FAQPage on Pricing page. Google can now show FAQ dropdowns and business info in search results.
 

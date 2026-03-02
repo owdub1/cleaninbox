@@ -45,6 +45,10 @@ async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> 
         to,
         subject,
         html,
+        headers: {
+          'List-Unsubscribe': '<mailto:support@cleaninbox.ca?subject=Unsubscribe>',
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       }),
     });
 

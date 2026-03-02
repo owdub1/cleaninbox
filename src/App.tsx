@@ -1,28 +1,30 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import * as Sentry from '@sentry/react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
-import Home from './pages/Home';
-import Pricing from './pages/Pricing';
-import HowItWorks from './pages/HowItWorks';
-import Contact from './pages/Contact';
-import Checkout from './pages/Checkout';
-import EmailCleanup from './pages/EmailCleanup';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import TermsOfService from './pages/TermsOfService';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import VerifyEmail from './pages/VerifyEmail';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import OAuthCallback from './pages/OAuthCallback';
-import NotFound from './pages/NotFound';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
+
+// Lazy-loaded pages — each page is only downloaded when the user visits it
+const Home = lazy(() => import('./pages/Home'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const HowItWorks = lazy(() => import('./pages/HowItWorks'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const EmailCleanup = lazy(() => import('./pages/EmailCleanup'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const OAuthCallback = lazy(() => import('./pages/OAuthCallback'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 // Scroll to top component
 function ScrollToTop() {
   const {
@@ -38,6 +40,7 @@ function AppWithAuth() {
   return <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-gray-950 text-base">
       <Navbar />
       <main className="flex-grow">
+        <Suspense fallback={<div className="flex-grow" />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/pricing" element={<Pricing />} />
@@ -65,6 +68,7 @@ function AppWithAuth() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </main>
       <Footer />
       <CookieConsent />
