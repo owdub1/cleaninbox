@@ -25,7 +25,7 @@ const Home = () => {
       subscribed: !sub.subscribed
     } : sub));
   };
-  return <><SEO description="Delete unwanted emails and unsubscribe with one click. Works with Gmail and Outlook." /><div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO description="Delete unwanted emails in bulk and unsubscribe from senders with one click. Connect your Gmail or Outlook account and clean up your inbox in minutes." /><div className="w-full bg-white dark:bg-gray-900">
       {/* Hero Section - Redesigned without the blue header */}
       <section className="pt-16 pb-20 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
