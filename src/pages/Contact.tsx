@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MailIcon, SendIcon, CheckCircleIcon, Loader2 } from 'lucide-react';
 import { API_URL } from '../lib/api';
+import { SEO } from '../components/SEO';
 const Contact = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
@@ -44,7 +45,7 @@ const Contact = () => {
       setSending(false);
     }
   };
-  return <div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO title="Contact Us" description="Have a question about CleanInbox? Get in touch with our support team." /><div className="w-full bg-white dark:bg-gray-900">
       {/* Header - Redesigned without gradient */}
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -234,6 +235,6 @@ const Contact = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default Contact;

@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MailIcon, LockIcon, SearchIcon, CheckCircleIcon, ShieldIcon, AlertTriangleIcon, CheckIcon } from 'lucide-react';
+import { SEO } from '../components/SEO';
 const HowItWorks = () => {
-  return <div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO title="How It Works" description="Learn how CleanInbox helps you declutter your inbox in minutes. Connect your email, review senders, and clean up with one click." /><div className="w-full bg-white dark:bg-gray-900">
       {/* Header - Redesigned without gradient */}
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -442,6 +443,6 @@ const HowItWorks = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default HowItWorks;

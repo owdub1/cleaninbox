@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckIcon, XIcon, CreditCardIcon, ShieldIcon, ZapIcon, SparklesIcon } from 'lucide-react';
+import { SEO } from '../components/SEO';
 const Pricing = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const toggleBillingCycle = () => {
@@ -39,7 +40,7 @@ const Pricing = () => {
     features: ['Process up to 3,000 emails', 'Connect 1 email account', 'Standard unsubscribe speed', 'One-time payment', 'Basic analytics', 'Valid for 30 days'],
     cta: 'Buy Now'
   };
-  return <div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  return <><SEO title="Pricing" description="Choose a CleanInbox plan that fits your needs. Delete unwanted emails, unsubscribe from senders, and keep your inbox clean." /><div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -190,6 +191,6 @@ const Pricing = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default Pricing;

@@ -4,6 +4,7 @@ import { MailIcon, LockIcon, UserIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Turnstile from '../components/auth/Turnstile';
 import { API_URL } from '../lib/api';
+import { SEO } from '../components/SEO';
 
 // Map OAuth error codes to user-friendly messages
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -97,7 +98,7 @@ const Login = () => {
       setLoading(false);
     }
   };
-  return <div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO title="Log In" /><div className="w-full bg-white dark:bg-gray-900">
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -234,6 +235,6 @@ const Login = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default Login;

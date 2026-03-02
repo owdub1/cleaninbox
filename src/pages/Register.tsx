@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import PasswordStrength from '../components/auth/PasswordStrength';
 import Turnstile from '../components/auth/Turnstile';
 import { API_URL } from '../lib/api';
+import { SEO } from '../components/SEO';
 const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -97,7 +98,7 @@ const Register = () => {
       setLoading(false);
     }
   };
-  return <div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO title="Sign Up" /><div className="w-full bg-white dark:bg-gray-900">
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -264,6 +265,6 @@ const Register = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default Register;

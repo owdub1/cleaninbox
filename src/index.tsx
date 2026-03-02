@@ -2,6 +2,7 @@ import './index.css';
 import React from "react";
 import { render } from "react-dom";
 import * as Sentry from "@sentry/react";
+import { HelmetProvider } from 'react-helmet-async';
 import { App } from "./App";
 
 if (import.meta.env.VITE_SENTRY_DSN) {
@@ -17,4 +18,9 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-render(<App />, document.getElementById("root"));
+render(
+  <HelmetProvider>
+    <App />
+  </HelmetProvider>,
+  document.getElementById("root")
+);

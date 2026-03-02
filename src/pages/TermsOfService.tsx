@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpenIcon, ChevronRightIcon } from 'lucide-react';
+import { SEO } from '../components/SEO';
 const TermsOfService = () => {
-  return <div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO title="Terms of Service" /><div className="w-full bg-white dark:bg-gray-900">
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -135,6 +136,6 @@ March 1, 2026
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default TermsOfService;

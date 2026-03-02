@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldIcon, CheckIcon, LockIcon, MailIcon, MailOpenIcon, UserIcon, CheckCircleIcon, FolderIcon, FilterIcon } from 'lucide-react';
+import { SEO } from '../components/SEO';
 const Home = () => {
   const [subscriptions, setSubscriptions] = useState([{
     name: 'Daily Newsletter',
@@ -24,7 +25,7 @@ const Home = () => {
       subscribed: !sub.subscribed
     } : sub));
   };
-  return <div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO description="Delete unwanted emails and unsubscribe with one click. Works with Gmail and Outlook." /><div className="w-full bg-white dark:bg-gray-900">
       {/* Hero Section - Redesigned without the blue header */}
       <section className="pt-16 pb-20 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -430,6 +431,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-    </div>;
+    </div></>;
 };
 export default Home;
