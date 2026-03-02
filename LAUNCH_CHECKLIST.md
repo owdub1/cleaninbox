@@ -39,7 +39,7 @@ Old passwords/keys were accidentally exposed. These have all been changed to new
 - [x] **STRIPE_SECRET_KEY** — Stripe payment key
 - [x] **STRIPE_WEBHOOK_SECRET** — the key that verifies Stripe notifications are real
 - [x] **OUTLOOK_CLIENT_SECRET** — Microsoft's secret for Outlook access
-- [ ] **Supabase keys** — The database keys. Lower risk because they're protected by access rules, but should still be rotated. Requires contacting Supabase support or creating a new project.
+- [x] **Supabase keys** — The database keys. Rotated and updated in Vercel and Railway.
 - [ ] **Upstash Redis keys** — Only used for rate limiting. Low priority.
 
 ### Code Cleanup
@@ -125,7 +125,7 @@ All the secret keys and settings are configured in both Vercel (frontend) and Ra
 - [x] Stripe payment keys
 - [x] Rate limiter keys
 - [x] Token expiry settings
-- [ ] **Stripe webhook URL** — Make sure the Stripe Dashboard is pointing to your production domain (not localhost). This is how Stripe tells your app about payments.
+- [x] **Stripe webhook URL** — Confirmed pointing to production Railway URL.
 
 ### Not Tested (Hard to Simulate)
 - [ ] **Annual billing** — Same checkout flow as monthly, just a different billing interval. Should work but hasn't been tested with a real payment.
@@ -134,7 +134,7 @@ All the secret keys and settings are configured in both Vercel (frontend) and Ra
 
 ### Final Deploy
 - [ ] **Switch Stripe to live mode** — Right now payments go through Stripe's test/sandbox mode (no real charges). Need to swap to real keys before launch.
-- [ ] **Swap CAPTCHA to production keys** — The robot-check is using test keys that always pass. Need real Cloudflare Turnstile keys.
+- [x] **Swap CAPTCHA to production keys** — Real Cloudflare Turnstile keys added to Vercel and Railway.
 - [ ] **Deploy to Vercel** — Push the final code live.
 - [ ] **End-to-end test on live site** — Go through the whole flow on the real site: sign up → connect Gmail → delete some emails → done.
 
