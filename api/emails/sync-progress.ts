@@ -9,7 +9,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
+import { requireEmailVerification, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 
 const supabase = createClient(
@@ -27,7 +27,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const limitResult = await limiter(req, res);
   if (limitResult) return;
 
-  const user = requireAuth(req as AuthenticatedRequest, res);
+  const user = requireEmailVerification(req as AuthenticatedRequest, res);
   if (!user) return;
 
   const email = req.query.email as string;

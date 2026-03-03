@@ -26,7 +26,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
+import { requireEmailVerification, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit } from '../lib/rate-limiter.js';
 
 import { getValidAccessToken } from '../lib/gmail.js';
@@ -62,7 +62,7 @@ async function handler(
 
   if (await limiter(req, res)) return;
 
-  const user = requireAuth(req as AuthenticatedRequest, res);
+  const user = requireEmailVerification(req as AuthenticatedRequest, res);
   if (!user) return;
 
   const { email, fullSync = false, repair = false, initialBatch = false } = req.body;

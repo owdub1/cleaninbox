@@ -46,7 +46,11 @@ function AppWithAuth() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/email-cleanup" element={<EmailCleanup />} />
+          <Route path="/email-cleanup" element={
+            <ProtectedRoute requireEmailVerification>
+              <EmailCleanup />
+            </ProtectedRoute>
+          } />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -54,13 +58,13 @@ function AppWithAuth() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/dashboard" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireEmailVerification>
               <Dashboard />
             </ProtectedRoute>
           } />
 
           <Route path="/checkout" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireEmailVerification>
               <Checkout />
             </ProtectedRoute>
           } />

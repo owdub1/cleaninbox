@@ -8,7 +8,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
+import { requireEmailVerification, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { rateLimit, RateLimitPresets } from '../lib/rate-limiter.js';
 import { generateOAuthState, getGmailAuthUrl } from '../lib/gmail.js';
 
@@ -27,7 +27,7 @@ export default async function handler(
   if (await limiter(req, res)) return;
 
   // Require authentication
-  const user = requireAuth(req as AuthenticatedRequest, res);
+  const user = requireEmailVerification(req as AuthenticatedRequest, res);
   if (!user) return;
 
   try {

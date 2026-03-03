@@ -9,7 +9,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { requireAuth, AuthenticatedRequest } from '../lib/auth-middleware.js';
+import { requireEmailVerification, AuthenticatedRequest } from '../lib/auth-middleware.js';
 import { FREE_TRIAL_LIMIT, getFreeTrialUsage } from '../lib/free-trial.js';
 
 const supabase = createClient(
@@ -25,7 +25,7 @@ export default async function handler(
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const user = requireAuth(req as AuthenticatedRequest, res);
+  const user = requireEmailVerification(req as AuthenticatedRequest, res);
   if (!user) return;
 
   try {
