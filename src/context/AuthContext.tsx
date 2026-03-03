@@ -147,8 +147,8 @@ export const AuthProvider: React.FC<{
     if (data.user) {
       setUser(data.user);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-      // Redirect to pricing to purchase a plan
-      navigate('/pricing');
+      // Redirect to email cleanup (will show verification screen if unverified)
+      navigate('/email-cleanup');
     } else {
       // Generic "check your email" response — redirect to login
       navigate('/login', { state: { message: data.message || 'Please check your email to verify your account.' } });
