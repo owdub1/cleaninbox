@@ -232,7 +232,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: isActiveResult, error: activeError } = await supabase
       .rpc('is_user_active', { p_user_id: user.id });
 
-    if (activeError || !isActiveResult) {
+    // Allow pending_verification users to log in — they'll see the verification screen
+    if (activeError || (!isActiveResult && user.status !== 'pending_verification')) {
       await recordLoginAttempt(user.id, email, ipAddress, userAgent, false, `account_${user.status}`);
 
       // Provide specific error message based on account status
@@ -247,11 +248,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(403).json({
           error: 'This account has been deleted.',
           code: 'ACCOUNT_DELETED'
-        });
-      } else if (user.status === 'pending_verification') {
-        return res.status(403).json({
-          error: 'Please verify your email address before logging in.',
-          code: 'EMAIL_NOT_VERIFIED'
         });
       }
 

@@ -105,16 +105,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           code: 'ACCOUNT_DELETED'
         });
       } else if (user.status === 'pending_verification') {
+        // Allow refresh — unverified users can log in but ProtectedRoute blocks features
+      } else {
         return res.status(403).json({
-          error: 'Please verify your email address.',
-          code: 'EMAIL_NOT_VERIFIED'
+          error: 'Account is not active.',
+          code: 'ACCOUNT_INACTIVE'
         });
       }
-
-      return res.status(403).json({
-        error: 'Account is not active.',
-        code: 'ACCOUNT_INACTIVE'
-      });
     }
 
     // Check if user account is locked (brute force protection)
