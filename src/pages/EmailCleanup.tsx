@@ -177,9 +177,8 @@ const EmailCleanup = () => {
         if (data.isPaid) {
           setFreeActionsUsed(0);
         } else {
-          const serverUsed = data.used ?? 0;
-          const cachedUsed = parseInt(sessionStorage.getItem(sessionKey) || '0', 10);
-          setFreeActionsUsed(Math.max(serverUsed, cachedUsed));
+          // Server is the source of truth — overwrite any stale cache
+          setFreeActionsUsed(data.used ?? 0);
         }
         setFreeActionsLoaded(true);
       })
