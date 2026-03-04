@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Navigate, useLocation, Link } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { fetchWithAuth } from '../../lib/api';
 
@@ -45,14 +45,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (requireEmailVerification && !user.emailVerified) {
     return createPortal(
       <div className="fixed inset-0 z-50 flex flex-col bg-gray-50 dark:bg-gray-800">
-        {/* Logo only */}
+        {/* Logo only — not clickable */}
         <div className="pt-6 pb-4 flex justify-center">
-          <Link to="/" className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
             <svg className="h-8 w-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             <span className="text-xl font-bold text-gray-900 dark:text-gray-100">CleanInbox</span>
-          </Link>
+          </div>
         </div>
 
         {/* Centered card */}
