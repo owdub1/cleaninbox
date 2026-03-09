@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -52,12 +52,53 @@ const SenderRow: React.FC<SenderRowProps> = ({
   onArchiveAll,
   onDeleteAll,
 }) => {
+  const [selectedEmailIds, setSelectedEmailIds] = useState<Set<string>>(new Set());
+
+  const toggleEmailSelection = (emailId: string) => {
+    setSelectedEmailIds(prev => {
+      const next = new Set(prev);
+      if (next.has(emailId)) {
+        next.delete(emailId);
+      } else {
+        next.add(emailId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllEmails = () => {
+    if (selectedEmailIds.size === emails.length) {
+      setSelectedEmailIds(new Set());
+    } else {
+      setSelectedEmailIds(new Set(emails.map(e => e.id)));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    const selected = emails.filter(e => selectedEmailIds.has(e.id));
+    selected.forEach(email => {
+      onDeleteSingleEmail(email, sender.email, sender.name);
+    });
+    setSelectedEmailIds(new Set());
+  };
+
+  // Clear selections when sender collapses
+  const handleToggleExpand = () => {
+    if (isExpanded) {
+      setSelectedEmailIds(new Set());
+    }
+    onToggleExpand();
+  };
+
+  const allSelected = emails.length > 0 && selectedEmailIds.size === emails.length;
+  const someSelected = selectedEmailIds.size > 0;
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
       <div className="px-5 py-4 flex items-center justify-between">
         <button
           className="flex items-center flex-1 text-left"
-          onClick={onToggleExpand}
+          onClick={handleToggleExpand}
         >
           {isExpanded ? (
             <ChevronUpIcon className="h-5 w-5 text-gray-400 mr-3" />
@@ -135,6 +176,32 @@ const SenderRow: React.FC<SenderRowProps> = ({
               </div>
             </div>
           )}
+
+          {/* Select all / delete selected bar */}
+          {emails.length > 0 && !loadingEmails && (
+            <div className="flex items-center justify-between mb-2">
+              <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  checked={allSelected}
+                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                  onChange={toggleSelectAllEmails}
+                />
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </label>
+              {someSelected && (
+                <button
+                  onClick={handleDeleteSelected}
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Delete {selectedEmailIds.size} selected
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {loadingEmails ? (
               <div className="flex items-center justify-center py-4">
@@ -145,22 +212,31 @@ const SenderRow: React.FC<SenderRowProps> = ({
               emails.map(email => (
                 <div key={email.id} className="bg-white dark:bg-gray-900 rounded-lg p-3 shadow-sm border border-gray-100 dark:border-gray-800 group hover:border-indigo-200 dark:hover:border-indigo-600 hover:shadow-md transition-all cursor-pointer">
                   <div className="flex items-start justify-between gap-3">
-                    <div
-                      className="flex-1 min-w-0"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => onViewEmail(email.id, sender.accountEmail, sender.email, sender.name)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewEmail(email.id, sender.accountEmail, sender.email, sender.name); } }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
-                        <span className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
-                          {email.subject}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{email.snippet}</p>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {new Date(email.date).toLocaleDateString()}
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded flex-shrink-0"
+                        checked={selectedEmailIds.has(email.id)}
+                        onChange={(e) => { e.stopPropagation(); toggleEmailSelection(email.id); }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div
+                        className="flex-1 min-w-0"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onViewEmail(email.id, sender.accountEmail, sender.email, sender.name)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onViewEmail(email.id, sender.accountEmail, sender.email, sender.name); } }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {email.isUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />}
+                          <span className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {email.subject}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{email.snippet}</p>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {new Date(email.date).toLocaleDateString()}
+                        </div>
                       </div>
                     </div>
                     <button
