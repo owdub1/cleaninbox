@@ -177,28 +177,16 @@ const SenderRow: React.FC<SenderRowProps> = ({
             </div>
           )}
 
-          {/* Select all / delete selected bar */}
-          {emails.length > 0 && !loadingEmails && (
-            <div className="flex items-center justify-between mb-2">
-              <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                  checked={allSelected}
-                  ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                  onChange={toggleSelectAllEmails}
-                />
-                {allSelected ? 'Deselect all' : 'Select all'}
-              </label>
-              {someSelected && (
-                <button
-                  onClick={handleDeleteSelected}
-                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Delete {selectedEmailIds.size} selected
-                </button>
-              )}
+          {/* Delete selected bar — only shown when emails are checked */}
+          {someSelected && (
+            <div className="flex items-center justify-end mb-2">
+              <button
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete {selectedEmailIds.size} selected
+              </button>
             </div>
           )}
 
