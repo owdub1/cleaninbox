@@ -13,6 +13,8 @@ interface DeleteViewProps {
   loadingEmails: string | null;
   deletingEmailId: string | null;
   hasPaidPlan?: boolean;
+  totalEmails: number;
+  deletedCount: number;
   onToggleSenderExpand: (sender: Sender) => void;
   onToggleSenderSelection: (sender: Sender) => void;
   onDeleteSingleEmail: (email: EmailMessage, senderEmail: string, senderName: string) => void;
@@ -35,10 +37,32 @@ const DeleteView: React.FC<DeleteViewProps> = ({
   onViewEmail,
   onCleanupAction,
   hasPaidPlan = true,
+  totalEmails,
+  deletedCount,
 }) => {
+  const statsBar = (
+    <div className="flex items-center gap-4 px-4 py-3 mb-2">
+      <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        <span><span className="font-semibold text-gray-900 dark:text-gray-100">{totalEmails.toLocaleString()}</span> total emails</span>
+      </div>
+      {deletedCount > 0 && (
+        <div className="flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span><span className="font-semibold">{deletedCount.toLocaleString()}</span> deleted</span>
+        </div>
+      )}
+    </div>
+  );
+
   if (sortBy === 'date') {
     return (
       <div>
+        {statsBar}
         {sendersByTimePeriod.map(({ period, senders: periodSenders }) => {
           const totalEmails = periodSenders.reduce((sum, s) => sum + s.emailCount, 0);
           if (periodSenders.length === 0) return null;
@@ -115,6 +139,8 @@ const DeleteView: React.FC<DeleteViewProps> = ({
 
   // Flat list mode
   return (
+    <div>
+      {statsBar}
     <div className="px-4 py-3 space-y-3">
       {flatSenders.map(sender => (
         <SenderRow
@@ -150,6 +176,7 @@ const DeleteView: React.FC<DeleteViewProps> = ({
           }
         />
       ))}
+    </div>
     </div>
   );
 };

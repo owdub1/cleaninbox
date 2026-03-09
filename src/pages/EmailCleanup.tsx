@@ -152,6 +152,7 @@ const EmailCleanup = () => {
   const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
 
   const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
+  const [sessionDeletedCount, setSessionDeletedCount] = useState(0);
 
   // Free trial tracking
   const sessionKey = 'cleaninbox_free_actions_optimistic';
@@ -449,6 +450,11 @@ const EmailCleanup = () => {
       }
       if (result?.freeTrialRemaining !== undefined && isFreeTrial) {
         setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
+      }
+      // Track deleted emails for session stats
+      if (pending.action === 'delete' || pending.type === 'single') {
+        const count = result?.totalDeleted || (pending.type === 'single' ? 1 : 0);
+        if (count > 0) setSessionDeletedCount(prev => prev + count);
       }
     } catch (error) {
       if (error instanceof CleanupError && error.code === 'PAYMENT_PAST_DUE') {
@@ -790,6 +796,8 @@ const EmailCleanup = () => {
                 loadingEmails={loadingEmails}
                 deletingEmailId={deletingEmailId}
                 hasPaidPlan={hasPaidPlan}
+                totalEmails={senders.reduce((sum, s) => sum + s.emailCount, 0)}
+                deletedCount={sessionDeletedCount}
                 onToggleSenderExpand={toggleSenderExpand}
                 onToggleSenderSelection={toggleSenderSelection}
                 onDeleteSingleEmail={handleDeleteSingleEmail}
