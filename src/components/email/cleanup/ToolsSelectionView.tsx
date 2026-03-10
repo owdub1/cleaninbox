@@ -29,7 +29,7 @@ const cleanupTools = [
     color: 'from-purple-400 to-violet-400',
   },
   {
-    id: 'archive',
+    id: 'bulk-delete',
     title: 'Bulk Delete Old Emails',
     description: 'Delete emails older than 30/60/90 days.',
     icon: Trash2,

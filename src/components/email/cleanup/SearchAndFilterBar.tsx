@@ -106,7 +106,7 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
             </span>
           </div>
           <div className="flex space-x-4">
-            {selectedTool !== 'archive' && hasPaidPlan && (
+            {selectedTool !== 'bulk-delete' && hasPaidPlan && (
               <button
                 className="flex items-center text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                 onClick={onArchiveSelected}

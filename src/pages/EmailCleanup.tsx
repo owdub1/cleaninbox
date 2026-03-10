@@ -52,7 +52,7 @@ const EmailCleanup = () => {
   const { subscription, isPaid, isUnlimited, hasFullTools, loading: subscriptionLoading } = useSubscription();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const validTools = ['delete', 'unsubscribe', 'archive', 'top-senders'];
+  const validTools = ['delete', 'unsubscribe', 'bulk-delete', 'top-senders'];
   const toolParam = searchParams.get('tool');
   const selectedTool = toolParam && validTools.includes(toolParam) ? toolParam : null;
 
@@ -290,7 +290,7 @@ const EmailCleanup = () => {
     }
     setSearchParams({ tool: toolId });
     setCurrentView('cleanup');
-    if (toolId === 'archive') {
+    if (toolId === 'bulk-delete') {
       setSortBy('count');
       setSortDirection('desc');
     } else {
@@ -823,7 +823,7 @@ const EmailCleanup = () => {
               />
             )}
 
-            {!sendersLoading && senders.length > 0 && selectedTool === 'archive' && (
+            {!sendersLoading && senders.length > 0 && selectedTool === 'bulk-delete' && (
               <ArchiveView
                 senders={filteredArchiveSenders}
                 selectedSenderKeys={selectedSenderKeys}
