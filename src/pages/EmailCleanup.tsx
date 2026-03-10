@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ChevronDownIcon,
   RefreshCw,
@@ -50,11 +50,15 @@ const EmailCleanup = () => {
   const navigate = useNavigate();
 
   const { subscription, isPaid, isUnlimited, hasFullTools, loading: subscriptionLoading } = useSubscription();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const restoredTool = sessionStorage.getItem('cleaninbox_selected_tool');
+  const validTools = ['delete', 'unsubscribe', 'archive', 'top-senders'];
+  const toolParam = searchParams.get('tool');
+  const selectedTool = toolParam && validTools.includes(toolParam) ? toolParam : null;
+
   const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
-    restoredTool ? 'cleanup' : shouldStartWithTools ? 'tools' : 'onboarding'
+    selectedTool ? 'cleanup' : shouldStartWithTools ? 'tools' : 'onboarding'
   );
   const [viewInitialized, setViewInitialized] = useState(false);
 
@@ -73,17 +77,16 @@ const EmailCleanup = () => {
 
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
-  const [selectedTool, setSelectedToolRaw] = useState<string | null>(() => {
-    return sessionStorage.getItem('cleaninbox_selected_tool') || null;
-  });
-  const setSelectedTool = (tool: string | null) => {
-    if (tool) {
-      sessionStorage.setItem('cleaninbox_selected_tool', tool);
-    } else {
-      sessionStorage.removeItem('cleaninbox_selected_tool');
+  // Sync currentView with URL — handles back/forward navigation and direct URL access
+  useEffect(() => {
+    if (selectedTool) {
+      setCurrentView('cleanup');
+    } else if (viewInitialized && currentView === 'cleanup') {
+      // User navigated back (tool param removed) — return to tools grid
+      setCurrentView('tools');
     }
-    setSelectedToolRaw(tool);
-  };
+  }, [selectedTool]);
+
   const [expandedSenders, setExpandedSenders] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('date');
@@ -227,7 +230,7 @@ const EmailCleanup = () => {
     const result = handleOAuthCallback();
     if (result.success && result.email) {
       clearCallbackParams();
-      setSelectedTool('delete');
+      setSearchParams({ tool: 'delete' }, { replace: true });
       setCurrentView('cleanup');
       syncEmails(result.email);
     } else if (result.error) {
@@ -285,7 +288,7 @@ const EmailCleanup = () => {
       navigate('/checkout');
       return;
     }
-    setSelectedTool(toolId);
+    setSearchParams({ tool: toolId });
     setCurrentView('cleanup');
     if (toolId === 'archive') {
       setSortBy('count');
@@ -298,7 +301,7 @@ const EmailCleanup = () => {
 
   const handleBackToTools = () => {
     setCurrentView('tools');
-    setSelectedTool(null);
+    setSearchParams({});
   };
 
   const handleSync = async () => {
