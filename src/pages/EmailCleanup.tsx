@@ -78,14 +78,20 @@ const EmailCleanup = () => {
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
   // Sync currentView with URL — handles back/forward navigation and direct URL access
+  // Also gate Pro-only tools: if a non-Pro user navigates to ?tool=unsubscribe or ?tool=bulk-delete, redirect to checkout
+  const proOnlyTools = ['unsubscribe', 'bulk-delete'];
   useEffect(() => {
+    if (!subscriptionLoading && selectedTool && proOnlyTools.includes(selectedTool) && !hasFullTools) {
+      navigate('/checkout', { replace: true });
+      return;
+    }
     if (selectedTool) {
       setCurrentView('cleanup');
     } else if (viewInitialized && currentView === 'cleanup') {
       // User navigated back (tool param removed) — return to tools grid
       setCurrentView('tools');
     }
-  }, [selectedTool]);
+  }, [selectedTool, subscriptionLoading, hasFullTools]);
 
   const [expandedSenders, setExpandedSenders] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
