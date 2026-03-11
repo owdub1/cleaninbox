@@ -58,9 +58,10 @@ export async function performOutlookFullSync(
     nextLink = response['@odata.nextLink'];
   }
 
-  // Write total for progress bar polling
+  // Write total for progress bar polling (cap at emailLimit so users don't see over-fetched count)
+  const progressTotal = Math.min(allMessages.length, emailLimit);
   await supabase.from('email_accounts').update({
-    sync_progress_total: allMessages.length,
+    sync_progress_total: progressTotal,
     sync_progress_current: 0
   }).eq('id', accountId);
 
@@ -85,7 +86,7 @@ export async function performOutlookFullSync(
       if (processed - lastOutlookProgressUpdate >= 50 || processed === total) {
         lastOutlookProgressUpdate = processed;
         supabase.from('email_accounts').update({
-          sync_progress_current: processed
+          sync_progress_current: Math.min(processed, progressTotal)
         }).eq('id', accountId).then(() => {});
       }
     }
@@ -289,9 +290,10 @@ export async function performOutlookInitialBatch(
     });
   }
 
-  // Write total for progress bar polling
+  // Write total for progress bar polling (cap at emailLimit)
+  const batchProgressTotal = Math.min(allMessages.length, emailLimit);
   await supabase.from('email_accounts').update({
-    sync_progress_total: allMessages.length,
+    sync_progress_total: batchProgressTotal,
     sync_progress_current: 0
   }).eq('id', accountId);
 
@@ -303,7 +305,7 @@ export async function performOutlookInitialBatch(
       if (processed - lastInitialOutlookProgressUpdate >= 50 || processed === total) {
         lastInitialOutlookProgressUpdate = processed;
         supabase.from('email_accounts').update({
-          sync_progress_current: processed
+          sync_progress_current: Math.min(processed, batchProgressTotal)
         }).eq('id', accountId).then(() => {});
       }
     }

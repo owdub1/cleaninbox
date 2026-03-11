@@ -317,9 +317,10 @@ async function performFullSync(
     pageToken = response.nextPageToken;
   }
 
-  // Write total for progress bar polling
+  // Write total for progress bar polling (cap at emailLimit so users don't see over-fetched count)
+  const progressTotal = Math.min(allMessageRefs.length, emailLimit);
   const { error: progressError } = await supabase.from('email_accounts').update({
-    sync_progress_total: allMessageRefs.length,
+    sync_progress_total: progressTotal,
     sync_progress_current: 0
   }).eq('id', accountId);
   if (progressError) console.error('Failed to write sync progress:', progressError.message);
@@ -346,7 +347,7 @@ async function performFullSync(
       if (processed - lastProgressUpdate >= 50 || processed === total) {
         lastProgressUpdate = processed;
         supabase.from('email_accounts').update({
-          sync_progress_current: processed
+          sync_progress_current: Math.min(processed, progressTotal)
         }).eq('id', accountId).then(() => {});
       }
     }
@@ -582,10 +583,11 @@ async function performUpgradeSync(
   const newMessageRefs = allMessageRefs.filter(m => !existingIds.has(m.id));
   const existingCount = existingIds.size;
 
-  // Write progress: total = all Gmail messages, starting from existing count
+  // Write progress (cap at emailLimit so users don't see over-fetched count)
+  const upgradeProgressTotal = Math.min(allMessageRefs.length, emailLimit);
   await supabase.from('email_accounts').update({
-    sync_progress_total: allMessageRefs.length,
-    sync_progress_current: existingCount
+    sync_progress_total: upgradeProgressTotal,
+    sync_progress_current: Math.min(existingCount, upgradeProgressTotal)
   }).eq('id', accountId);
 
   if (newMessageRefs.length === 0) {
@@ -615,7 +617,7 @@ async function performUpgradeSync(
       if (processed - lastProgressUpdate >= 50 || processed === total) {
         lastProgressUpdate = processed;
         supabase.from('email_accounts').update({
-          sync_progress_current: existingCount + processed
+          sync_progress_current: Math.min(existingCount + processed, upgradeProgressTotal)
         }).eq('id', accountId).then(() => {});
       }
     }
@@ -751,9 +753,10 @@ async function performGmailInitialBatch(
     });
   }
 
-  // Write total for progress bar polling
+  // Write total for progress bar polling (cap at emailLimit)
+  const batchProgressTotal = Math.min(allMessageRefs.length, emailLimit);
   await supabase.from('email_accounts').update({
-    sync_progress_total: allMessageRefs.length,
+    sync_progress_total: batchProgressTotal,
     sync_progress_current: 0
   }).eq('id', accountId);
 
@@ -766,7 +769,7 @@ async function performGmailInitialBatch(
       if (processed - lastInitialProgressUpdate >= 100 || processed === total) {
         lastInitialProgressUpdate = processed;
         supabase.from('email_accounts').update({
-          sync_progress_current: processed
+          sync_progress_current: Math.min(processed, batchProgressTotal)
         }).eq('id', accountId).then(() => {});
       }
     }
