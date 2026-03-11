@@ -186,6 +186,7 @@ export default async function handler(
 
   } catch (error: any) {
     console.error('Gmail callback error:', error);
-    return res.redirect(`${APP_URL}/email-cleanup?error=callback_failed`);
+    const detail = encodeURIComponent(error.message || 'Unknown error');
+    return res.redirect(`${APP_URL}/email-cleanup?error=callback_failed&detail=${detail}`);
   }
 }
