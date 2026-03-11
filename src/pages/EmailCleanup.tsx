@@ -370,7 +370,8 @@ const EmailCleanup = () => {
           );
           if (result?.success) {
             if (result.freeTrialRemaining !== undefined && isFreeTrial) {
-              setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
+              const serverUsed = FREE_TRIAL_LIMIT - result.freeTrialRemaining;
+              setFreeActionsUsed(prev => Math.max(prev, serverUsed));
             }
             fetchSenders();
             setSelectedSenderKeys([]);
@@ -387,7 +388,8 @@ const EmailCleanup = () => {
           setNotification({ type: 'error', message: 'Your payment failed. Please update your payment method in your Dashboard to continue.' });
         } else if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
           if (error.freeTrialRemaining !== undefined) {
-            setFreeActionsUsed(FREE_TRIAL_LIMIT - error.freeTrialRemaining);
+            const serverUsed = FREE_TRIAL_LIMIT - error.freeTrialRemaining;
+            setFreeActionsUsed(prev => Math.max(prev, serverUsed));
           }
           setShowUpgradeModal(true);
         } else {
@@ -458,7 +460,9 @@ const EmailCleanup = () => {
         }
       }
       if (result?.freeTrialRemaining !== undefined && isFreeTrial) {
-        setFreeActionsUsed(FREE_TRIAL_LIMIT - result.freeTrialRemaining);
+        // Use Math.max to avoid overwriting optimistic counts from other pending deletions
+        const serverUsed = FREE_TRIAL_LIMIT - result.freeTrialRemaining;
+        setFreeActionsUsed(prev => Math.max(prev, serverUsed));
       }
       // Track deleted emails for session stats
       if (pending.action === 'delete' || pending.type === 'single') {
@@ -469,7 +473,10 @@ const EmailCleanup = () => {
       if (error instanceof CleanupError && error.code === 'PAYMENT_PAST_DUE') {
         setNotification({ type: 'error', message: 'Your payment failed. Please update your payment method in your Dashboard to continue.' });
       } else if (error instanceof CleanupError && error.code === 'FREE_TRIAL_EXCEEDED') {
-        if (error.freeTrialRemaining !== undefined) setFreeActionsUsed(FREE_TRIAL_LIMIT - error.freeTrialRemaining);
+        if (error.freeTrialRemaining !== undefined) {
+          const serverUsed = FREE_TRIAL_LIMIT - error.freeTrialRemaining;
+          setFreeActionsUsed(prev => Math.max(prev, serverUsed));
+        }
         setShowUpgradeModal(true);
       } else {
         setNotification({ type: 'error', message: 'Failed to complete action' });
