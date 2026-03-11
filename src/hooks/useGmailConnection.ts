@@ -108,11 +108,9 @@ export const useGmailConnection = () => {
         account_limit_reached: 'Your plan only allows 1 email account. Upgrade to connect more.',
         callback_failed: 'Connection failed. Please try again.',
       };
-      const detail = params.get('detail');
-      const baseMessage = errorMessages[errorParam] || 'An error occurred during connection.';
       return {
         success: false,
-        error: detail ? `${baseMessage} (${decodeURIComponent(detail)})` : baseMessage,
+        error: errorMessages[errorParam] || 'An error occurred during connection.',
       };
     }
 
