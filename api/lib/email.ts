@@ -76,7 +76,7 @@ function wrapEmail(title: string, gradientFrom: string, gradientTo: string, body
   <title>${title}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, ${gradientFrom} 0%, ${gradientTo} 100%); padding: 40px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+  <div style="background-color: ${gradientFrom}; background-image: linear-gradient(135deg, ${gradientFrom} 0%, ${gradientTo} 100%); padding: 40px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="color: white; margin: 0; font-size: 28px;">${title}</h1>
   </div>
   <div style="background: #ffffff; padding: 40px 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
@@ -121,7 +121,7 @@ export async function sendSubscriptionConfirmedEmail(
       ${features}
     </ul>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${FRONTEND_URL}/dashboard" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+      <a href="${FRONTEND_URL}/dashboard" style="background-color: #667eea; background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
         Go to Dashboard
       </a>
     </div>`;
@@ -157,7 +157,7 @@ export async function sendSubscriptionCancelledEmail(
       </p>
     </div>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${FRONTEND_URL}/pricing" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+      <a href="${FRONTEND_URL}/pricing" style="background-color: #667eea; background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
         View Plans
       </a>
     </div>`;
@@ -183,7 +183,7 @@ export async function sendPaymentFailedEmail(to: string): Promise<boolean> {
       If your payment method is not updated, your subscription may be cancelled and you'll lose access to your plan's features.
     </p>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${FRONTEND_URL}/dashboard" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+      <a href="${FRONTEND_URL}/dashboard" style="background-color: #ef4444; background-image: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
         Update Payment Method
       </a>
     </div>
@@ -269,7 +269,7 @@ export async function sendQuickCleanExpiringEmail(
       Want to keep going? Upgrade to a subscription plan for uninterrupted access.
     </p>
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${FRONTEND_URL}/pricing" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+      <a href="${FRONTEND_URL}/pricing" style="background-color: #8b5cf6; background-image: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
         View Subscription Plans
       </a>
     </div>`;
@@ -316,7 +316,7 @@ export async function sendVerificationEmail({
       To get started, please verify your email address by clicking the button below:
     </p>
     <div style="text-align: center; margin: 40px 0;">
-      <a href="${verificationUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+      <a href="${verificationUrl}" style="background-color: #667eea; background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
         Verify Email Address
       </a>
     </div>
@@ -355,7 +355,7 @@ export async function sendPasswordResetEmail({
       Click the button below to choose a new password:
     </p>
     <div style="text-align: center; margin: 40px 0;">
-      <a href="${resetUrl}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+      <a href="${resetUrl}" style="background-color: #667eea; background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
         Reset Password
       </a>
     </div>
