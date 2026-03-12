@@ -68,6 +68,20 @@ const Home = () => {
                   Your email content is never stored or shared
                 </span>
               </div>
+              <div className="mt-4 flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+                <span>Works with</span>
+                <svg className="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
+                </svg>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Gmail</span>
+                <span className="text-gray-300 dark:text-gray-600 mx-1">&</span>
+                <svg className="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M24 7.387v10.478c0 .23-.08.424-.238.576a.806.806 0 0 1-.588.234H8.196a.806.806 0 0 1-.588-.234.769.769 0 0 1-.238-.576V7.387L12 12.09 24 7.387z" fill="#0078D4"/>
+                  <path d="M24 5.2 12 10.09 0 5.2V4.135c0-.23.08-.424.238-.576A.806.806 0 0 1 .826 3.325h22.348c.234 0 .43.078.588.234A.769.769 0 0 1 24 4.135V5.2z" fill="#0078D4"/>
+                  <path d="M7.37 7.387v10.478c0 .23-.08.424-.238.576a.806.806 0 0 1-.588.234H.826a.806.806 0 0 1-.588-.234A.769.769 0 0 1 0 17.865V5.2l7.37 2.187z" fill="#0553A4"/>
+                </svg>
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Outlook</span>
+              </div>
             </div>
             <div className="hidden md:block relative">
               <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 transform rotate-2 border border-gray-100 dark:border-gray-800">
