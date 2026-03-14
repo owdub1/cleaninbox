@@ -68,8 +68,8 @@ const Home = () => {
                   Your email content is never stored or shared
                 </span>
               </div>
-              <div className="mt-4 flex items-center gap-3 text-sm text-gray-400 dark:text-gray-500">
-                <span>Works with</span>
+              <div className="mt-4 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                <span>Supported by</span>
                 <span className="inline-flex items-center gap-1.5">
                   <svg className="h-[18px] w-[18px]" viewBox="52 42 88 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/>
