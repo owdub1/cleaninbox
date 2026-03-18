@@ -8,11 +8,11 @@ interface SEOProps {
 }
 
 const CANONICAL_BASE = 'https://cleaninbox.ca';
-const DEFAULT_DESCRIPTION = 'CleanInbox is a free inbox cleaner that bulk deletes unwanted emails and unsubscribes you from senders in one click. Works with Gmail and Outlook.';
+const DEFAULT_DESCRIPTION = 'CleanInbox is an email cleaner that bulk deletes unwanted emails and unsubscribes you from senders in one click. Works with Gmail and Outlook.';
 
 export function SEO({ title, description, jsonLd }: SEOProps) {
   const siteName = 'CleanInbox';
-  const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — Free Inbox Cleaner for Gmail & Outlook`;
+  const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — Email Cleaner for Gmail & Outlook`;
   const desc = description || DEFAULT_DESCRIPTION;
   const { pathname } = useLocation();
   const canonicalUrl = `${CANONICAL_BASE}${pathname === '/' ? '' : pathname}`;

@@ -31,7 +31,7 @@ const Home = () => {
       '@type': 'WebSite',
       name: 'CleanInbox',
       url: 'https://cleaninbox.ca',
-      description: 'Free inbox cleaner for Gmail and Outlook. Bulk delete unwanted emails and unsubscribe from senders in one click.',
+      description: 'Email cleaner for Gmail and Outlook. Bulk delete unwanted emails and unsubscribe from senders in one click.',
     },
     {
       '@context': 'https://schema.org',
@@ -49,7 +49,7 @@ const Home = () => {
       url: 'https://cleaninbox.ca',
       applicationCategory: 'UtilitiesApplication',
       operatingSystem: 'Web',
-      description: 'Free inbox cleaner and email management tool. Bulk delete emails, mass unsubscribe from newsletters, and clean up your Gmail or Outlook inbox in minutes.',
+      description: 'Email cleaner and email management tool. Bulk delete emails, mass unsubscribe from newsletters, and clean up your Gmail or Outlook inbox in minutes.',
       offers: {
         '@type': 'Offer',
         price: '0',
@@ -58,7 +58,7 @@ const Home = () => {
       },
     },
   ];
-  return <><SEO description="CleanInbox is a free inbox cleaner for Gmail and Outlook. Bulk delete unwanted emails, mass unsubscribe from newsletters, and clean up your inbox in minutes. The easiest email cleaner tool online." jsonLd={homeJsonLd} /><div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO description="CleanInbox is an email cleaner for Gmail and Outlook. Bulk delete unwanted emails, mass unsubscribe from newsletters, and clean up your inbox in minutes. The easiest email cleaner tool online." jsonLd={homeJsonLd} /><div className="w-full bg-white dark:bg-gray-900">
       {/* Hero Section - Redesigned without the blue header */}
       <section className="pt-16 pb-20 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -68,7 +68,7 @@ const Home = () => {
                 The Easiest Inbox Cleaner for Gmail & Outlook
               </h1>
               <p className="mt-6 text-xl text-gray-600 dark:text-gray-400">
-                Bulk delete unwanted emails and unsubscribe from newsletters in one click. The free email cleaner that cleans up your inbox in minutes.
+                Bulk delete unwanted emails and unsubscribe from newsletters in one click. The email cleaner that cleans up your inbox in minutes.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Link to="/email-cleanup" className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-center">

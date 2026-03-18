@@ -56,12 +56,12 @@ const Pricing = () => {
       acceptedAnswer: { '@type': 'Answer', text: faq.answer },
     })),
   };
-  return <><SEO title="Pricing — Inbox Cleaner Plans" description="Choose an affordable inbox cleaner plan. Bulk delete emails, mass unsubscribe from newsletters, and clean up your Gmail or Outlook inbox. Free trial included." jsonLd={faqJsonLd} /><div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  return <><SEO title="Pricing" description="Choose an affordable email cleanup plan. Bulk delete emails, mass unsubscribe from newsletters, and clean up your Gmail or Outlook inbox. Free trial included." jsonLd={faqJsonLd} /><div className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-              Inbox Cleaner Plans & Pricing
+              Simple, Transparent Pricing
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Choose the email cleanup plan that works best for you
