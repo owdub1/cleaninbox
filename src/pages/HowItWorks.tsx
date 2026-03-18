@@ -3,16 +3,16 @@ import { Link } from 'react-router-dom';
 import { MailIcon, LockIcon, SearchIcon, CheckCircleIcon, ShieldIcon, AlertTriangleIcon, CheckIcon } from 'lucide-react';
 import { SEO } from '../components/SEO';
 const HowItWorks = () => {
-  return <><SEO title="How It Works" description="Learn how CleanInbox helps you declutter your inbox in minutes. Connect your email, review senders, and clean up with one click." /><div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO title="How It Works — Inbox Cleaner for Gmail & Outlook" description="Learn how CleanInbox works as your inbox cleaner. Connect Gmail or Outlook, review senders, bulk delete emails, and mass unsubscribe from newsletters — all in minutes." /><div className="w-full bg-white dark:bg-gray-900">
       {/* Header - Redesigned without gradient */}
       <section className="pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-gray-100">
-              How CleanInbox Works
+              How Our Inbox Cleaner Works
             </h1>
             <p className="mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              A simple, secure process to declutter your inbox in minutes
+              A simple, secure email cleaner that declutters your inbox in minutes
             </p>
           </div>
         </div>

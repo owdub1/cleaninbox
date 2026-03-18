@@ -8,10 +8,12 @@ interface SEOProps {
 }
 
 const CANONICAL_BASE = 'https://cleaninbox.ca';
+const DEFAULT_DESCRIPTION = 'CleanInbox is a free inbox cleaner that bulk deletes unwanted emails and unsubscribes you from senders in one click. Works with Gmail and Outlook.';
 
 export function SEO({ title, description, jsonLd }: SEOProps) {
   const siteName = 'CleanInbox';
-  const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — Take Control of Your Inbox`;
+  const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — Free Inbox Cleaner for Gmail & Outlook`;
+  const desc = description || DEFAULT_DESCRIPTION;
   const { pathname } = useLocation();
   const canonicalUrl = `${CANONICAL_BASE}${pathname === '/' ? '' : pathname}`;
 
@@ -19,7 +21,12 @@ export function SEO({ title, description, jsonLd }: SEOProps) {
     <Helmet>
       <title>{fullTitle}</title>
       <link rel="canonical" href={canonicalUrl} />
-      {description && <meta name="description" content={description} />}
+      <meta name="description" content={desc} />
+      <meta property="og:title" content={fullTitle} />
+      <meta property="og:description" content={desc} />
+      <meta property="og:url" content={canonicalUrl} />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={desc} />
       {jsonLd && (
         <script type="application/ld+json">
           {JSON.stringify(Array.isArray(jsonLd) ? jsonLd : jsonLd)}

@@ -31,6 +31,7 @@ const Home = () => {
       '@type': 'WebSite',
       name: 'CleanInbox',
       url: 'https://cleaninbox.ca',
+      description: 'Free inbox cleaner for Gmail and Outlook. Bulk delete unwanted emails and unsubscribe from senders in one click.',
     },
     {
       '@context': 'https://schema.org',
@@ -38,21 +39,36 @@ const Home = () => {
       name: 'CleanInbox',
       url: 'https://cleaninbox.ca',
       logo: 'https://cleaninbox.ca/favicon-512.png',
-      description: 'Delete unwanted emails in bulk and unsubscribe from senders with one click.',
+      description: 'CleanInbox is an inbox cleaner tool that helps you bulk delete emails and mass unsubscribe from newsletters. Works with Gmail and Outlook.',
       sameAs: [],
     },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'CleanInbox',
+      url: 'https://cleaninbox.ca',
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Web',
+      description: 'Free inbox cleaner and email management tool. Bulk delete emails, mass unsubscribe from newsletters, and clean up your Gmail or Outlook inbox in minutes.',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        description: 'Free trial with 5 cleanup actions',
+      },
+    },
   ];
-  return <><SEO description="Delete unwanted emails in bulk and unsubscribe from senders with one click. Connect your Gmail or Outlook account and clean up your inbox in minutes." jsonLd={homeJsonLd} /><div className="w-full bg-white dark:bg-gray-900">
+  return <><SEO description="CleanInbox is a free inbox cleaner for Gmail and Outlook. Bulk delete unwanted emails, mass unsubscribe from newsletters, and clean up your inbox in minutes. The easiest email cleaner tool online." jsonLd={homeJsonLd} /><div className="w-full bg-white dark:bg-gray-900">
       {/* Hero Section - Redesigned without the blue header */}
       <section className="pt-16 pb-20 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold leading-tight text-gray-900 dark:text-gray-100">
-                Take Back Control of Your Inbox
+                The Easiest Inbox Cleaner for Gmail & Outlook
               </h1>
               <p className="mt-6 text-xl text-gray-600 dark:text-gray-400">
-                Unsubscribe from newsletters and marketing emails quickly — one click for supported senders, easy links for the rest.
+                Bulk delete unwanted emails and unsubscribe from newsletters in one click. The free email cleaner that cleans up your inbox in minutes.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Link to="/email-cleanup" className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-center">
@@ -69,7 +85,6 @@ const Home = () => {
                 </span>
               </div>
               <div className="mt-4 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                <span>Supported by</span>
                 <span className="inline-flex items-center gap-1.5">
                   <svg className="h-[18px] w-[18px]" viewBox="52 42 88 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/>
@@ -80,7 +95,7 @@ const Home = () => {
                   </svg>
                   <span className="text-gray-500 dark:text-gray-400 font-medium">Gmail</span>
                 </span>
-                <span className="text-gray-300 dark:text-gray-600">&</span>
+                <span className="text-gray-500 dark:text-gray-400">&</span>
                 <span className="inline-flex items-center gap-1.5">
                   <svg className="h-[18px] w-[18px]" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#0364b8" d="M28.596 11.09H18.5L16 14.546l2.5 3.454H28.596A1.404 1.404 0 0 0 30 16.596v-4.102a1.404 1.404 0 0 0-1.404-1.404z"/>
@@ -94,6 +109,7 @@ const Home = () => {
                   </svg>
                   <span className="text-gray-500 dark:text-gray-400 font-medium">Outlook</span>
                 </span>
+                <span>supported</span>
               </div>
             </div>
             <div className="hidden md:block relative">
@@ -129,11 +145,11 @@ const Home = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Why Choose CleanInbox?
+              Why Choose Our Inbox Cleaner?
             </h2>
             <p className="mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              We make it incredibly easy to declutter your inbox while keeping
-              your data private and secure.
+              CleanInbox makes it incredibly easy to clean up your email — bulk delete old messages,
+              mass unsubscribe from newsletters, and declutter your inbox while keeping your data private.
             </p>
           </div>
           <div className="grid md:grid-cols-4 gap-8">
@@ -165,11 +181,11 @@ const Home = () => {
                 <FolderIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Email Cleanup
+                Bulk Email Cleanup
               </h3>
               <p className="mt-4 text-gray-600 dark:text-gray-400">
-                Organize emails by year and sender. Easily identify and remove
-                old emails with our powerful categorization tools.
+                Organize emails by year and sender. Bulk delete old emails
+                and free up space with our email cleaner tools.
               </p>
             </div>
             <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 text-center">
@@ -177,10 +193,10 @@ const Home = () => {
                 <UserIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Works With Gmail
+                Gmail & Outlook Cleaner
               </h3>
               <p className="mt-4 text-gray-600 dark:text-gray-400">
-                Connect your Gmail account and let CleanInbox analyze your inbox.
+                Connect your Gmail or Outlook account and let our inbox cleaner analyze your email.
                 Simple setup with secure OAuth authentication.
               </p>
             </div>
@@ -192,9 +208,9 @@ const Home = () => {
       <section className="py-20 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Our Services</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">How Our Email Cleaner Works</h2>
             <p className="mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              Two powerful ways to manage your inbox
+              Two powerful inbox cleanup tools to manage your email
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-12">
@@ -457,11 +473,11 @@ const Home = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">
-              Ready to Clean Up Your Inbox?
+              Ready to Clean Your Inbox?
             </h2>
             <p className="mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              Join thousands of users who have decluttered their inboxes and
-              reclaimed their time.
+              Join thousands of users who use our inbox cleaner to bulk delete emails,
+              unsubscribe from newsletters, and reclaim their time.
             </p>
             <div className="mt-8">
               <Link to="/email-cleanup" className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-4 rounded-md font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors inline-block">
