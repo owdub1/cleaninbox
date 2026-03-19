@@ -6,7 +6,6 @@ import {
   SortAscIcon,
   CheckIcon,
   TrashIcon,
-  ArchiveIcon,
 } from 'lucide-react';
 import { Sender } from '../../../hooks/useEmailSenders';
 
@@ -20,10 +19,7 @@ interface SearchAndFilterBarProps {
   selectedCount: number;
   totalVisible: number;
   onSelectAll: () => void;
-  onArchiveSelected: () => void;
   onDeleteSelected: () => void;
-  selectedTool: string | null;
-  hasPaidPlan?: boolean;
 }
 
 const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
@@ -36,10 +32,7 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
   selectedCount,
   totalVisible,
   onSelectAll,
-  onArchiveSelected,
   onDeleteSelected,
-  selectedTool,
-  hasPaidPlan = true,
 }) => {
   return (
     <>
@@ -106,15 +99,6 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
             </span>
           </div>
           <div className="flex space-x-4">
-            {selectedTool !== 'bulk-delete' && hasPaidPlan && (
-              <button
-                className="flex items-center text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-                onClick={onArchiveSelected}
-              >
-                <ArchiveIcon className="h-3 w-3 mr-1" />
-                Archive
-              </button>
-            )}
             <button
               className="flex items-center text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
               onClick={onDeleteSelected}

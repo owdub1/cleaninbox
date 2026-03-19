@@ -39,7 +39,7 @@ import ToolsSelectionView from '../components/email/cleanup/ToolsSelectionView';
 import { cleanupTools } from '../components/email/cleanup/ToolsSelectionView';
 import DeleteView from '../components/email/cleanup/DeleteView';
 import UnsubscribeView from '../components/email/cleanup/UnsubscribeView';
-import ArchiveView from '../components/email/cleanup/ArchiveView';
+import BulkDeleteView from '../components/email/cleanup/ArchiveView';
 import TopSendersView from '../components/email/cleanup/TopSendersView';
 
 const FREE_TRIAL_LIMIT = 5;
@@ -103,7 +103,7 @@ const EmailCleanup = () => {
   const [selectedAccountEmail, setSelectedAccountEmail] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
-    action: 'delete' | 'archive' | 'unsubscribe';
+    action: 'delete' | 'unsubscribe';
     senders: Sender[];
   }>({ isOpen: false, action: 'delete', senders: [] });
 
@@ -160,7 +160,7 @@ const EmailCleanup = () => {
   const [loadingEmails, setLoadingEmails] = useState<string | null>(null);
   const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
 
-  const { deleteSingleEmail, deleteEmails, archiveEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
+  const { deleteSingleEmail, deleteEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
   const [sessionDeletedCount, setSessionDeletedCount] = useState(0);
 
   // Free trial tracking
@@ -197,7 +197,7 @@ const EmailCleanup = () => {
 
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
-  const hasPaidPlan = hasFullTools;  // gates archive/unsubscribe tools (Pro+)
+  const hasPaidPlan = hasFullTools;  // gates unsubscribe tool (Pro+)
   const isFreeTrial = !isPaid;        // gates free action counting (Basic+ exempt)
 
   // Connected accounts
@@ -273,14 +273,12 @@ const EmailCleanup = () => {
           } else if (pending.type === 'bulk' && pending.senderEmails && pending.senderNames) {
             if (pending.action === 'delete') {
               deleteEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
-            } else if (pending.action === 'archive') {
-              archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
             }
           }
         }
       });
     };
-  }, [connectedGmailAccount, deleteSingleEmail, deleteEmails, archiveEmails]);
+  }, [connectedGmailAccount, deleteSingleEmail, deleteEmails]);
 
   const getCurrentStep = () => {
     if (!isAuthenticated) return 1;
@@ -337,7 +335,7 @@ const EmailCleanup = () => {
     }
   };
 
-  const handleCleanupAction = (action: 'delete' | 'archive' | 'unsubscribe', senderList: Sender[]) => {
+  const handleCleanupAction = (action: 'delete' | 'unsubscribe', senderList: Sender[]) => {
     if (isFreeTrial && !hasFreeTries) {
       setShowUpgradeModal(true);
       return;
@@ -445,8 +443,6 @@ const EmailCleanup = () => {
       } else if (pending.type === 'bulk' && pending.senderEmails && pending.senderNames) {
         if (pending.action === 'delete') {
           result = await deleteEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
-        } else if (pending.action === 'archive') {
-          result = await archiveEmails(connectedGmailAccount.email, pending.senderEmails, pending.senderNames);
         }
         if (pending.senders) {
           const senderKeys = pending.senders.map(s => ({ email: s.email, name: s.name }));
@@ -639,7 +635,7 @@ const EmailCleanup = () => {
 
   const flatDeleteSenders = doFilterPending(doFilterAndSort(senders));
   const filteredUnsubscribable = doFilterPending(doFilterAndSort(unsubscribableSenders));
-  const filteredArchiveSenders = doFilterPending(doFilterAndSort(senders));
+  const filteredBulkDeleteSenders = doFilterPending(doFilterAndSort(senders));
 
   return (
     <div className="w-full bg-white dark:bg-gray-900">
@@ -754,9 +750,7 @@ const EmailCleanup = () => {
               selectedCount={selectedSenderKeys.length}
               totalVisible={doFilterAndSort(senders).length}
               onSelectAll={handleSelectAll}
-              onArchiveSelected={() => handleCleanupAction('archive', getSelectedSenders())}
               onDeleteSelected={() => handleCleanupAction('delete', getSelectedSenders())}
-              selectedTool={selectedTool}
               hasPaidPlan={hasPaidPlan}
             />
 
@@ -837,8 +831,8 @@ const EmailCleanup = () => {
             )}
 
             {!sendersLoading && senders.length > 0 && selectedTool === 'bulk-delete' && (
-              <ArchiveView
-                senders={filteredArchiveSenders}
+              <BulkDeleteView
+                senders={filteredBulkDeleteSenders}
                 selectedSenderKeys={selectedSenderKeys}
                 onToggleSenderSelection={toggleSenderSelection}
                 onCleanupAction={handleCleanupAction}

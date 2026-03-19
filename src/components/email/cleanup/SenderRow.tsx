@@ -28,7 +28,6 @@ interface SenderRowProps {
   showStalenessBadge?: boolean;
   showNewsletterBadge?: boolean;
   showExpandedActions?: boolean;
-  onArchiveAll?: () => void;
   onDeleteAll?: () => void;
 }
 
@@ -49,7 +48,6 @@ const SenderRow: React.FC<SenderRowProps> = ({
   showStalenessBadge = false,
   showNewsletterBadge = false,
   showExpandedActions = false,
-  onArchiveAll,
   onDeleteAll,
 }) => {
   const [selectedEmailIds, setSelectedEmailIds] = useState<Set<string>>(new Set());
@@ -157,14 +155,6 @@ const SenderRow: React.FC<SenderRowProps> = ({
                 Emails from this sender ({sender.emailCount} total):
               </div>
               <div className="flex gap-2">
-                {onArchiveAll && (
-                  <button
-                    className="px-2 py-1 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded"
-                    onClick={onArchiveAll}
-                  >
-                    Archive All
-                  </button>
-                )}
                 {onDeleteAll && (
                   <button
                     className="px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
