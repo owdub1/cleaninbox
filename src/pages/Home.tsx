@@ -65,7 +65,7 @@ const Home = () => {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold leading-tight text-gray-900 dark:text-gray-100">
-                The Easiest Inbox Cleaner for Gmail & Outlook
+                Take Back Control of Your Inbox
               </h1>
               <p className="mt-6 text-xl text-gray-600 dark:text-gray-400">
                 Bulk delete unwanted emails and unsubscribe from newsletters in one click. The email cleaner that cleans up your inbox in minutes.
