@@ -159,8 +159,30 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     const isFirstTimeSync = hasFetched && !hasSendersRef.current && !fullSync && !repair;
     phase1CountRef.current = 0;
 
-    // Start polling sync progress every 2s
+    // Retry-aware fetch for sync requests — browsers can abort long-running
+    // fetches when the tab is backgrounded. Retry up to 2 times on network errors.
+    const syncFetch = async (endpoint: string, fetchOptions: RequestInit): Promise<Response> => {
+      const maxRetries = 2;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          return await fetchWithAuth(endpoint, fetchOptions, refreshToken);
+        } catch (err: any) {
+          const isNetworkError = err.name === 'TypeError' && /fetch/i.test(err.message);
+          if (!isNetworkError || attempt === maxRetries) throw err;
+          // Wait before retrying (longer each time)
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+      throw new Error('Sync request failed after retries');
+    };
+
+    // Start polling sync progress — pauses when tab is hidden
+    let pollActive = true;
+    const handleVisibility = () => { pollActive = document.visibilityState === 'visible'; };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     const pollInterval = setInterval(async () => {
+      if (!pollActive) return; // skip polling while tab is hidden
       try {
         const resp = await fetchWithAuth(
           `/api/emails/sync-progress?email=${encodeURIComponent(email)}`,
@@ -175,11 +197,9 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
               total: data.total,
             });
           }
-        } else {
-          console.warn('Sync progress poll failed:', resp.status);
         }
       } catch (e) {
-        console.warn('Sync progress poll error:', e);
+        // Polling errors are non-fatal — ignore silently
       }
     }, 2000);
 
@@ -191,10 +211,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         // Phase 1: Fetch 500 most recent emails quickly
         setSyncPhase('initial');
 
-        const phase1Response = await fetchWithAuth('/api/emails/sync', {
+        const phase1Response = await syncFetch('/api/emails/sync', {
           method: 'POST',
           body: JSON.stringify({ email, initialBatch: true }),
-        }, refreshToken);
+        });
 
         const phase1Data = await phase1Response.json();
 
@@ -217,10 +237,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
         // Phase 2: Full sync to rebuild everything with accurate totals
         setSyncPhase('full');
 
-        const phase2Response = await fetchWithAuth('/api/emails/sync', {
+        const phase2Response = await syncFetch('/api/emails/sync', {
           method: 'POST',
           body: JSON.stringify({ email, fullSync: true }),
-        }, refreshToken);
+        });
 
         const phase2Data = await phase2Response.json();
 
@@ -254,10 +274,10 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       // === Standard single-request sync (incremental or manual full) ===
       setSyncPhase('full');
 
-      const response = await fetchWithAuth('/api/emails/sync', {
+      const response = await syncFetch('/api/emails/sync', {
         method: 'POST',
         body: JSON.stringify({ email, maxMessages, fullSync, repair }),
-      }, refreshToken);
+      });
 
       const data = await response.json();
 
@@ -292,6 +312,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       return { success: false };
     } finally {
       clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
       setSyncProgress(null);
       setSyncPhase('idle');
     }
