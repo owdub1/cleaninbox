@@ -108,8 +108,16 @@ async function handler(
       totalEmails < planLimits.emailProcessingLimit &&
       previousPlanCaps.includes(totalEmails);
 
-    // Check if enough time has passed since last sync (skip if user just upgraded or initial batch)
-    if (syncIntervalMinutes > 0 && account.last_synced && !wasLimitedByPreviousPlan && !initialBatch) {
+    // Check if previous sync actually produced senders (if not, it likely failed mid-sync)
+    const { count: senderCount } = await supabase
+      .from('email_senders')
+      .select('*', { count: 'exact', head: true })
+      .eq('email_account_id', account.id);
+    const hasSenders = (senderCount || 0) > 0;
+
+    // Check if enough time has passed since last sync
+    // Skip interval check if: user just upgraded, initial batch, or previous sync produced no senders
+    if (syncIntervalMinutes > 0 && account.last_synced && !wasLimitedByPreviousPlan && !initialBatch && hasSenders) {
       const lastSyncTime = new Date(account.last_synced).getTime();
       const now = Date.now();
       const minutesSinceLastSync = (now - lastSyncTime) / (1000 * 60);
