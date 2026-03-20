@@ -257,10 +257,11 @@ async function handler(
       }
     }
 
-    // Plan tier check: unsubscribe requires Pro, Unlimited, or Quick Clean
+    // Plan tier check: unsubscribe requires Pro, Unlimited, or Quick Clean (not expired)
     {
       const plan = (subStatus?.plan || 'free').toLowerCase();
-      if (!['pro', 'unlimited', 'onetime'].includes(plan)) {
+      const status = subStatus?.status || '';
+      if (!['pro', 'unlimited', 'onetime'].includes(plan) || status === 'expired') {
         return res.status(403).json({
           error: 'Unsubscribe requires a Pro or higher plan.',
           code: 'PLAN_UPGRADE_REQUIRED',
