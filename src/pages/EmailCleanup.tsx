@@ -338,7 +338,7 @@ const EmailCleanup = () => {
 
   const handleCleanupAction = (action: 'delete' | 'unsubscribe', senderList: Sender[]) => {
     if (isExpired) {
-      setNotification({ type: 'error', message: 'Your plan has expired. Please upgrade to continue.' });
+      setShowUpgradeModal(true);
       return;
     }
     if (isFreeTrial && !hasFreeTries) {
