@@ -289,8 +289,8 @@ const EmailCleanup = () => {
   const currentStep = getCurrentStep();
 
   const handleToolSelect = (toolId: string) => {
-    if (!hasPaidPlan && !isExpired && toolId !== 'delete') {
-      navigate('/checkout');
+    if (!hasPaidPlan && toolId !== 'delete') {
+      setShowUpgradeModal(true);
       return;
     }
     setSearchParams({ tool: toolId });
