@@ -122,7 +122,15 @@ export async function checkFreeTrialOrPaid(
     return { isPaid: true, allowed: true, remaining: -1, isPastDue: false };
   }
 
-  // Free user - check and increment trial
+  // If user had a paid plan that expired or was cancelled, block — no free trial fallback
+  const hadPaidPlan = !!subscription &&
+    subscription.plan.toLowerCase() !== 'free' &&
+    (subscription.status === 'expired' || subscription.status === 'cancelled');
+  if (hadPaidPlan) {
+    return { isPaid: false, allowed: false, remaining: 0, isPastDue: false };
+  }
+
+  // Free user (never had a paid plan) - check and increment trial
   const result = await tryIncrementFreeTrialUsage(supabase, userEmail, actionCount);
 
   return {

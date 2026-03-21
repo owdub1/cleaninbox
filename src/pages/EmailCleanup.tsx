@@ -49,7 +49,7 @@ const EmailCleanup = () => {
   const { emailAccounts, loading: dashboardLoading } = useDashboardData();
   const navigate = useNavigate();
 
-  const { subscription, isPaid, isUnlimited, hasFullTools, loading: subscriptionLoading } = useSubscription();
+  const { subscription, isPaid, isUnlimited, hasFullTools, isExpired, loading: subscriptionLoading } = useSubscription();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const validTools = ['delete', 'unsubscribe', 'bulk-delete', 'top-senders'];
@@ -198,7 +198,7 @@ const EmailCleanup = () => {
   const freeActionsRemaining = FREE_TRIAL_LIMIT - freeActionsUsed;
   const hasFreeTries = freeActionsRemaining > 0;
   const hasPaidPlan = hasFullTools;  // gates unsubscribe tool (Pro+)
-  const isFreeTrial = !isPaid;        // gates free action counting (Basic+ exempt)
+  const isFreeTrial = !isPaid && !isExpired;  // gates free action counting (only for users who never had a plan)
 
   // Connected accounts
   const connectedGmailAccounts = emailAccounts?.filter(
@@ -336,6 +336,10 @@ const EmailCleanup = () => {
   };
 
   const handleCleanupAction = (action: 'delete' | 'unsubscribe', senderList: Sender[]) => {
+    if (isExpired) {
+      setNotification({ type: 'error', message: 'Your plan has expired. Please upgrade to continue.' });
+      return;
+    }
     if (isFreeTrial && !hasFreeTries) {
       setShowUpgradeModal(true);
       return;
@@ -679,6 +683,21 @@ const EmailCleanup = () => {
 
       <section className="pt-10 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {isExpired && !subscriptionLoading && (
+            <div className="mb-6 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-3" />
+                  <span className="text-red-800 dark:text-red-300">
+                    Your plan has expired. Upgrade to continue cleaning your inbox.
+                  </span>
+                </div>
+                <button onClick={() => navigate('/pricing')} className="text-sm font-medium text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 underline">
+                  View Plans
+                </button>
+              </div>
+            </div>
+          )}
           {isFreeTrial && !subscriptionLoading && (
             <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
               <div className="flex items-center justify-between">
