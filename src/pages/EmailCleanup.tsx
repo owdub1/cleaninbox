@@ -56,7 +56,8 @@ const EmailCleanup = () => {
   const toolParam = searchParams.get('tool');
   const selectedTool = toolParam && validTools.includes(toolParam) ? toolParam : null;
 
-  const shouldStartWithTools = isPaid && emailAccounts && emailAccounts.length > 0;
+  const hasAccess = isPaid || isExpired; // expired users can still view their data
+  const shouldStartWithTools = hasAccess && emailAccounts && emailAccounts.length > 0;
   const [currentView, setCurrentView] = useState<'onboarding' | 'tools' | 'cleanup'>(
     selectedTool ? 'cleanup' : shouldStartWithTools ? 'tools' : 'onboarding'
   );
@@ -65,15 +66,15 @@ const EmailCleanup = () => {
   useEffect(() => {
     if (!viewInitialized && !subscriptionLoading && !dashboardLoading) {
       if (currentView !== 'cleanup') {
-        if (isPaid && emailAccounts && emailAccounts.length > 0) {
+        if (hasAccess && emailAccounts && emailAccounts.length > 0) {
           setCurrentView('tools');
-        } else if (!isPaid || !emailAccounts || emailAccounts.length === 0) {
+        } else if (!hasAccess || !emailAccounts || emailAccounts.length === 0) {
           setCurrentView('onboarding');
         }
       }
       setViewInitialized(true);
     }
-  }, [isPaid, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized, currentView]);
+  }, [hasAccess, emailAccounts, subscriptionLoading, dashboardLoading, viewInitialized, currentView]);
 
   const isLoadingInitialView = isAuthenticated && (subscriptionLoading || dashboardLoading) && !viewInitialized;
 
