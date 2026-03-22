@@ -90,20 +90,20 @@ const Home = () => {
                   Your email content is never stored or shared
                 </span>
               </div>
-              <div className="mt-4 flex items-center gap-3 text-sm">
+              <div className="mt-4 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20 text-sm">
                 <span className="inline-flex items-center gap-1.5">
-                  <svg className="h-[18px] w-[18px]" viewBox="52 42 88 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <svg className="h-4 w-4" viewBox="52 42 88 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/>
                     <path fill="#34a853" d="M120 108h14c3.32 0 6-2.69 6-6V59l-20 15"/>
                     <path fill="#fbbc04" d="M120 48v26l20-15v-8c0-7.42-8.47-11.65-14.4-7.2"/>
                     <path fill="#ea4335" d="M72 74V48l24 18 24-18v26L96 92"/>
                     <path fill="#c5221f" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.46-14.4-.22-14.4 7.2"/>
                   </svg>
-                  <span className="text-indigo-100 font-medium">Gmail</span>
+                  <span className="text-white font-medium">Gmail</span>
                 </span>
-                <span className="text-indigo-200">&</span>
+                <span className="text-white/60">&</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <svg className="h-[18px] w-[18px]" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <svg className="h-4 w-4" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#0364b8" d="M28.596 11.09H18.5L16 14.546l2.5 3.454H28.596A1.404 1.404 0 0 0 30 16.596v-4.102a1.404 1.404 0 0 0-1.404-1.404z"/>
                     <path fill="#0078d4" d="M16 3H5.404A1.404 1.404 0 0 0 4 4.404v10.192A1.404 1.404 0 0 0 5.404 16H16l3-6.5z"/>
                     <path fill="#28a8ea" d="M16 16H5.404A1.404 1.404 0 0 0 4 17.404v10.192A1.404 1.404 0 0 0 5.404 29H16l3-6.5z"/>
@@ -113,9 +113,9 @@ const Home = () => {
                     <rect fill="#0078d4" x="2" y="7" width="14" height="18" rx="1.4"/>
                     <path fill="#fff" d="M12.58 12.87a4.13 4.13 0 0 0-1.8-1.59 5.91 5.91 0 0 0-2.67-.57 6.08 6.08 0 0 0-2.75.59 4.19 4.19 0 0 0-1.83 1.67A4.89 4.89 0 0 0 2.89 16a5.17 5.17 0 0 0 .6 2.56A4.11 4.11 0 0 0 5.2 20.2a5.69 5.69 0 0 0 2.6.57 5.93 5.93 0 0 0 2.69-.58 4.14 4.14 0 0 0 1.78-1.63 4.74 4.74 0 0 0 .63-2.46 5 5 0 0 0-.32-1.23zm-2.15 4.08a2.42 2.42 0 0 1-1 1.07 2.93 2.93 0 0 1-1.53.39 3 3 0 0 1-1.58-.41 2.56 2.56 0 0 1-1-1.12 3.69 3.69 0 0 1-.35-1.65 3.77 3.77 0 0 1 .35-1.68 2.6 2.6 0 0 1 1-1.13 2.84 2.84 0 0 1 1.52-.4 2.93 2.93 0 0 1 1.52.39 2.5 2.5 0 0 1 1 1.09 3.57 3.57 0 0 1 .34 1.61 3.89 3.89 0 0 1-.27 1.84z"/>
                   </svg>
-                  <span className="text-indigo-100 font-medium">Outlook</span>
+                  <span className="text-white font-medium">Outlook</span>
                 </span>
-                <span className="text-indigo-200">supported</span>
+                <span className="text-white/80 font-medium">supported</span>
               </div>
             </div>
             <div className="hidden md:block relative">
