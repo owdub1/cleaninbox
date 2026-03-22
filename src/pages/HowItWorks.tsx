@@ -20,49 +20,64 @@ const HowItWorks = () => {
       {/* Process Overview */}
       <section className="py-16 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-12">
+          <div className="grid md:grid-cols-3 gap-8 md:gap-12">
             <div className="text-center relative">
-              <div className="bg-indigo-100 dark:bg-indigo-900 w-20 h-20 mx-auto rounded-full flex items-center justify-center">
-                <MailIcon className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+              <div className="relative mx-auto w-24 h-24">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25 flex items-center justify-center">
+                  <MailIcon className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-md border-2 border-indigo-500">
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">1</span>
+                </div>
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                1. Connect Your Email
+                Connect Your Email
               </h3>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
+              <p className="mt-3 text-gray-600 dark:text-gray-400">
                 Securely connect your email account using OAuth. We never see or
                 store your password.
               </p>
-              <div className="hidden md:flex absolute top-1/2 -right-6 transform -translate-y-1/2 z-10">
-                <svg className="h-8 w-8 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="hidden md:flex absolute top-12 -right-4 transform z-10">
+                <svg className="h-6 w-6 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
             </div>
             <div className="text-center relative">
-              <div className="bg-indigo-100 dark:bg-indigo-900 w-20 h-20 mx-auto rounded-full flex items-center justify-center">
-                <SearchIcon className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+              <div className="relative mx-auto w-24 h-24">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/25 flex items-center justify-center">
+                  <SearchIcon className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-md border-2 border-purple-500">
+                  <span className="text-sm font-bold text-purple-600 dark:text-purple-400">2</span>
+                </div>
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                2. Review Subscriptions
+                Review Subscriptions
               </h3>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
+              <p className="mt-3 text-gray-600 dark:text-gray-400">
                 We'll show you a list of your most frequent senders, making it
                 easy to identify newsletters and marketing emails.
               </p>
-              <div className="hidden md:flex absolute top-1/2 -right-6 transform -translate-y-1/2 z-10">
-                <svg className="h-8 w-8 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="hidden md:flex absolute top-12 -right-4 transform z-10">
+                <svg className="h-6 w-6 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                 </svg>
               </div>
             </div>
             <div className="text-center">
-              <div className="bg-indigo-100 dark:bg-indigo-900 w-20 h-20 mx-auto rounded-full flex items-center justify-center">
-                <CheckCircleIcon className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+              <div className="relative mx-auto w-24 h-24">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25 flex items-center justify-center">
+                  <CheckCircleIcon className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-8 h-8 bg-white dark:bg-gray-900 rounded-full flex items-center justify-center shadow-md border-2 border-green-500">
+                  <span className="text-sm font-bold text-green-600 dark:text-green-400">3</span>
+                </div>
               </div>
               <h3 className="mt-6 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                3. Clean Up Your Inbox
+                Clean Up Your Inbox
               </h3>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">
+              <p className="mt-3 text-gray-600 dark:text-gray-400">
                 Delete unwanted emails in bulk or unsubscribe from senders you
                 no longer want to hear from. We'll handle the rest automatically.
               </p>
