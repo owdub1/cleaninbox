@@ -101,7 +101,7 @@ const Home = () => {
                   </svg>
                   <span className="text-white font-medium">Gmail</span>
                 </span>
-                <span className="text-white/60">&</span>
+                <span className="text-white">&</span>
                 <span className="inline-flex items-center gap-1.5">
                   <svg className="h-4 w-4" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#0364b8" d="M28.596 11.09H18.5L16 14.546l2.5 3.454H28.596A1.404 1.404 0 0 0 30 16.596v-4.102a1.404 1.404 0 0 0-1.404-1.404z"/>
@@ -115,7 +115,7 @@ const Home = () => {
                   </svg>
                   <span className="text-white font-medium">Outlook</span>
                 </span>
-                <span className="text-white/80 font-medium">supported</span>
+                <span className="text-white font-medium">supported</span>
               </div>
             </div>
             <div className="hidden md:block relative">
