@@ -670,12 +670,6 @@ async function performUpgradeSync(
     });
   }
 
-  // Collect affected sender keys for recalculation
-  const affectedSenderKeys = new Set<string>();
-  for (const e of emailsToInsert) {
-    affectedSenderKeys.add(`${e.sender_email}|||${e.sender_name}`);
-  }
-
   // Step 6: Insert only new emails (keep existing ones)
   for (let i = 0; i < emailsToInsert.length; i += BATCH_SIZE) {
     const batch = emailsToInsert.slice(i, i + BATCH_SIZE);
@@ -683,8 +677,12 @@ async function performUpgradeSync(
     if (error) console.error('Upgrade sync email insert error:', error.message);
   }
 
-  // Step 7: Recalculate sender stats for affected senders (preserves unsubscribe links for unchanged senders)
-  await batchRecalculateSenderStats(userId, accountId, affectedSenderKeys);
+  // Step 7: Rebuild ALL senders from scratch (not just affected ones)
+  // The partial recalculation via batchRecalculateSenderStats can fail with large
+  // sender counts due to .in() query limits. Rebuilding from the emails table is
+  // more reliable and ensures accurate counts after a plan upgrade.
+  await supabase.from('email_senders').delete().eq('email_account_id', accountId);
+  await rebuildSendersFromEmails(userId, accountId);
 
   // Step 8: Update account
   const totalEmails = existingCount + emailsToInsert.length;
@@ -1517,6 +1515,85 @@ async function verifyCompletenessAndSync(
   }
 
   return { addedCount: result.addedCount, complete: true, missingCount: 0, sendersWithUnsubscribe: result.sendersWithUnsubscribe };
+}
+
+/**
+ * Rebuild all senders from the emails table for an account.
+ * Used after upgrade sync to ensure accurate sender counts.
+ * Reads all emails in paginated chunks, aggregates stats in-memory,
+ * then batch-inserts new sender rows.
+ */
+async function rebuildSendersFromEmails(userId: string, accountId: string): Promise<void> {
+  // Read all emails for this account (paginated for Supabase 1000-row limit)
+  const senderStats = new Map<string, {
+    sender_email: string;
+    sender_name: string;
+    email_count: number;
+    unread_count: number;
+    first_email_date: string;
+    last_email_date: string;
+    labels_seen: string[];
+  }>();
+
+  let page = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('emails')
+      .select('sender_email, sender_name, received_at, is_unread, labels')
+      .eq('email_account_id', accountId)
+      .order('id')
+      .range(page * 1000, (page + 1) * 1000 - 1);
+    if (error || !data || data.length === 0) break;
+
+    for (const email of data) {
+      const key = `${email.sender_email}|||${email.sender_name}`;
+      const existing = senderStats.get(key);
+      if (existing) {
+        existing.email_count++;
+        if (email.is_unread) existing.unread_count++;
+        if (email.received_at < existing.first_email_date) existing.first_email_date = email.received_at;
+        if (email.received_at > existing.last_email_date) existing.last_email_date = email.received_at;
+        if (email.labels) existing.labels_seen.push(...email.labels);
+      } else {
+        senderStats.set(key, {
+          sender_email: email.sender_email,
+          sender_name: email.sender_name,
+          email_count: 1,
+          unread_count: email.is_unread ? 1 : 0,
+          first_email_date: email.received_at,
+          last_email_date: email.received_at,
+          labels_seen: email.labels || [],
+        });
+      }
+    }
+
+    if (data.length < 1000) break;
+    page++;
+  }
+
+  // Build sender rows
+  const sendersToInsert = Array.from(senderStats.values()).map(s => ({
+    user_id: userId,
+    email_account_id: accountId,
+    sender_email: s.sender_email,
+    sender_name: s.sender_name,
+    email_count: s.email_count,
+    unread_count: s.unread_count,
+    first_email_date: s.first_email_date,
+    last_email_date: s.last_email_date,
+    has_unsubscribe: false,
+    has_one_click_unsubscribe: false,
+    is_newsletter: s.labels_seen.includes('CATEGORY_UPDATES'),
+    is_promotional: s.labels_seen.includes('CATEGORY_PROMOTIONS'),
+    updated_at: new Date().toISOString(),
+  }));
+
+  // Insert in batches
+  for (let i = 0; i < sendersToInsert.length; i += BATCH_SIZE) {
+    const batch = sendersToInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from('email_senders').insert(batch);
+    if (error) console.error('Rebuild sender insert error:', error.message);
+  }
 }
 
 /**
