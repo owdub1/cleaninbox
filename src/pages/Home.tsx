@@ -59,32 +59,38 @@ const Home = () => {
     },
   ];
   return <><SEO description="CleanInbox is an email cleaner for Gmail and Outlook. Bulk delete unwanted emails, mass unsubscribe from newsletters, and clean up your inbox in minutes. The easiest email cleaner tool online." jsonLd={homeJsonLd} /><div className="w-full bg-white dark:bg-gray-900">
-      {/* Hero Section - Redesigned without the blue header */}
-      <section className="pt-16 pb-20 bg-white dark:bg-gray-900">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Hero Section */}
+      <section className="relative pt-16 pb-20 overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 dark:from-indigo-900 dark:via-purple-900 dark:to-indigo-950">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold leading-tight text-gray-900 dark:text-gray-100">
+              <h1 className="text-4xl md:text-5xl font-bold leading-tight text-white">
                 Take Back Control of Your Inbox
               </h1>
-              <p className="mt-6 text-xl text-gray-600 dark:text-gray-400">
+              <p className="mt-6 text-lg sm:text-xl text-indigo-100">
                 Bulk delete unwanted emails and unsubscribe from newsletters in one click. The email cleaner that cleans up your inbox in minutes.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Link to="/email-cleanup" className="bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-center">
+                <Link to="/email-cleanup" className="bg-white text-indigo-700 px-6 py-3.5 rounded-xl font-semibold hover:bg-indigo-50 transition-colors text-center shadow-lg shadow-indigo-900/20">
                   Clean My Inbox Now
                 </Link>
-                <Link to="/how-it-works" className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-6 py-3 rounded-md font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-center">
+                <Link to="/how-it-works" className="bg-white/10 backdrop-blur-sm text-white px-6 py-3.5 rounded-xl font-semibold hover:bg-white/20 transition-colors text-center border border-white/20">
                   How It Works
                 </Link>
               </div>
               <div className="mt-8 flex items-center">
-                <ShieldIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <span className="ml-2 text-gray-600 dark:text-gray-400">
+                <ShieldIcon className="h-5 w-5 text-indigo-200" />
+                <span className="ml-2 text-indigo-100">
                   Your email content is never stored or shared
                 </span>
               </div>
-              <div className="mt-4 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+              <div className="mt-4 flex items-center gap-3 text-sm">
                 <span className="inline-flex items-center gap-1.5">
                   <svg className="h-[18px] w-[18px]" viewBox="52 42 88 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#4285f4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/>
@@ -93,9 +99,9 @@ const Home = () => {
                     <path fill="#ea4335" d="M72 74V48l24 18 24-18v26L96 92"/>
                     <path fill="#c5221f" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.46-14.4-.22-14.4 7.2"/>
                   </svg>
-                  <span className="text-gray-500 dark:text-gray-400 font-medium">Gmail</span>
+                  <span className="text-indigo-100 font-medium">Gmail</span>
                 </span>
-                <span className="text-gray-500 dark:text-gray-400">&</span>
+                <span className="text-indigo-200">&</span>
                 <span className="inline-flex items-center gap-1.5">
                   <svg className="h-[18px] w-[18px]" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path fill="#0364b8" d="M28.596 11.09H18.5L16 14.546l2.5 3.454H28.596A1.404 1.404 0 0 0 30 16.596v-4.102a1.404 1.404 0 0 0-1.404-1.404z"/>
@@ -107,30 +113,30 @@ const Home = () => {
                     <rect fill="#0078d4" x="2" y="7" width="14" height="18" rx="1.4"/>
                     <path fill="#fff" d="M12.58 12.87a4.13 4.13 0 0 0-1.8-1.59 5.91 5.91 0 0 0-2.67-.57 6.08 6.08 0 0 0-2.75.59 4.19 4.19 0 0 0-1.83 1.67A4.89 4.89 0 0 0 2.89 16a5.17 5.17 0 0 0 .6 2.56A4.11 4.11 0 0 0 5.2 20.2a5.69 5.69 0 0 0 2.6.57 5.93 5.93 0 0 0 2.69-.58 4.14 4.14 0 0 0 1.78-1.63 4.74 4.74 0 0 0 .63-2.46 5 5 0 0 0-.32-1.23zm-2.15 4.08a2.42 2.42 0 0 1-1 1.07 2.93 2.93 0 0 1-1.53.39 3 3 0 0 1-1.58-.41 2.56 2.56 0 0 1-1-1.12 3.69 3.69 0 0 1-.35-1.65 3.77 3.77 0 0 1 .35-1.68 2.6 2.6 0 0 1 1-1.13 2.84 2.84 0 0 1 1.52-.4 2.93 2.93 0 0 1 1.52.39 2.5 2.5 0 0 1 1 1.09 3.57 3.57 0 0 1 .34 1.61 3.89 3.89 0 0 1-.27 1.84z"/>
                   </svg>
-                  <span className="text-gray-500 dark:text-gray-400 font-medium">Outlook</span>
+                  <span className="text-indigo-100 font-medium">Outlook</span>
                 </span>
-                <span>supported</span>
+                <span className="text-indigo-200">supported</span>
               </div>
             </div>
             <div className="hidden md:block relative">
-              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 transform rotate-2 border border-gray-100 dark:border-gray-800">
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-6 transform rotate-2 border border-white/20">
                 <div className="flex items-center mb-4">
-                  <MailIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                  <h3 className="ml-2 text-lg font-semibold text-gray-800 dark:text-gray-200">
+                  <MailIcon className="h-6 w-6 text-white" />
+                  <h3 className="ml-2 text-lg font-semibold text-white">
                     Your Subscriptions
                   </h3>
                 </div>
                 <div className="space-y-3">
-                  {subscriptions.map((item, index) => <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                      <span className="text-gray-700 dark:text-gray-300">{item.name}</span>
-                      <button className={`text-sm ${item.subscribed ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'}
+                  {subscriptions.map((item, index) => <div key={index} className="flex items-center justify-between p-3 bg-white/10 rounded-lg">
+                      <span className="text-white/90">{item.name}</span>
+                      <button className={`text-sm ${item.subscribed ? 'bg-green-400/20 text-green-300' : 'bg-red-400/20 text-red-300'}
                           px-3 py-1 rounded-full font-medium transition-colors`} onClick={() => toggleSubscription(index)}>
                         {item.subscribed ? 'Subscribe' : 'Unsubscribe'}
                       </button>
                     </div>)}
                 </div>
               </div>
-              <div className="absolute -bottom-6 -left-6 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 rounded-full px-4 py-2 font-medium flex items-center shadow-lg">
+              <div className="absolute -bottom-6 -left-6 bg-green-500 text-white rounded-full px-4 py-2 font-medium flex items-center shadow-lg">
                 <CheckCircleIcon className="h-5 w-5 mr-1" />
                 {subscriptions.filter(s => !s.subscribed).length}{' '}
                 Subscriptions Removed
@@ -469,23 +475,23 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-indigo-50 dark:bg-indigo-950 border-t border-indigo-100 dark:border-indigo-800">
+      <section className="py-16 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-900 dark:to-purple-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-3xl md:text-4xl font-bold text-white">
               Ready to Clean Your Inbox?
             </h2>
-            <p className="mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+            <p className="mt-4 text-lg sm:text-xl text-indigo-100 max-w-3xl mx-auto">
               Join thousands of users who use our inbox cleaner to bulk delete emails,
               unsubscribe from newsletters, and reclaim their time.
             </p>
             <div className="mt-8">
-              <Link to="/email-cleanup" className="bg-indigo-600 dark:bg-indigo-500 text-white px-8 py-4 rounded-md font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors inline-block">
+              <Link to="/email-cleanup" className="bg-white text-indigo-700 px-8 py-4 rounded-xl font-semibold hover:bg-indigo-50 transition-colors inline-block shadow-lg shadow-indigo-900/20">
                 Clean My Inbox Now
               </Link>
             </div>
-            <p className="mt-6 text-gray-600 dark:text-gray-400 flex items-center justify-center">
-              <ShieldIcon className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
+            <p className="mt-6 text-indigo-100 flex items-center justify-center">
+              <ShieldIcon className="h-5 w-5 mr-2 text-indigo-200" />
               <span>Your email content is never stored or shared</span>
             </p>
           </div>
