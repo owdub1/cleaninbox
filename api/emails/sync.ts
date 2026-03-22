@@ -681,7 +681,8 @@ async function performUpgradeSync(
   // The partial recalculation via batchRecalculateSenderStats can fail with large
   // sender counts due to .in() query limits. Rebuilding from the emails table is
   // more reliable and ensures accurate counts after a plan upgrade.
-  await supabase.from('email_senders').delete().eq('email_account_id', accountId);
+  // The delete happens inside rebuildSendersFromEmails, right before insert,
+  // to minimize the window where senders are empty (prevents UI flash).
   await rebuildSendersFromEmails(userId, accountId);
 
   // Step 8: Update account
@@ -1587,6 +1588,9 @@ async function rebuildSendersFromEmails(userId: string, accountId: string): Prom
     is_promotional: s.labels_seen.includes('CATEGORY_PROMOTIONS'),
     updated_at: new Date().toISOString(),
   }));
+
+  // Delete old senders right before inserting new ones to minimize the empty window
+  await supabase.from('email_senders').delete().eq('email_account_id', accountId);
 
   // Insert in batches
   for (let i = 0; i < sendersToInsert.length; i += BATCH_SIZE) {
