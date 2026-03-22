@@ -155,8 +155,8 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
       return { success: false };
     }
 
-    // Detect first-time sync: we've fetched senders but found none
-    const isFirstTimeSync = hasFetched && !hasSendersRef.current && !fullSync && !repair;
+    // Detect first-time sync: no senders exist (either we've checked or haven't fetched yet)
+    const isFirstTimeSync = !hasSendersRef.current && !fullSync && !repair;
     phase1CountRef.current = 0;
 
     // Retry-aware fetch for sync requests — browsers can abort long-running
