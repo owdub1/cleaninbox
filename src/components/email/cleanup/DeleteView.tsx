@@ -14,6 +14,7 @@ interface DeleteViewProps {
   deletingEmailId: string | null;
   totalEmails: number;
   deletedCount: number;
+  syncing?: boolean;
   onToggleSenderExpand: (sender: Sender) => void;
   onToggleSenderSelection: (sender: Sender) => void;
   onDeleteSingleEmail: (email: EmailMessage, senderEmail: string, senderName: string) => void;
@@ -37,15 +38,18 @@ const DeleteView: React.FC<DeleteViewProps> = ({
   onCleanupAction,
   totalEmails,
   deletedCount,
+  syncing,
 }) => {
   const statsBar = (
     <div className="flex items-center gap-4 px-4 py-3 mb-2">
+      {!syncing && (
       <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
         <span><span className="font-semibold text-gray-900 dark:text-gray-100">{totalEmails.toLocaleString()}</span> total emails</span>
       </div>
+      )}
       {deletedCount > 0 && (
         <div className="flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

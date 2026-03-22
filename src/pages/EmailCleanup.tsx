@@ -828,6 +828,7 @@ const EmailCleanup = () => {
                 hasPaidPlan={hasPaidPlan}
                 totalEmails={senders.reduce((sum, s) => sum + s.emailCount, 0)}
                 deletedCount={sessionDeletedCount}
+                syncing={syncing}
                 onToggleSenderExpand={toggleSenderExpand}
                 onToggleSenderSelection={toggleSenderSelection}
                 onDeleteSingleEmail={handleDeleteSingleEmail}
