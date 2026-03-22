@@ -115,7 +115,6 @@ const Home = () => {
                   </svg>
                   <span className="text-white font-medium">Outlook</span>
                 </span>
-                <span className="text-white font-medium">supported</span>
               </div>
             </div>
             <div className="hidden md:block relative">
