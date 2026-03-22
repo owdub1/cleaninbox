@@ -131,52 +131,31 @@ const HowItWorks = () => {
                   </li>
                 </ul>
               </div>
-              <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">
-                <div className="bg-indigo-50 dark:bg-indigo-950 p-6 rounded-lg">
-                  <div className="flex items-center mb-4">
-                    <LockIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                    <h4 className="ml-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] rounded-2xl shadow-xl shadow-indigo-500/10">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                      <LockIcon className="h-5 w-5 text-white" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       OAuth 2.0 Authentication
                     </h4>
                   </div>
                   <ol className="space-y-4 text-gray-700 dark:text-gray-300">
-                    <li className="flex">
-                      <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-medium mr-3 flex-shrink-0">
-                        1
-                      </span>
-                      <span>You click "Connect Email"</span>
-                    </li>
-                    <li className="flex">
-                      <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-medium mr-3 flex-shrink-0">
-                        2
-                      </span>
-                      <span>
-                        You're redirected to your email provider's login page
-                      </span>
-                    </li>
-                    <li className="flex">
-                      <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-medium mr-3 flex-shrink-0">
-                        3
-                      </span>
-                      <span>
-                        You log in directly with your provider (we never see
-                        your password)
-                      </span>
-                    </li>
-                    <li className="flex">
-                      <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-medium mr-3 flex-shrink-0">
-                        4
-                      </span>
-                      <span>
-                        Your provider gives us a temporary access token
-                      </span>
-                    </li>
-                    <li className="flex">
-                      <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-medium mr-3 flex-shrink-0">
-                        5
-                      </span>
-                      <span>You're redirected back to CleanInbox</span>
-                    </li>
+                    {[
+                      'You click "Connect Email"',
+                      "You're redirected to your email provider's login page",
+                      'You log in directly with your provider (we never see your password)',
+                      'Your provider gives us a temporary access token',
+                      "You're redirected back to CleanInbox",
+                    ].map((text, i) => (
+                      <li key={i} className="flex items-start">
+                        <span className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mr-3 flex-shrink-0 mt-0.5">
+                          {i + 1}
+                        </span>
+                        <span>{text}</span>
+                      </li>
+                    ))}
                   </ol>
                 </div>
               </div>
@@ -184,10 +163,10 @@ const HowItWorks = () => {
             {/* Step 2 */}
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div className="order-2 md:order-1">
-                <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-[1px] rounded-2xl shadow-xl shadow-purple-500/10">
+                  <div className="bg-white dark:bg-gray-900 rounded-2xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3">
+                      <h4 className="font-medium text-white">
                         Your Top Email Senders
                       </h4>
                     </div>
@@ -265,6 +244,7 @@ const HowItWorks = () => {
                 </div>
               </div>
               <div className="order-1 md:order-2">
+
                 <div className="inline-flex items-center bg-indigo-100 dark:bg-indigo-900 rounded-full px-4 py-1 text-indigo-800 dark:text-indigo-300 font-medium mb-4">
                   Step 2
                 </div>
@@ -331,50 +311,41 @@ const HowItWorks = () => {
                   </li>
                 </ul>
               </div>
-              <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-md">
-                <div className="space-y-6">
-                  <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800 flex items-start">
-                    <CheckCircleIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div className="ml-3">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                        Daily Newsletter
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Successfully unsubscribed
-                      </p>
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-[1px] rounded-2xl shadow-xl shadow-green-500/10">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                      <CheckCircleIcon className="h-5 w-5 text-white" />
                     </div>
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Cleanup Results
+                    </h4>
                   </div>
-                  <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg border border-green-200 dark:border-green-800 flex items-start">
-                    <CheckCircleIcon className="h-6 w-6 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div className="ml-3">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                        Shopping Promotions
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Successfully unsubscribed
-                      </p>
+                  <div className="space-y-3">
+                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl flex items-center gap-3">
+                      <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm text-gray-900 dark:text-gray-100">Daily Newsletter</p>
+                        <p className="text-xs text-green-600 dark:text-green-400">Successfully unsubscribed</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800 flex items-start">
-                    <AlertTriangleIcon className="h-6 w-6 text-yellow-500 mt-0.5 flex-shrink-0" />
-                    <div className="ml-3">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                        Marketing Emails
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Confirmation email sent - please check your inbox
-                      </p>
+                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl flex items-center gap-3">
+                      <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm text-gray-900 dark:text-gray-100">Shopping Promotions</p>
+                        <p className="text-xs text-green-600 dark:text-green-400">43 emails deleted</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-indigo-600 rounded-full mr-3"></div>
-                      <span className="text-gray-700 dark:text-gray-300">
-                        Unsubscribe progress
-                      </span>
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-xl flex items-center gap-3">
+                      <AlertTriangleIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm text-gray-900 dark:text-gray-100">Marketing Emails</p>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">Confirmation sent — check your inbox</p>
+                      </div>
                     </div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">
-                      3/3 Complete
+                    <div className="mt-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-3 flex items-center justify-between">
+                      <span className="text-white text-sm font-medium">Cleanup progress</span>
+                      <span className="text-white text-sm font-bold">3/3 Complete</span>
                     </div>
                   </div>
                 </div>
