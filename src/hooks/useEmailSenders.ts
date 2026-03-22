@@ -34,6 +34,7 @@ export interface EmailMessage {
 
 interface SendersResponse {
   senders: Sender[];
+  deletedCount?: number;
   pagination: {
     total: number;
     limit: number;
@@ -59,6 +60,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
   const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null);
   const phase1CountRef = useRef(0);
   const [error, setError] = useState<string | null>(null);
+  const [serverDeletedCount, setServerDeletedCount] = useState(0);
   const [pagination, setPagination] = useState({
     total: 0,
     limit: options.limit || 0,
@@ -124,6 +126,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
 
       setSenders(data.senders);
       setPagination(data.pagination);
+      if (data.deletedCount !== undefined) setServerDeletedCount(data.deletedCount);
 
       return data.senders;
     } catch (err: any) {
@@ -545,6 +548,7 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     syncing,
     syncPhase,
     syncProgress,
+    serverDeletedCount,
     error,
     pagination,
     fetchSenders,

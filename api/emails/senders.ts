@@ -188,13 +188,21 @@ export default async function handler(
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.userId);
 
+    // Get deleted count from user_stats
+    const { data: userStats } = await supabase
+      .from('user_stats')
+      .select('emails_processed')
+      .eq('user_id', user.userId)
+      .single();
+
     return res.status(200).json({
       senders: response,
       pagination: {
         total: totalCount || response.length,
         limit: limit ? parseInt(limit as string) : response.length,
         offset: parseInt(offset as string)
-      }
+      },
+      deletedCount: userStats?.emails_processed || 0
     });
 
   } catch (error: any) {

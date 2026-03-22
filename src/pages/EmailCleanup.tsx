@@ -143,6 +143,7 @@ const EmailCleanup = () => {
     syncing,
     syncPhase,
     syncProgress,
+    serverDeletedCount,
     error: sendersError,
     fetchSenders,
     syncEmails,
@@ -162,14 +163,17 @@ const EmailCleanup = () => {
   const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
 
   const { deleteSingleEmail, deleteEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
-  const [sessionDeletedCount, setSessionDeletedCount] = useState(() => {
-    const saved = localStorage.getItem('cleaninbox_deleted_count');
-    return saved ? parseInt(saved, 10) || 0 : 0;
-  });
-
+  // Optimistic offset added on top of server count for immediate UI feedback
+  // Reset offset when server count updates (means the server caught up)
+  const [deletedOffset, setDeletedOffset] = useState(0);
+  const prevServerCount = useRef(serverDeletedCount);
   useEffect(() => {
-    localStorage.setItem('cleaninbox_deleted_count', sessionDeletedCount.toString());
-  }, [sessionDeletedCount]);
+    if (serverDeletedCount !== prevServerCount.current) {
+      setDeletedOffset(0);
+      prevServerCount.current = serverDeletedCount;
+    }
+  }, [serverDeletedCount]);
+  const totalDeletedCount = serverDeletedCount + deletedOffset;
 
   // Free trial tracking
   const sessionKey = 'cleaninbox_free_actions_optimistic';
@@ -436,7 +440,7 @@ const EmailCleanup = () => {
     }
 
     // Update deleted counter optimistically (don't wait for the undo timeout)
-    setSessionDeletedCount(prev => prev + totalCount);
+    setDeletedOffset(prev => prev + totalCount);
 
     setSelectedSenderKeys([]);
     setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
@@ -522,7 +526,7 @@ const EmailCleanup = () => {
     setPendingDeletions(prev => new Map(prev).set(actionId, newPending));
     setUndoActions(prev => [...prev, { id: actionId, type: 'delete', count: 1, senderEmails: [senderEmail], messageIds: [email.id], timestamp: Date.now() }]);
     if (isFreeTrial) setFreeActionsUsed(prev => prev + 1);
-    setSessionDeletedCount(prev => prev + 1);
+    setDeletedOffset(prev => prev + 1);
   };
 
   const handleUndo = (actionId: string) => {
@@ -541,13 +545,13 @@ const EmailCleanup = () => {
         }
       }
       if (isFreeTrial) setFreeActionsUsed(prev => Math.max(0, prev - 1));
-      setSessionDeletedCount(prev => Math.max(0, prev - 1));
+      setDeletedOffset(prev => Math.max(0, prev - 1));
     } else if (pd.type === 'bulk') {
       const count = pd.senders ? pd.senders.reduce((sum, s) => sum + s.emailCount, 0) : 0;
       if (isFreeTrial) {
         setFreeActionsUsed(prev => Math.max(0, prev - count));
       }
-      setSessionDeletedCount(prev => Math.max(0, prev - count));
+      setDeletedOffset(prev => Math.max(0, prev - count));
     }
     setPendingDeletions(prev => { const m = new Map(prev); m.delete(actionId); return m; });
     setUndoActions(prev => prev.filter(a => a.id !== actionId));
@@ -837,7 +841,7 @@ const EmailCleanup = () => {
                 deletingEmailId={deletingEmailId}
                 hasPaidPlan={hasPaidPlan}
                 totalEmails={senders.reduce((sum, s) => sum + s.emailCount, 0)}
-                deletedCount={sessionDeletedCount}
+                deletedCount={totalDeletedCount}
                 syncing={syncing}
                 onToggleSenderExpand={toggleSenderExpand}
                 onToggleSenderSelection={toggleSenderSelection}
