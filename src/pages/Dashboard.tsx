@@ -791,7 +791,7 @@ const Dashboard = () => {
                         </p>
                       </div>
                     ) : (
-                      {/* Desktop table */}
+                      <>
                       <div className="overflow-x-auto hidden sm:block">
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                           <thead>
@@ -882,6 +882,7 @@ const Dashboard = () => {
                           </div>
                         ))}
                       </div>
+                      </>
                     )}
                   </div>
                 </div>
