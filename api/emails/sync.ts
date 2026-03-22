@@ -102,12 +102,16 @@ async function handler(
     const syncIntervalMinutes = planLimits.syncIntervalMinutes;
 
     // Detect if previous sync was capped by a lower plan (user upgraded)
-    // If stored emails are under 80% of the current plan limit, assume the previous
-    // plan capped them and a full re-sync is needed to fetch the rest.
+    // Check if total_emails is near a known plan cap (with buffer for over-fetch/deletions)
     const totalEmails = account.total_emails || 0;
+    const previousPlanCaps = [
+      { cap: 100, max: 600 },   // free tier: 100 base, up to ~550 with initial batch
+      { cap: 1000, max: 1200 }, // basic
+      { cap: 5000, max: 5600 }, // pro
+    ];
     const wasLimitedByPreviousPlan = totalEmails > 0 &&
-      planLimits.emailProcessingLimit > 1000 &&
-      totalEmails < planLimits.emailProcessingLimit * 0.8;
+      totalEmails < planLimits.emailProcessingLimit &&
+      previousPlanCaps.some(p => totalEmails <= p.max && planLimits.emailProcessingLimit > p.max);
 
     // Check if previous sync actually produced senders (if not, it likely failed mid-sync)
     const { count: senderCount } = await supabase
