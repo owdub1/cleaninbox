@@ -162,7 +162,14 @@ const EmailCleanup = () => {
   const [viewingEmail, setViewingEmail] = useState<{ messageId: string; accountEmail: string; senderEmail: string; senderName: string } | null>(null);
 
   const { deleteSingleEmail, deleteEmails, unsubscribe, loading: cleanupLoading } = useCleanupActions();
-  const [sessionDeletedCount, setSessionDeletedCount] = useState(0);
+  const [sessionDeletedCount, setSessionDeletedCount] = useState(() => {
+    const saved = localStorage.getItem('cleaninbox_deleted_count');
+    return saved ? parseInt(saved, 10) || 0 : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('cleaninbox_deleted_count', sessionDeletedCount.toString());
+  }, [sessionDeletedCount]);
 
   // Free trial tracking
   const sessionKey = 'cleaninbox_free_actions_optimistic';
