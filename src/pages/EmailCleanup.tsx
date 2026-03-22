@@ -428,6 +428,9 @@ const EmailCleanup = () => {
       setFreeActionsUsed(prev => prev + totalCount);
     }
 
+    // Update deleted counter optimistically (don't wait for the undo timeout)
+    setSessionDeletedCount(prev => prev + totalCount);
+
     setSelectedSenderKeys([]);
     setConfirmModal({ isOpen: false, action: 'delete', senders: [] });
   };
@@ -465,11 +468,8 @@ const EmailCleanup = () => {
         const serverUsed = FREE_TRIAL_LIMIT - result.freeTrialRemaining;
         setFreeActionsUsed(prev => Math.max(prev, serverUsed));
       }
-      // Track deleted emails for session stats
-      if (pending.action === 'delete' || pending.type === 'single') {
-        const count = result?.totalDeleted || (pending.type === 'single' ? 1 : 0);
-        if (count > 0) setSessionDeletedCount(prev => prev + count);
-      }
+      // Session deleted count is updated optimistically when the action is queued,
+      // so we don't update it again here to avoid double-counting.
     } catch (error) {
       if (error instanceof CleanupError && error.code === 'PAYMENT_PAST_DUE') {
         setNotification({ type: 'error', message: 'Your payment failed. Please update your payment method in your Dashboard to continue.' });
@@ -515,6 +515,7 @@ const EmailCleanup = () => {
     setPendingDeletions(prev => new Map(prev).set(actionId, newPending));
     setUndoActions(prev => [...prev, { id: actionId, type: 'delete', count: 1, senderEmails: [senderEmail], messageIds: [email.id], timestamp: Date.now() }]);
     if (isFreeTrial) setFreeActionsUsed(prev => prev + 1);
+    setSessionDeletedCount(prev => prev + 1);
   };
 
   const handleUndo = (actionId: string) => {
@@ -533,11 +534,13 @@ const EmailCleanup = () => {
         }
       }
       if (isFreeTrial) setFreeActionsUsed(prev => Math.max(0, prev - 1));
+      setSessionDeletedCount(prev => Math.max(0, prev - 1));
     } else if (pd.type === 'bulk') {
-      if (isFreeTrial && pd.senders) {
-        const count = pd.senders.reduce((sum, s) => sum + s.emailCount, 0);
+      const count = pd.senders ? pd.senders.reduce((sum, s) => sum + s.emailCount, 0) : 0;
+      if (isFreeTrial) {
         setFreeActionsUsed(prev => Math.max(0, prev - count));
       }
+      setSessionDeletedCount(prev => Math.max(0, prev - count));
     }
     setPendingDeletions(prev => { const m = new Map(prev); m.delete(actionId); return m; });
     setUndoActions(prev => prev.filter(a => a.id !== actionId));
