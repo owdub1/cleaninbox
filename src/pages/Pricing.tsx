@@ -84,7 +84,7 @@ const Pricing = () => {
           </div>
           {/* Subscription Plans */}
           <div className="mt-16 grid gap-8 lg:grid-cols-3">
-            {plans.map((plan, index) => <Link key={index} to={`/checkout?plan=${plan.name.toLowerCase()}&billing=${billingCycle}`} className={`rounded-lg overflow-hidden bg-gradient-to-br ${plan.gradient} border border-transparent shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl`}>
+            {plans.map((plan, index) => <Link key={index} to={`/checkout?plan=${plan.name.toLowerCase()}&billing=${billingCycle}`} className={`rounded-lg overflow-hidden bg-gradient-to-br ${plan.gradient} border border-transparent shadow-lg transform transition-all duration-300 md:hover:scale-105 md:hover:shadow-xl`}>
                 <div className="p-8 h-full flex flex-col text-white">
                   <div className="flex justify-between items-start">
                     <h3 className="text-2xl font-bold">{plan.name}</h3>
@@ -118,7 +118,7 @@ const Pricing = () => {
           </div>
           {/* One-time quick clean option */}
           <div className="mt-16">
-            <Link to="/checkout?plan=onetime" className="block w-full max-w-full mx-auto rounded-lg overflow-hidden bg-gradient-to-r from-purple-500 to-purple-700 border border-purple-400 shadow-lg transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
+            <Link to="/checkout?plan=onetime" className="block w-full max-w-full mx-auto rounded-lg overflow-hidden bg-gradient-to-r from-purple-500 to-purple-700 border border-purple-400 shadow-lg transform transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-xl">
               <div className="p-8">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div>
@@ -141,7 +141,7 @@ const Pricing = () => {
                     <p className="text-purple-100 text-sm">one-time payment</p>
                   </div>
                 </div>
-                <ul className="mt-8 grid grid-cols-2 md:grid-cols-3 gap-4">
+                <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {quickClean.features.map((feature, idx) => <li key={idx} className="flex items-start">
                       <CheckIcon className="h-5 w-5 text-purple-100 mt-0.5 flex-shrink-0" />
                       <span className="ml-3 text-white">{feature}</span>

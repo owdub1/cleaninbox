@@ -27,8 +27,8 @@ export const CookieConsent = () => {
   if (!showBanner) return null;
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 animate-slide-up">
-      <div className="w-[calc(100vw-3rem)] max-w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
+    <div className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-50 animate-slide-up">
+      <div className="w-[calc(100vw-2rem)] sm:w-[calc(100vw-3rem)] max-w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
         <div className="flex items-start gap-4 mb-4">
           <div className="flex-shrink-0 w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
             <Cookie className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />

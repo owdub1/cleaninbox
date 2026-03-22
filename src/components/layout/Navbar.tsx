@@ -59,7 +59,7 @@ const Navbar = () => {
                   {user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
               </button>
-              {isUserMenuOpen && <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {isUserMenuOpen && <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700">
                     <p className="font-medium truncate">{user?.firstName} {user?.lastName}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
@@ -92,7 +92,7 @@ const Navbar = () => {
                   {user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
               </button>
-              {isUserMenuOpen && <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {isUserMenuOpen && <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-10 border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <div className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700">
                     <p className="font-medium truncate">{user?.firstName} {user?.lastName}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>

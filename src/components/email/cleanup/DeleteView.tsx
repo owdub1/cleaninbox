@@ -71,12 +71,12 @@ const DeleteView: React.FC<DeleteViewProps> = ({
 
           return (
             <div key={period} className="mb-4">
-              <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 border-y border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 z-10">
+              <div className="px-4 py-2 bg-gray-100 dark:bg-gray-700 border-y border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-y-1 sticky top-0 z-10">
                 <div className="flex items-center">
                   <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     {period === 'Today' || period === 'Yesterday' ? `Last email: ${period.toLowerCase()}` : `Last email: ${period}`}
                   </span>
-                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
                     {periodSenders.length} sender{periodSenders.length !== 1 ? 's' : ''} • {totalEmails.toLocaleString()} total emails
                   </span>
                 </div>

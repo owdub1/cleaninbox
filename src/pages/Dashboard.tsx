@@ -437,20 +437,20 @@ const Dashboard = () => {
       <section className="py-8 bg-gray-50 dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Dashboard Tabs */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'overview' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('overview')}>
+          <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide">
+            <button className={`px-4 py-2 font-medium text-sm whitespace-nowrap flex-shrink-0 ${activeTab === 'overview' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('overview')}>
               Overview
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'myemails' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('myemails')}>
+            <button className={`px-4 py-2 font-medium text-sm whitespace-nowrap flex-shrink-0 ${activeTab === 'myemails' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('myemails')}>
               Email Accounts
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'subscription' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('subscription')}>
+            <button className={`px-4 py-2 font-medium text-sm whitespace-nowrap flex-shrink-0 ${activeTab === 'subscription' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('subscription')}>
               Subscription
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'payments' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('payments')}>
+            <button className={`px-4 py-2 font-medium text-sm whitespace-nowrap flex-shrink-0 ${activeTab === 'payments' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('payments')}>
               Payment History
             </button>
-            <button className={`px-4 py-2 font-medium text-sm ${activeTab === 'settings' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('settings')}>
+            <button className={`px-4 py-2 font-medium text-sm whitespace-nowrap flex-shrink-0 ${activeTab === 'settings' ? 'border-b-2 border-gray-500 text-gray-700 dark:border-gray-400 dark:text-gray-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`} onClick={() => setActiveTab('settings')}>
               Settings
             </button>
           </div>
@@ -791,7 +791,8 @@ const Dashboard = () => {
                         </p>
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
+                      {/* Desktop table */}
+                      <div className="overflow-x-auto hidden sm:block">
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                           <thead>
                             <tr>
@@ -843,6 +844,43 @@ const Dashboard = () => {
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                      {/* Mobile card layout */}
+                      <div className="sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                        {invoices.map((invoice) => (
+                          <div key={invoice.id} className="px-4 py-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-900 dark:text-gray-100">
+                                {new Date(invoice.created * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                              </span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                invoice.status === 'paid' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                                invoice.status === 'open' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                                invoice.status === 'draft' ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400' :
+                                invoice.status === 'void' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' :
+                                'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-400'
+                              }`}>
+                                {invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{invoice.number || 'No invoice number'}</p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {(invoice.amount_paid / 100).toLocaleString('en-US', { style: 'currency', currency: invoice.currency.toUpperCase() })}
+                              </span>
+                              {(invoice.hosted_invoice_url || invoice.invoice_pdf) ? (
+                                <a
+                                  href={invoice.hosted_invoice_url || invoice.invoice_pdf}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
+                                >
+                                  PDF
+                                </a>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

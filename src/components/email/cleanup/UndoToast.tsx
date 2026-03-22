@@ -43,7 +43,7 @@ const UndoToast = ({
       className="fixed left-1/2 -translate-x-1/2 z-50 animate-slide-up transition-all duration-200"
       style={{ bottom: `${bottomOffset}px` }}
     >
-      <div className="bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-4 min-w-[300px]">
+      <div className="bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-4 min-w-[280px] max-w-[calc(100vw-2rem)]">
         <div className="flex-1">
           <p className="text-sm font-medium">
             {action.type === 'delete' ? 'Deleted' : 'Archived'} {action.count} email{action.count !== 1 ? 's' : ''}
@@ -58,7 +58,7 @@ const UndoToast = ({
         </button>
         <button
           onClick={onDismiss}
-          className="p-1 text-gray-400 hover:text-white transition-colors"
+          className="p-2 text-gray-400 hover:text-white transition-colors"
           aria-label="Dismiss"
         >
           <X className="w-4 h-4" />

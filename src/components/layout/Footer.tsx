@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { MailIcon, ShieldIcon, LockIcon } from 'lucide-react';
 const Footer = () => {
   return <footer className="bg-gray-900 text-white">
-      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-6xl mx-auto py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 sm:gap-8">
           <div className="mb-8 md:mb-0">
             <div className="flex items-center">
               <MailIcon className="h-7 w-7 text-indigo-400" />
@@ -77,7 +77,7 @@ const Footer = () => {
             </ul>
           </div>
         </div>
-        <div className="mt-12 border-t border-gray-800 pt-8">
+        <div className="mt-8 sm:mt-12 border-t border-gray-800 pt-8">
           <p className="text-gray-400 text-sm text-center">
             &copy; {new Date().getFullYear()} CleanInbox. All rights reserved.
           </p>

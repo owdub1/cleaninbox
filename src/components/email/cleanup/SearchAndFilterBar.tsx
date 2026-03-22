@@ -64,10 +64,10 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
               />
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="flex items-center">
-              <FilterIcon className="h-4 w-4 text-gray-400 mr-2" />
-              <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Sort by:</span>
+              <FilterIcon className="h-4 w-4 text-gray-400 mr-2 hidden sm:block" />
+              <span className="text-sm text-gray-700 dark:text-gray-300 mr-2 hidden sm:inline">Sort by:</span>
               <select
                 value={sortBy}
                 onChange={e => onSortChange(e.target.value)}
@@ -78,7 +78,7 @@ const SearchAndFilterBar: React.FC<SearchAndFilterBarProps> = ({
                 <option value="name">Sender Name</option>
                 <option value="date">Last Email Date</option>
               </select>
-              <button onClick={onToggleSortDirection} className="ml-2 p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={sortDirection === 'asc' ? 'Sort descending' : 'Sort ascending'}>
+              <button onClick={onToggleSortDirection} className="ml-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={sortDirection === 'asc' ? 'Sort descending' : 'Sort ascending'}>
                 {sortDirection === 'asc' ? (
                   <SortAscIcon className="h-4 w-4 text-gray-500" />
                 ) : (

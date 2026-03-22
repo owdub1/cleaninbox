@@ -121,7 +121,7 @@ const ToolsSelectionView: React.FC<ToolsSelectionViewProps> = ({
                 <button
                   key={tool.id}
                   onClick={() => onToolSelect(tool.id)}
-                  className={`group relative overflow-hidden rounded-2xl p-6 text-left transition-all hover:scale-105 hover:shadow-xl ${isLocked ? 'opacity-75' : ''}`}
+                  className={`group relative overflow-hidden rounded-2xl p-6 text-left transition-all md:hover:scale-105 md:hover:shadow-xl ${isLocked ? 'opacity-75' : ''}`}
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${tool.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
                   {isLocked && (
