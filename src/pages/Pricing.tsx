@@ -153,7 +153,7 @@ const Pricing = () => {
         </div>
       </section>
       {/* FAQ Section */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-800">
+      <section id="faq" className="py-16 bg-gray-50 dark:bg-gray-800 scroll-mt-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">

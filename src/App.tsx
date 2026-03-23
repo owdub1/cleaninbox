@@ -28,11 +28,19 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 // Scroll to top component
 function ScrollToTop() {
   const {
-    pathname
+    pathname,
+    hash
   } = useLocation();
   useEffect(() => {
+    if (hash) {
+      const el = document.getElementById(hash.slice(1));
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [pathname, hash]);
   return null;
 }
 // Main app with AuthProvider
