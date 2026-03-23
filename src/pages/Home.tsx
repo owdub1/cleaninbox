@@ -60,15 +60,13 @@ const Home = () => {
   ];
   return <><SEO description="CleanInbox is an email cleaner for Gmail and Outlook. Bulk delete unwanted emails, mass unsubscribe from newsletters, and clean up your inbox in minutes. The easiest email cleaner tool online." jsonLd={homeJsonLd} /><div className="w-full bg-white dark:bg-gray-900">
       {/* Hero Section */}
-      <section className="relative pt-16 pb-20 overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 dark:from-indigo-900 dark:via-purple-900 dark:to-indigo-950">
+      <section className="relative pt-16 pb-32 overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 dark:from-indigo-900 dark:via-purple-900 dark:to-indigo-950">
         {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-3xl" />
         </div>
-        {/* Bottom fade into next section */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent via-transparent to-gray-50 dark:to-gray-950" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
@@ -148,7 +146,8 @@ const Home = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-gray-50 dark:bg-gray-950">
+      <section className="pt-20 pb-20 bg-gray-50 dark:bg-gray-950 relative">
+        <div className="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-b from-transparent to-gray-50 dark:to-gray-950 pointer-events-none" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
