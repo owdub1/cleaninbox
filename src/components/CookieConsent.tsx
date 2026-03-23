@@ -1,14 +1,40 @@
 import { useState, useEffect } from 'react';
 import { Cookie } from 'lucide-react';
 
+declare global {
+  interface Window {
+    gtag: (...args: any[]) => void;
+  }
+}
+
+const GA_MEASUREMENT_ID = 'G-ZD75VZTB4H';
+
+function loadGoogleAnalytics() {
+  // Don't load twice
+  if (document.querySelector(`script[src*="gtag/js"]`)) return;
+
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+  document.head.appendChild(script);
+
+  window.gtag('consent', 'update', {
+    analytics_storage: 'granted'
+  });
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID);
+}
+
 export const CookieConsent = () => {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // Check if user has already accepted cookies
     const consent = localStorage.getItem('cookieConsent');
-    if (!consent) {
-      // Small delay so it doesn't pop up immediately on page load
+    if (consent === 'accepted') {
+      // User previously accepted — load GA
+      loadGoogleAnalytics();
+    } else if (!consent) {
+      // No choice yet — show banner after brief delay
       const timer = setTimeout(() => setShowBanner(true), 1000);
       return () => clearTimeout(timer);
     }
@@ -16,6 +42,7 @@ export const CookieConsent = () => {
 
   const acceptCookies = () => {
     localStorage.setItem('cookieConsent', 'accepted');
+    loadGoogleAnalytics();
     setShowBanner(false);
   };
 

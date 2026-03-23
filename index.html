@@ -21,13 +21,13 @@
     <meta name="twitter:description" content="CleanInbox is an email cleaner that bulk deletes unwanted emails and unsubscribes you from senders in one click. Works with Gmail and Outlook." />
     <meta name="twitter:image" content="https://cleaninbox.ca/og-image.png" />
 
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZD75VZTB4H"></script>
+    <!-- Google Analytics — loaded conditionally after cookie consent (see CookieConsent.tsx) -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-ZD75VZTB4H');
+      gtag('consent', 'default', {
+        analytics_storage: 'denied'
+      });
     </script>
 
     <!-- Favicons -->

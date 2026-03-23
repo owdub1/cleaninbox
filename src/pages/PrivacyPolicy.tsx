@@ -137,7 +137,11 @@ March 1, 2026
               </h2>
               <p className="mb-4">
                 We use cookies and similar tracking technologies to track
-                activity on our Service and hold certain information. You can
+                activity on our Service and hold certain information. We use
+                Google Analytics to understand how visitors interact with our
+                site — it collects anonymous usage data such as pages visited
+                and session duration. Google Analytics cookies are only loaded
+                after you accept cookies via our consent banner. You can
                 instruct your browser to refuse all cookies or to indicate when
                 a cookie is being sent.
               </p>
@@ -153,7 +157,7 @@ March 1, 2026
                 <li>Resend — transactional email delivery</li>
                 <li>Upstash — rate limiting infrastructure</li>
                 <li>Cloudflare — CAPTCHA verification and security</li>
-                <li>Google — Gmail API for email account access</li>
+                <li>Google — Gmail API for email account access, Google Analytics for site usage analytics</li>
                 <li>Microsoft — Outlook API for email account access</li>
               </ul>
               <p className="mb-4">
