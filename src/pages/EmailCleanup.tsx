@@ -300,10 +300,11 @@ const EmailCleanup = () => {
   const currentStep = getCurrentStep();
 
   const handleToolSelect = (toolId: string) => {
-    if (!hasPaidPlan && toolId !== 'delete') {
-      setShowUpgradeModal(true);
-      return;
-    }
+    // TEMP: disabled for video recording
+    // if (!hasPaidPlan && toolId !== 'delete') {
+    //   setShowUpgradeModal(true);
+    //   return;
+    // }
     setSearchParams({ tool: toolId });
     setCurrentView('cleanup');
     if (toolId === 'bulk-delete') {
