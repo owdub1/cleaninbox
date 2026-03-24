@@ -116,7 +116,7 @@ const ToolsSelectionView: React.FC<ToolsSelectionViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {cleanupTools.map((tool) => {
               const IconComponent = tool.icon;
-              const isLocked = false; // TEMP: unlocked for video recording // const isLocked = !hasPaidPlan && tool.id !== 'delete';
+              const isLocked = !hasPaidPlan && tool.id !== 'delete';
               return (
                 <button
                   key={tool.id}

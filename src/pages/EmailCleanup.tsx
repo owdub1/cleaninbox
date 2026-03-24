@@ -82,11 +82,10 @@ const EmailCleanup = () => {
   // Also gate Pro-only tools: if a non-Pro user navigates to ?tool=unsubscribe or ?tool=bulk-delete, redirect to checkout
   const proOnlyTools = ['unsubscribe', 'bulk-delete'];
   useEffect(() => {
-    // TEMP: disabled for video recording
-    // if (!subscriptionLoading && selectedTool && proOnlyTools.includes(selectedTool) && !hasFullTools && !isExpired) {
-    //   navigate('/checkout', { replace: true });
-    //   return;
-    // }
+    if (!subscriptionLoading && selectedTool && proOnlyTools.includes(selectedTool) && !hasFullTools && !isExpired) {
+      navigate('/checkout', { replace: true });
+      return;
+    }
     if (selectedTool) {
       setCurrentView('cleanup');
     } else if (viewInitialized && currentView === 'cleanup') {
@@ -301,11 +300,10 @@ const EmailCleanup = () => {
   const currentStep = getCurrentStep();
 
   const handleToolSelect = (toolId: string) => {
-    // TEMP: disabled for video recording
-    // if (!hasPaidPlan && toolId !== 'delete') {
-    //   setShowUpgradeModal(true);
-    //   return;
-    // }
+    if (!hasPaidPlan && toolId !== 'delete') {
+      setShowUpgradeModal(true);
+      return;
+    }
     setSearchParams({ tool: toolId });
     setCurrentView('cleanup');
     if (toolId === 'bulk-delete') {
@@ -646,7 +644,7 @@ const EmailCleanup = () => {
 
   // Cleanup interface
   const selectedToolData = cleanupTools.find(t => t.id === selectedTool);
-  const unsubscribableSenders = senders.filter(s => s.emailCount > 0); // TEMP: show all senders for video // const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
+  const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
 
   // Compute filtered senders for each view
   const timePeriodGroups = getSendersByTimePeriod(senders).map(g => ({
