@@ -646,7 +646,7 @@ const EmailCleanup = () => {
 
   // Cleanup interface
   const selectedToolData = cleanupTools.find(t => t.id === selectedTool);
-  const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
+  const unsubscribableSenders = senders.filter(s => s.emailCount > 0); // TEMP: show all senders for video // const unsubscribableSenders = senders.filter(s => s.hasUnsubscribe && s.emailCount > 0);
 
   // Compute filtered senders for each view
   const timePeriodGroups = getSendersByTimePeriod(senders).map(g => ({
