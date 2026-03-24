@@ -18,6 +18,7 @@ export interface PendingDeletion {
   senderName?: string;
   senderKey?: string;
   originalEmails?: import('../../../hooks/useEmailSenders').EmailMessage[];
+  originalSender?: Sender;
   originalSenderCount?: number;
   originalLastEmailDate?: string;
   senders?: Sender[];

@@ -151,7 +151,8 @@ const EmailCleanup = () => {
     fetchEmailsBySender,
     updateSenderCount,
     updateSenderLastEmailDate,
-    removeSenders
+    removeSenders,
+    restoreSender,
   } = useEmailSenders({ autoFetch: true });
 
   const [senderEmails, setSenderEmails] = useState<Record<string, EmailMessage[]>>({});
@@ -520,7 +521,8 @@ const EmailCleanup = () => {
 
     const newPending: PendingDeletion = {
       id: actionId, type: 'single', action: 'delete', email, senderEmail, senderName, senderKey,
-      originalEmails, originalSenderCount: currentSender?.emailCount, originalLastEmailDate: currentSender?.lastEmailDate, timeoutId
+      originalEmails, originalSender: currentSender ? { ...currentSender } : undefined,
+      originalSenderCount: currentSender?.emailCount, originalLastEmailDate: currentSender?.lastEmailDate, timeoutId
     };
 
     setPendingDeletions(prev => new Map(prev).set(actionId, newPending));
@@ -537,7 +539,9 @@ const EmailCleanup = () => {
     if (pd.type === 'single' && pd.senderKey) {
       const restored = pd.originalEmails || [];
       setSenderEmails(prev => ({ ...prev, [pd.senderKey!]: restored }));
-      if (pd.senderEmail && pd.senderName) {
+      if (pd.originalSender) {
+        restoreSender(pd.originalSender);
+      } else if (pd.senderEmail && pd.senderName) {
         updateSenderCount(pd.senderEmail, pd.senderName, 1);
         if (restored.length > 0) {
           const sorted = [...restored].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

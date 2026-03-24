@@ -542,6 +542,18 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     );
   }, []);
 
+  const restoreSender = useCallback((sender: Sender) => {
+    setSenders(prevSenders => {
+      const exists = prevSenders.some(s => s.email === sender.email && s.name === sender.name);
+      if (exists) {
+        return prevSenders.map(s =>
+          s.email === sender.email && s.name === sender.name ? sender : s
+        );
+      }
+      return [...prevSenders, sender];
+    });
+  }, []);
+
   return {
     senders,
     loading,
@@ -563,5 +575,6 @@ export const useEmailSenders = (options: UseSendersOptions = {}) => {
     updateSenderCount,
     updateSenderLastEmailDate,
     removeSenders,
+    restoreSender,
   };
 };
