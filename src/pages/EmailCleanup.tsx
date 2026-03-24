@@ -82,10 +82,11 @@ const EmailCleanup = () => {
   // Also gate Pro-only tools: if a non-Pro user navigates to ?tool=unsubscribe or ?tool=bulk-delete, redirect to checkout
   const proOnlyTools = ['unsubscribe', 'bulk-delete'];
   useEffect(() => {
-    if (!subscriptionLoading && selectedTool && proOnlyTools.includes(selectedTool) && !hasFullTools && !isExpired) {
-      navigate('/checkout', { replace: true });
-      return;
-    }
+    // TEMP: disabled for video recording
+    // if (!subscriptionLoading && selectedTool && proOnlyTools.includes(selectedTool) && !hasFullTools && !isExpired) {
+    //   navigate('/checkout', { replace: true });
+    //   return;
+    // }
     if (selectedTool) {
       setCurrentView('cleanup');
     } else if (viewInitialized && currentView === 'cleanup') {
