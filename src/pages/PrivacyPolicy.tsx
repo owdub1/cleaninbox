@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
             </h1>
             <p className="mt-4 text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
               Last Updated:{' '}
-March 1, 2026
+March 27, 2026
             </p>
           </div>
         </div>
@@ -75,7 +75,44 @@ March 1, 2026
                 </div>
               </div>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                3. How We Use Your Information
+                3. Google User Data
+              </h2>
+              <p className="mb-4">
+                When you connect your Google account to CleanInbox, we access the following data through the Gmail API:
+              </p>
+              <h3 className="text-lg font-medium mb-2">Data Accessed</h3>
+              <ul className="list-disc pl-6 mb-4">
+                <li>Your Google account email address and profile name (via <code>userinfo.email</code> and <code>userinfo.profile</code> scopes)</li>
+                <li>Email metadata: sender names, sender email addresses, subject lines, dates, and label information (via <code>gmail.readonly</code> scope)</li>
+                <li>The ability to trash emails and modify email labels on your behalf when you use our cleanup tools (via <code>gmail.modify</code> scope)</li>
+              </ul>
+              <h3 className="text-lg font-medium mb-2">How We Use Google User Data</h3>
+              <ul className="list-disc pl-6 mb-4">
+                <li><strong>Authentication:</strong> Your email address and profile name are used to identify your account and display your name in the app.</li>
+                <li><strong>Email cleanup:</strong> We read email metadata (sender, subject, date) to group emails by sender and display them in your dashboard. We do not read, store, or process email bodies or attachments.</li>
+                <li><strong>Deleting emails:</strong> When you choose to delete emails, we use the Gmail API to move them to your Gmail trash on your behalf. Emails are only trashed when you explicitly request it.</li>
+                <li><strong>Unsubscribing:</strong> When you choose to unsubscribe from a sender, we use the Gmail API to process the unsubscribe request on your behalf.</li>
+              </ul>
+              <h3 className="text-lg font-medium mb-2">Data Storage</h3>
+              <p className="mb-4">
+                We store only email metadata (sender names, email addresses, subject lines, and dates) in our database to power your dashboard and cleanup tools. We do not store email bodies, attachments, or any email content. Your Gmail OAuth tokens are encrypted before storage using AES-256 encryption.
+              </p>
+              <h3 className="text-lg font-medium mb-2">Data Sharing</h3>
+              <p className="mb-4">
+                We do not sell, trade, or share your Google user data with any third parties. Google user data is only used to provide CleanInbox's core functionality (email cleanup and management). No Google user data is used for advertising, market research, or any purpose unrelated to the app's core features.
+              </p>
+              <h3 className="text-lg font-medium mb-2">Data Retention &amp; Deletion</h3>
+              <p className="mb-4">
+                Your email metadata is retained for as long as your account is active. You can delete all your data at any time by deleting your account from the Dashboard, which immediately removes all stored email metadata, sender statistics, and revokes our access to your Google account. You can also revoke CleanInbox's access to your Google account at any time through your{' '}
+                <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">Google Account permissions</a>.
+              </p>
+              <p className="mb-4">
+                CleanInbox's use and transfer of information received from Google APIs to any other app will adhere to the{' '}
+                <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 underline">Google API Services User Data Policy</a>, including the Limited Use requirements.
+              </p>
+
+              <h2 className="text-xl font-semibold mb-4 mt-8">
+                4. How We Use Your Information
               </h2>
               <p className="mb-4">We use the information we collect to:</p>
               <ul className="list-disc pl-6 mb-4">
@@ -88,7 +125,7 @@ March 1, 2026
                 <li>Monitor and analyze trends, usage, and activities</li>
               </ul>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                4. How We Protect Your Information
+                5. How We Protect Your Information
               </h2>
               <p className="mb-4">
                 We implement appropriate technical and organizational security
@@ -101,7 +138,7 @@ March 1, 2026
                 <li>Strict access controls for our staff</li>
               </ul>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                5. Data Retention
+                6. Data Retention
               </h2>
               <p className="mb-4">
                 We retain your account information for as long as your account
@@ -111,7 +148,7 @@ March 1, 2026
                 certain data.
               </p>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                6. Your Rights
+                7. Your Rights
               </h2>
               <p className="mb-4">
                 Depending on your location, you may have certain rights
@@ -133,7 +170,7 @@ March 1, 2026
                 <li>The right to data portability</li>
               </ul>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                7. Cookies and Tracking Technologies
+                8. Cookies and Tracking Technologies
               </h2>
               <p className="mb-4">
                 We use cookies and similar tracking technologies to track
@@ -146,7 +183,7 @@ March 1, 2026
                 a cookie is being sent.
               </p>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                8. Third-Party Services
+                9. Third-Party Services
               </h2>
               <p className="mb-4">
                 We use the following third-party services to operate CleanInbox:
@@ -168,7 +205,7 @@ March 1, 2026
                 services.
               </p>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                9. Children's Privacy
+                10. Children's Privacy
               </h2>
               <p className="mb-4">
                 Our Services are not intended for use by children under the age
@@ -176,7 +213,7 @@ March 1, 2026
                 information from children under 13.
               </p>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                10. Changes to This Privacy Policy
+                11. Changes to This Privacy Policy
               </h2>
               <p className="mb-4">
                 We may update our Privacy Policy from time to time. We will
@@ -184,11 +221,11 @@ March 1, 2026
                 this page and updating the "Last Updated" date.
               </p>
               <h2 className="text-xl font-semibold mb-4 mt-8">
-                11. Contact Us
+                12. Contact Us
               </h2>
               <p className="mb-4">
                 If you have any questions about this Privacy Policy, please
-                contact us at privacy@cleaninbox.com.
+                contact us at support@cleaninbox.ca.
               </p>
             </div>
             <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
